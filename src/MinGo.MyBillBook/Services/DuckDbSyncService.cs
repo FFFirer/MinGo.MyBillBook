@@ -24,46 +24,29 @@ public class DuckDbSyncService(AppDbContext efDb, DuckDbContext duckDb)
             (id, raw_record_id, platform_id, fund_account_id, transaction_date, 
              counterparty, merchant, category_id, category_name, category_icon,
              product_name, amount, transaction_type, status, source_file, is_manual_adjusted, synced_at)
-            VALUES (@id, @raw_record_id, @platform_id, @fund_account_id, @transaction_date,
-             @counterparty, @merchant, @category_id, @category_name, @category_icon,
-             @product_name, @amount, @transaction_type, @status, @source_file, @is_manual_adjusted, CURRENT_TIMESTAMP)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP)
             """;
 
-        var idParam = insertCmd.CreateParameter(); idParam.ParameterName = "@id"; insertCmd.Parameters.Add(idParam);
-        var rawIdParam = insertCmd.CreateParameter(); rawIdParam.ParameterName = "@raw_record_id"; insertCmd.Parameters.Add(rawIdParam);
-        var platParam = insertCmd.CreateParameter(); platParam.ParameterName = "@platform_id"; insertCmd.Parameters.Add(platParam);
-        var faParam = insertCmd.CreateParameter(); faParam.ParameterName = "@fund_account_id"; insertCmd.Parameters.Add(faParam);
-        var dateParam = insertCmd.CreateParameter(); dateParam.ParameterName = "@transaction_date"; insertCmd.Parameters.Add(dateParam);
-        var cpParam = insertCmd.CreateParameter(); cpParam.ParameterName = "@counterparty"; insertCmd.Parameters.Add(cpParam);
-        var merchParam = insertCmd.CreateParameter(); merchParam.ParameterName = "@merchant"; insertCmd.Parameters.Add(merchParam);
-        var catIdParam = insertCmd.CreateParameter(); catIdParam.ParameterName = "@category_id"; insertCmd.Parameters.Add(catIdParam);
-        var catNameParam = insertCmd.CreateParameter(); catNameParam.ParameterName = "@category_name"; insertCmd.Parameters.Add(catNameParam);
-        var catIconParam = insertCmd.CreateParameter(); catIconParam.ParameterName = "@category_icon"; insertCmd.Parameters.Add(catIconParam);
-        var prodParam = insertCmd.CreateParameter(); prodParam.ParameterName = "@product_name"; insertCmd.Parameters.Add(prodParam);
-        var amtParam = insertCmd.CreateParameter(); amtParam.ParameterName = "@amount"; insertCmd.Parameters.Add(amtParam);
-        var typeParam = insertCmd.CreateParameter(); typeParam.ParameterName = "@transaction_type"; insertCmd.Parameters.Add(typeParam);
-        var statusParam = insertCmd.CreateParameter(); statusParam.ParameterName = "@status"; insertCmd.Parameters.Add(statusParam);
-        var srcParam = insertCmd.CreateParameter(); srcParam.ParameterName = "@source_file"; insertCmd.Parameters.Add(srcParam);
-        var manualParam = insertCmd.CreateParameter(); manualParam.ParameterName = "@is_manual_adjusted"; insertCmd.Parameters.Add(manualParam);
+        var parameters = Enumerable.Range(1, 16).Select(i => { var p = insertCmd.CreateParameter(); p.ParameterName = i.ToString(); insertCmd.Parameters.Add(p); return p; }).ToArray();
 
         foreach (var r in unsynced)
         {
-            idParam.Value = r.Id;
-            rawIdParam.Value = r.RawRecordId;
-            platParam.Value = r.PlatformId;
-            faParam.Value = (object?)r.FundAccountId ?? DBNull.Value;
-            dateParam.Value = r.TransactionDate;
-            cpParam.Value = r.Counterparty ?? "";
-            merchParam.Value = r.Merchant ?? "";
-            catIdParam.Value = (object?)r.CategoryId ?? DBNull.Value;
-            catNameParam.Value = r.Category?.Name ?? "未分类";
-            catIconParam.Value = r.Category?.Icon ?? "more_horiz";
-            prodParam.Value = r.ProductName ?? "";
-            amtParam.Value = r.Amount;
-            typeParam.Value = (int)r.TransactionType;
-            statusParam.Value = r.Status ?? "";
-            srcParam.Value = r.SourceFile ?? "";
-            manualParam.Value = r.IsManualAdjusted;
+            parameters[0].Value = r.Id;
+            parameters[1].Value = r.RawRecordId;
+            parameters[2].Value = r.PlatformId;
+            parameters[3].Value = (object?)r.FundAccountId ?? DBNull.Value;
+            parameters[4].Value = r.TransactionDate;
+            parameters[5].Value = r.Counterparty ?? "";
+            parameters[6].Value = r.Merchant ?? "";
+            parameters[7].Value = (object?)r.CategoryId ?? DBNull.Value;
+            parameters[8].Value = r.Category?.Name ?? "未分类";
+            parameters[9].Value = r.Category?.Icon ?? "more_horiz";
+            parameters[10].Value = r.ProductName ?? "";
+            parameters[11].Value = r.Amount;
+            parameters[12].Value = (int)r.TransactionType;
+            parameters[13].Value = r.Status ?? "";
+            parameters[14].Value = r.SourceFile ?? "";
+            parameters[15].Value = r.IsManualAdjusted;
 
             insertCmd.ExecuteNonQuery();
         }

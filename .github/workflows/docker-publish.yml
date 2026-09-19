@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: mybillbook
+  IMAGE_NAME: mingo/mybillbook
 
 jobs:
   build-and-push:

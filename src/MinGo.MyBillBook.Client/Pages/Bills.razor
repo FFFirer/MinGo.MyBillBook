@@ -1,5 +1,6 @@
 @page "/bills"
 @using System.Net.Http.Json
+@using System.Globalization
 @inject HttpClient Http
 
 <PageTitle>账单明细</PageTitle>
@@ -66,7 +67,7 @@
                         @foreach (var bill in result.Items)
                         {
                             <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                <td class="py-3 px-4 text-gray-600 whitespace-nowrap">@bill.TransactionDate.ToString("MM-dd HH:mm")</td>
+                                <td class="py-3 px-4 text-gray-600 whitespace-nowrap">@bill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
                                 <td class="py-3 px-4">
                                     <div class="font-medium text-gray-800 truncate max-w-48">@bill.Merchant</div>
                                     @if (bill.IsManualAdjusted)

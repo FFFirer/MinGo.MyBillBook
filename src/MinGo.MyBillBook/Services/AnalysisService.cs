@@ -20,10 +20,10 @@ public class AnalysisService(DuckDbContext duckDb, DuckDbSyncService syncService
                 COALESCE(SUM(CASE WHEN transaction_type = 1 THEN amount ELSE 0 END), 0) as total_expense,
                 COUNT(*) as transaction_count
             FROM bill_records
-            WHERE transaction_date >= @startDate AND transaction_date <= @endDate
+            WHERE transaction_date >= $1 AND transaction_date <= $2
             """;
-        AddDateParam(cmd, "@startDate", start);
-        AddDateParam(cmd, "@endDate", end);
+        cmd.Parameters.Add(CreateParam(cmd, "1", start));
+        cmd.Parameters.Add(CreateParam(cmd, "2", end));
 
         using var reader = cmd.ExecuteReader();
         var result = new AnalysisSummary();
@@ -46,12 +46,12 @@ public class AnalysisService(DuckDbContext duckDb, DuckDbSyncService syncService
             SELECT category_name, category_icon, 
                    SUM(amount) as total_amount, COUNT(*) as cnt
             FROM bill_records
-            WHERE transaction_type = 1 AND transaction_date >= @startDate AND transaction_date <= @endDate
+            WHERE transaction_type = 1 AND transaction_date >= $1 AND transaction_date <= $2
             GROUP BY category_name, category_icon
             ORDER BY total_amount DESC
             """;
-        AddDateParam(cmd, "@startDate", start);
-        AddDateParam(cmd, "@endDate", end);
+        cmd.Parameters.Add(CreateParam(cmd, "1", start));
+        cmd.Parameters.Add(CreateParam(cmd, "2", end));
 
         using var reader = cmd.ExecuteReader();
         var stats = new List<CategoryStat>();
@@ -83,11 +83,11 @@ public class AnalysisService(DuckDbContext duckDb, DuckDbSyncService syncService
                    COALESCE(SUM(CASE WHEN transaction_type = 0 THEN amount ELSE 0 END), 0) as income,
                    COALESCE(SUM(CASE WHEN transaction_type = 1 THEN amount ELSE 0 END), 0) as expense
             FROM bill_records
-            WHERE YEAR(transaction_date) = @year
+            WHERE YEAR(transaction_date) = $1
             GROUP BY MONTH(transaction_date)
             ORDER BY month
             """;
-        cmd.Parameters.Add(CreateParam(cmd, "@year", year));
+        cmd.Parameters.Add(CreateParam(cmd, "1", year));
 
         using var reader = cmd.ExecuteReader();
         var monthlyData = new Dictionary<int, (decimal Income, decimal Expense)>();
@@ -112,13 +112,13 @@ public class AnalysisService(DuckDbContext duckDb, DuckDbSyncService syncService
         cmd.CommandText = $"""
             SELECT merchant, SUM(amount) as total_amount, COUNT(*) as cnt
             FROM bill_records
-            WHERE transaction_type = 1 AND transaction_date >= @startDate AND transaction_date <= @endDate
+            WHERE transaction_type = 1 AND transaction_date >= $1 AND transaction_date <= $2
             GROUP BY merchant
             ORDER BY total_amount DESC
             LIMIT {limit}
             """;
-        AddDateParam(cmd, "@startDate", start);
-        AddDateParam(cmd, "@endDate", end);
+        cmd.Parameters.Add(CreateParam(cmd, "1", start));
+        cmd.Parameters.Add(CreateParam(cmd, "2", end));
 
         using var reader = cmd.ExecuteReader();
         var merchants = new List<MerchantRank>();
@@ -127,11 +127,6 @@ public class AnalysisService(DuckDbContext duckDb, DuckDbSyncService syncService
             merchants.Add(new MerchantRank(reader.GetString(0), reader.GetDecimal(1), reader.GetInt32(2)));
         }
         return Task.FromResult(merchants);
-    }
-
-    private static void AddDateParam(DuckDB.NET.Data.DuckDBCommand cmd, string name, DateTime value)
-    {
-        cmd.Parameters.Add(CreateParam(cmd, name, value));
     }
 
     private static System.Data.Common.DbParameter CreateParam(DuckDB.NET.Data.DuckDBCommand cmd, string name, object value)
