@@ -1,0 +1,62 @@
+@page "/categories"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>消费分类</PageTitle>
+<div class="space-y-6">
+    <h1 class="text-2xl font-bold text-gray-800">消费分类</h1>
+    @if (categories != null)
+    {
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            @foreach (var c in categories)
+            {
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 text-center card-hover">
+                    <span class="material-icons text-3xl text-purple-600 block mb-2">@c.Icon</span>
+                    <p class="text-sm font-medium text-gray-800">@c.Name</p>
+                </div>
+            }
+        </div>
+    }
+
+    @if (rules != null)
+    {
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">分类规则 (@rules.Count 条)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="text-left py-2 px-3 font-medium text-gray-500">分类</th>
+                            <th class="text-left py-2 px-3 font-medium text-gray-500">匹配字段</th>
+                            <th class="text-left py-2 px-3 font-medium text-gray-500">匹配模式</th>
+                            <th class="text-right py-2 px-3 font-medium text-gray-500">优先级</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in rules)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="py-2 px-3">@r.CategoryName</td>
+                                <td class="py-2 px-3 text-gray-500">@r.MatchField</td>
+                                <td class="py-2 px-3 font-mono text-xs">@r.MatchPattern</td>
+                                <td class="py-2 px-3 text-right">@r.Priority</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<CategoryDto>? categories;
+    private List<RuleDto>? rules;
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await Http.GetFromJsonAsync<List<CategoryDto>>("api/categories");
+        rules = await Http.GetFromJsonAsync<List<RuleDto>>("api/category-rules");
+    }
+    private record CategoryDto(int Id, string Name, string Icon, int? ParentId, int SortOrder);
+    private record RuleDto(int Id, int CategoryId, string CategoryName, string MatchField, string MatchPattern, int Priority, bool IsActive);
+}

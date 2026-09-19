@@ -1,0 +1,33 @@
+namespace MinGo.MyBillBook.Core.Parsing;
+
+public class RawBillRow
+{
+    public DateTime TransactionDate { get; set; }
+    public decimal Amount { get; set; }
+    public string Direction { get; set; } = string.Empty;
+    public string Counterparty { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string PaymentMethod { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string TransactionId { get; set; } = string.Empty;
+    public Dictionary<string, string> ExtraFields { get; set; } = [];
+}
+
+public class ParseResult
+{
+    public List<RawBillRow> Rows { get; set; } = [];
+    public List<string> Errors { get; set; } = [];
+    public bool Success => Errors.Count == 0;
+}
+
+public interface IBillParser
+{
+    string PlatformCode { get; }
+    ParseResult Parse(Stream fileStream, string fileName);
+}
+
+public interface IBillParserFactory
+{
+    IBillParser? DetectParser(Stream fileStream, string fileName);
+    IBillParser? GetParser(string platformCode);
+}

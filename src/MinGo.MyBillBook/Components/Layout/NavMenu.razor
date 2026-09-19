@@ -1,0 +1,57 @@
+﻿@implements IDisposable
+
+<div class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform lg:translate-x-0 -translate-x-full transition-transform duration-300" id="sidebar">
+    <div class="flex items-center h-16 px-6 bg-purple-600">
+        <span class="material-icons text-white text-2xl mr-2">account_balance_wallet</span>
+        <span class="text-white text-lg font-semibold">个人财务分析</span>
+    </div>
+
+    <nav class="mt-4 px-3">
+        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="" Match="NavLinkMatch.All">
+            <span class="material-icons mr-3">dashboard</span>
+            <span>首页</span>
+        </NavLink>
+
+        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="import">
+            <span class="material-icons mr-3">upload_file</span>
+            <span>导入对账单</span>
+        </NavLink>
+
+        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="bills">
+            <span class="material-icons mr-3">receipt_long</span>
+            <span>账单明细</span>
+        </NavLink>
+
+        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="analysis">
+            <span class="material-icons mr-3">analytics</span>
+            <span>消费分析</span>
+        </NavLink>
+
+        <div class="border-t border-gray-200 my-3"></div>
+
+        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="platforms">
+            <span class="material-icons mr-3">payment</span>
+            <span>支付平台</span>
+        </NavLink>
+
+        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="accounts">
+            <span class="material-icons mr-3">account_balance</span>
+            <span>资金账户</span>
+        </NavLink>
+
+        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="categories">
+            <span class="material-icons mr-3">category</span>
+            <span>消费分类</span>
+        </NavLink>
+    </nav>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+    }
+
+    public void Dispose()
+    {
+    }
+}

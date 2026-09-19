@@ -1,0 +1,36 @@
+@page "/platforms"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>支付平台</PageTitle>
+<div class="space-y-6">
+    <h1 class="text-2xl font-bold text-gray-800">支付平台</h1>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        @if (platforms != null)
+        {
+            @foreach (var p in platforms)
+            {
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 card-hover">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-lg bg-purple-100 mr-4">
+                            <span class="material-icons text-purple-600 text-2xl">payment</span>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800">@p.Name</h3>
+                            <p class="text-sm text-gray-500">代码: @p.Code | 账户数: @p.AccountCount</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<PlatformDto>? platforms;
+    protected override async Task OnInitializedAsync()
+    {
+        platforms = await Http.GetFromJsonAsync<List<PlatformDto>>("api/platforms");
+    }
+    private record PlatformDto(int Id, string Name, string Code, string? IconUrl, int AccountCount);
+}

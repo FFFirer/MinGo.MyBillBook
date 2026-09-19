@@ -1,0 +1,20 @@
+# Data files
+*.db
+*.db-shm
+*.db-wal
+*.duckdb
+data-samples/
+
+# Build output
+bin/
+obj/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+
+# OS
+Thumbs.db
+.DS_Store

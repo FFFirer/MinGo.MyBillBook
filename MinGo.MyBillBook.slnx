@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MinGo.MyBillBook.Client/MinGo.MyBillBook.Client.csproj" />
+    <Project Path="src/MinGo.MyBillBook.Core/MinGo.MyBillBook.Core.csproj" />
+    <Project Path="src/MinGo.MyBillBook.Data/MinGo.MyBillBook.Data.csproj" />
+    <Project Path="src/MinGo.MyBillBook/MinGo.MyBillBook.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MinGo.MyBillBook.Tests/MinGo.MyBillBook.Tests.csproj" />
+  </Folder>
+</Solution>

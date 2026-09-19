@@ -1,0 +1,248 @@
+@page "/analysis"
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.SignalR.Client
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
+
+<PageTitle>消费分析</PageTitle>
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-800">消费分析</h1>
+        <div class="flex gap-2">
+            <select @bind="selectedYear" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                @foreach (var y in years)
+                {
+                    <option value="@y">@y 年</option>
+                }
+            </select>
+            <button @onclick="SyncData" disabled="@isSyncing"
+                    class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50">
+                <span class="material-icons text-sm mr-1 align-middle">sync</span>
+                @(isSyncing ? "同步中..." : "同步数据")
+            </button>
+            <a href="api/export/analysis?start=@startDate.ToString("yyyy-MM-dd")&end=@endDate.ToString("yyyy-MM-dd")"
+               class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 inline-flex items-center">
+                <span class="material-icons text-sm mr-1">download</span>导出
+            </a>
+        </div>
+    </div>
+
+    @if (toastMessage != null)
+    {
+        <div class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white @(toastIsError ? "bg-red-500" : "bg-green-500") transition-all">
+            @toastMessage
+        </div>
+    }
+
+    @if (summary != null)
+    {
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                <p class="text-sm text-gray-500 mb-1">总收入</p>
+                <p class="text-2xl font-bold text-green-600">@summary.TotalIncome.ToString("F2")</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                <p class="text-sm text-gray-500 mb-1">总支出</p>
+                <p class="text-2xl font-bold text-red-600">@summary.TotalExpense.ToString("F2")</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                <p class="text-sm text-gray-500 mb-1">结余</p>
+                <p class="text-2xl font-bold @(summary.Balance >= 0 ? "text-blue-600" : "text-orange-600")">@summary.Balance.ToString("F2")</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+                <p class="text-sm text-gray-500 mb-1">交易笔数</p>
+                <p class="text-2xl font-bold text-purple-600">@summary.TransactionCount</p>
+            </div>
+        </div>
+
+        <!-- Monthly Trend (bar chart using CSS) -->
+        @if (monthlyTrends != null && monthlyTrends.Any())
+        {
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h2 class="text-lg font-semibold mb-4">月度趋势 (@selectedYear 年)</h2>
+                @{
+                    var maxVal = monthlyTrends.Max(m => Math.Max(m.Income, m.Expense));
+                }
+                <div class="flex items-end gap-2 h-48">
+                    @foreach (var m in monthlyTrends)
+                    {
+                        var incomeH = maxVal > 0 ? (int)(m.Income / maxVal * 100) : 0;
+                        var expenseH = maxVal > 0 ? (int)(m.Expense / maxVal * 100) : 0;
+                        <div class="flex-1 flex flex-col items-center">
+                            <div class="flex items-end gap-0.5 w-full h-40">
+                                <div class="flex-1 bg-green-400 rounded-t transition-all" style="height:@(incomeH)%" title="收入: @m.Income.ToString("F2")"></div>
+                                <div class="flex-1 bg-red-400 rounded-t transition-all" style="height:@(expenseH)%" title="支出: @m.Expense.ToString("F2")"></div>
+                            </div>
+                            <span class="text-xs text-gray-500 mt-1">@m.Month.Substring(5)</span>
+                        </div>
+                    }
+                </div>
+                <div class="flex gap-4 mt-3 justify-center">
+                    <span class="text-xs text-gray-500"><span class="inline-block w-3 h-3 bg-green-400 rounded mr-1"></span>收入</span>
+                    <span class="text-xs text-gray-500"><span class="inline-block w-3 h-3 bg-red-400 rounded mr-1"></span>支出</span>
+                </div>
+            </div>
+        }
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Category Breakdown -->
+            @if (categoryStats != null && categoryStats.Any())
+            {
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h2 class="text-lg font-semibold mb-4">分类占比</h2>
+                    <div class="space-y-3">
+                        @foreach (var c in categoryStats)
+                        {
+                            <div>
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="flex items-center">
+                                        <span class="material-icons text-base text-purple-500 mr-1">@c.Icon</span>
+                                        @c.CategoryName
+                                    </span>
+                                    <span class="text-gray-500">@c.Amount.ToString("F2") (@c.Percentage.ToString("F1")%)</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-2">
+                                    <div class="bg-purple-500 h-2 rounded-full transition-all" style="width:@(c.Percentage)%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Top Merchants -->
+            @if (topMerchants != null && topMerchants.Any())
+            {
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <h2 class="text-lg font-semibold mb-4">商户排行 TOP 10</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-200">
+                                    <th class="text-left py-2 font-medium text-gray-500">#</th>
+                                    <th class="text-left py-2 font-medium text-gray-500">商户</th>
+                                    <th class="text-right py-2 font-medium text-gray-500">金额</th>
+                                    <th class="text-right py-2 font-medium text-gray-500">笔数</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < topMerchants.Count; i++)
+                                {
+                                    var m = topMerchants[i];
+                                    <tr class="border-b border-gray-100">
+                                        <td class="py-2">
+                                            <span class="w-6 h-6 rounded-full bg-purple-100 text-purple-600 text-xs inline-flex items-center justify-center font-bold">@(i + 1)</span>
+                                        </td>
+                                        <td class="py-2 font-medium">@m.Merchant</td>
+                                        <td class="py-2 text-right text-red-600 font-medium">@m.Amount.ToString("F2")</td>
+                                        <td class="py-2 text-right text-gray-500">@m.Count</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="bg-white rounded-xl shadow-sm p-12 border border-gray-100 text-center">
+            <span class="material-icons text-5xl text-gray-300 block mb-3">analytics</span>
+            <p class="text-gray-500">暂无分析数据</p>
+            <p class="text-sm text-gray-400 mt-1">请先导入并处理对账单数据，然后点击"同步数据"</p>
+        </div>
+    }
+</div>
+
+@code {
+    private AnalysisSummary? summary;
+    private List<CategoryStatDto>? categoryStats;
+    private List<MonthlyTrendDto>? monthlyTrends;
+    private List<MerchantRankDto>? topMerchants;
+    private int selectedYear = DateTime.Today.Year;
+    private int[] years = Enumerable.Range(DateTime.Today.Year - 3, 4).Reverse().ToArray();
+    private bool isSyncing;
+    private string? toastMessage;
+    private bool toastIsError;
+    private DateTime startDate => new(selectedYear, 1, 1);
+    private DateTime endDate => new(selectedYear, 12, 31);
+
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Setup SignalR
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/hubs/notifications"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On("DataSynced", async () =>
+        {
+            ShowToast("数据已同步");
+            await LoadData();
+        });
+
+        hubConnection.On<int, int>("BatchProcessed", async (batchId, count) =>
+        {
+            ShowToast($"已处理 {count} 条记录");
+        });
+
+        try { await hubConnection.StartAsync(); } catch { /* SignalR not critical */ }
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var startStr = startDate.ToString("yyyy-MM-dd");
+        var endStr = endDate.ToString("yyyy-MM-dd");
+        summary = await Http.GetFromJsonAsync<AnalysisSummary>($"api/analysis/summary?start={startStr}&end={endStr}");
+        categoryStats = await Http.GetFromJsonAsync<List<CategoryStatDto>>($"api/analysis/category?start={startStr}&end={endStr}");
+        monthlyTrends = await Http.GetFromJsonAsync<List<MonthlyTrendDto>>($"api/analysis/trend?year={selectedYear}");
+        topMerchants = await Http.GetFromJsonAsync<List<MerchantRankDto>>($"api/analysis/merchants?start={startStr}&end={endStr}&limit=10");
+    }
+
+    private async Task SyncData()
+    {
+        isSyncing = true;
+        StateHasChanged();
+        try
+        {
+            await Http.PostAsync("api/analysis/sync", null);
+            ShowToast("数据同步完成");
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"同步失败: {ex.Message}", true);
+        }
+        finally { isSyncing = false; }
+    }
+
+    private async void ShowToast(string message, bool isError = false)
+    {
+        toastMessage = message;
+        toastIsError = isError;
+        StateHasChanged();
+        await Task.Delay(3000);
+        toastMessage = null;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private record AnalysisSummary(decimal TotalIncome, decimal TotalExpense, decimal Balance, int TransactionCount);
+    private record CategoryStatDto(string CategoryName, string Icon, decimal Amount, int Count, double Percentage);
+    private record MonthlyTrendDto(string Month, decimal Income, decimal Expense);
+    private record MerchantRankDto(string Merchant, decimal Amount, int Count);
+}

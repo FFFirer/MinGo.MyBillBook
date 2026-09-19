@@ -1,0 +1,22 @@
+{
+  "name": "个人财务分析",
+  "short_name": "MyBillBook",
+  "description": "导入支付宝、微信对账单，自动解析分类，消费分析",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#6750A4",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+/* Material 3 inspired styles */
+:root {
+    --md-primary: #6750A4;
+    --md-on-primary: #FFFFFF;
+    --md-surface: #FFFBFE;
+    --md-surface-variant: #E7E0EC;
+    --md-on-surface: #1C1B1F;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #F5F3F7;
+}
+
+/* Active nav link */
+a.active {
+    background-color: #F3E8FF !important;
+    color: #6750A4 !important;
+    font-weight: 500;
+}
+
+/* Card hover effect */
+.card-hover {
+    transition: all 0.2s ease;
+}
+.card-hover:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Responsive sidebar */
+@media (max-width: 1023px) {
+    #sidebar.show {
+        transform: translateX(0) !important;
+    }
+}
+
+/* Table improvements */
+table {
+    border-collapse: collapse;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    border: 3px solid #E7E0EC;
+    border-top: 3px solid #6750A4;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Blazor error UI */
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+/* Components auto-detected marker */
+.components-reconnect-overlay {
+    z-index: 9999;
+}

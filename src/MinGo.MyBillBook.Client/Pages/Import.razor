@@ -1,0 +1,230 @@
+@page "/import"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>导入对账单</PageTitle>
+
+<div class="space-y-6">
+    <h1 class="text-2xl font-bold text-gray-800">导入对账单</h1>
+
+    @if (importResult != null)
+    {
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-3">导入结果</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center">
+                    <p class="text-sm text-gray-500">总记录数</p>
+                    <p class="text-xl font-bold">@importResult.TotalCount</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm text-gray-500">成功导入</p>
+                    <p class="text-xl font-bold text-green-600">@importResult.SuccessCount</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm text-gray-500">重复跳过</p>
+                    <p class="text-xl font-bold text-yellow-600">@importResult.DuplicateCount</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-sm text-gray-500">批次 ID</p>
+                    <p class="text-xl font-bold text-purple-600">@importResult.BatchId</p>
+                </div>
+            </div>
+            @if (importResult.Errors.Count > 0)
+            {
+                <div class="mt-3 p-3 bg-red-50 rounded-lg">
+                    <p class="text-sm font-medium text-red-700">解析错误:</p>
+                    @foreach (var err in importResult.Errors.Take(5))
+                    {
+                        <p class="text-xs text-red-600">@err</p>
+                    }
+                </div>
+            }
+            <div class="mt-4 flex gap-3">
+                <button @onclick="() => ProcessBatch(importResult.BatchId)" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    立即处理此批次
+                </button>
+                <button @onclick="ProcessAll" class="px-4 py-2 bg-white text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50">
+                    处理所有未处理
+                </button>
+            </div>
+        </div>
+    }
+
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <h2 class="text-lg font-semibold mb-4">上传文件</h2>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">支付平台</label>
+                <select @bind="platformId" class="w-full max-w-xs rounded-lg border-gray-300 shadow-sm px-3 py-2 border focus:border-purple-500 focus:ring-purple-500">
+                    <option value="1">支付宝</option>
+                    <option value="2">微信支付</option>
+                </select>
+            </div>
+
+            <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors">
+                <InputFile OnChange="OnFileSelected" accept=".csv" class="hidden" id="fileInput" />
+                <label for="fileInput" class="cursor-pointer">
+                    <span class="material-icons text-4xl text-gray-400 block mb-2">cloud_upload</span>
+                    <p class="text-gray-600">点击或拖拽 CSV 文件到此处</p>
+                    <p class="text-sm text-gray-400 mt-1">支持支付宝、微信对账单 CSV 文件</p>
+                </label>
+            </div>
+
+            @if (selectedFile != null)
+            {
+                <div class="flex items-center gap-3">
+                    <span class="material-icons text-purple-600">insert_drive_file</span>
+                    <span class="text-sm text-gray-700">@selectedFile.Name (@(selectedFile.Size / 1024) KB)</span>
+                    <button @onclick="UploadFile" disabled="@isUploading"
+                            class="ml-auto px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50">
+                        @(isUploading ? "上传中..." : "开始导入")
+                    </button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-3 bg-red-50 rounded-lg text-sm text-red-700">@errorMessage</div>
+            }
+        </div>
+    </div>
+
+    @if (batches.Count > 0)
+    {
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">导入历史</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="text-left py-2 px-3 font-medium text-gray-500">平台</th>
+                            <th class="text-left py-2 px-3 font-medium text-gray-500">文件名</th>
+                            <th class="text-left py-2 px-3 font-medium text-gray-500">导入时间</th>
+                            <th class="text-right py-2 px-3 font-medium text-gray-500">总数</th>
+                            <th class="text-right py-2 px-3 font-medium text-gray-500">成功</th>
+                            <th class="text-right py-2 px-3 font-medium text-gray-500">重复</th>
+                            <th class="text-center py-2 px-3 font-medium text-gray-500">状态</th>
+                            <th class="text-center py-2 px-3 font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var batch in batches)
+                        {
+                            <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                <td class="py-2 px-3">@batch.PlatformName</td>
+                                <td class="py-2 px-3 text-gray-600">@batch.FileName</td>
+                                <td class="py-2 px-3 text-gray-500">@batch.ImportDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="py-2 px-3 text-right">@batch.TotalCount</td>
+                                <td class="py-2 px-3 text-right text-green-600">@batch.SuccessCount</td>
+                                <td class="py-2 px-3 text-right text-yellow-600">@batch.DuplicateCount</td>
+                                <td class="py-2 px-3 text-center">
+                                    <span class="px-2 py-1 rounded-full text-xs @(batch.Status == "Completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700")">
+                                        @batch.Status
+                                    </span>
+                                </td>
+                                <td class="py-2 px-3 text-center">
+                                    @if (batch.Status == "Imported")
+                                    {
+                                        <button @onclick="() => ProcessBatch(batch.Id)" class="text-purple-600 hover:text-purple-800 text-xs font-medium">处理</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int platformId = 1;
+    private IBrowserFile? selectedFile;
+    private bool isUploading;
+    private string? errorMessage;
+    private BillImportResult? importResult;
+    private List<BatchInfo> batches = [];
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        errorMessage = null;
+        importResult = null;
+    }
+
+    private async Task UploadFile()
+    {
+        if (selectedFile == null) return;
+        isUploading = true;
+        errorMessage = null;
+
+        try
+        {
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
+            using var content = new MultipartFormDataContent();
+            var streamContent = new StreamContent(stream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            content.Add(streamContent, "file", selectedFile.Name);
+            content.Add(new StringContent(platformId.ToString()), "platformId");
+
+            var response = await Http.PostAsync("api/bill/import", content);
+            if (response.IsSuccessStatusCode)
+            {
+                importResult = await response.Content.ReadFromJsonAsync<BillImportResult>();
+                await LoadBatches();
+            }
+            else
+            {
+                errorMessage = $"导入失败: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"导入出错: {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    private async Task ProcessBatch(int batchId)
+    {
+        try
+        {
+            var response = await Http.PostAsync($"api/bill/import/batches/{batchId}/process", null);
+            if (response.IsSuccessStatusCode)
+                await LoadBatches();
+        }
+        catch { }
+    }
+
+    private async Task ProcessAll()
+    {
+        try
+        {
+            var response = await Http.PostAsync("api/bill/import/process-all", null);
+            if (response.IsSuccessStatusCode)
+                await LoadBatches();
+        }
+        catch { }
+    }
+
+    private async Task LoadBatches()
+    {
+        try
+        {
+            batches = await Http.GetFromJsonAsync<List<BatchInfo>>("api/bill/import/batches") ?? [];
+        }
+        catch { }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBatches();
+    }
+
+    private record BillImportResult(int BatchId, string FileName, int TotalCount, int SuccessCount, int DuplicateCount, List<string> Errors);
+    private record BatchInfo(int Id, string PlatformName, string FileName, DateTime ImportDate, int TotalCount, int SuccessCount, int DuplicateCount, string Status);
+}

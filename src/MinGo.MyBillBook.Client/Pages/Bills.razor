@@ -1,0 +1,156 @@
+@page "/bills"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>账单明细</PageTitle>
+
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-800">账单明细</h1>
+        <a href="api/export/bills" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 inline-flex items-center">
+            <span class="material-icons text-sm mr-1">download</span>导出 CSV
+        </a>
+    </div>
+
+    <!-- 筛选面板 -->
+    <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <input type="date" @bind="filter.StartDate" class="rounded-lg border-gray-300 text-sm px-3 py-2 border" placeholder="开始日期" />
+            <input type="date" @bind="filter.EndDate" class="rounded-lg border-gray-300 text-sm px-3 py-2 border" placeholder="结束日期" />
+            <select @bind="filter.PlatformId" class="rounded-lg border-gray-300 text-sm px-3 py-2 border">
+                <option value="">全部平台</option>
+                <option value="1">支付宝</option>
+                <option value="2">微信支付</option>
+            </select>
+            <select @bind="filter.TransactionType" class="rounded-lg border-gray-300 text-sm px-3 py-2 border">
+                <option value="">全部类型</option>
+                <option value="Income">收入</option>
+                <option value="Expense">支出</option>
+                <option value="Transfer">转账</option>
+            </select>
+            <div class="flex gap-2">
+                <input type="text" @bind="filter.Keyword" @bind:event="oninput" placeholder="搜索关键词..."
+                       class="flex-1 rounded-lg border-gray-300 text-sm px-3 py-2 border" />
+                <button @onclick="LoadBills" class="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+                    <span class="material-icons text-lg">search</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计摘要 -->
+    @if (result != null)
+    {
+        <div class="text-sm text-gray-500">
+            共 @result.TotalCount 条记录，第 @result.Page / @((int)Math.Ceiling((double)result.TotalCount / result.PageSize)) 页
+        </div>
+    }
+
+    <!-- 账单列表 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        @if (result?.Items.Count > 0)
+        {
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="text-left py-3 px-4 font-medium text-gray-500">日期</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-500">商户/对方</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-500">商品</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-500">分类</th>
+                            <th class="text-right py-3 px-4 font-medium text-gray-500">金额</th>
+                            <th class="text-center py-3 px-4 font-medium text-gray-500">平台</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var bill in result.Items)
+                        {
+                            <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                <td class="py-3 px-4 text-gray-600 whitespace-nowrap">@bill.TransactionDate.ToString("MM-dd HH:mm")</td>
+                                <td class="py-3 px-4">
+                                    <div class="font-medium text-gray-800 truncate max-w-48">@bill.Merchant</div>
+                                    @if (bill.IsManualAdjusted)
+                                    {
+                                        <span class="text-xs text-purple-500">已修正</span>
+                                    }
+                                </td>
+                                <td class="py-3 px-4 text-gray-600 truncate max-w-48">@bill.ProductName</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                                        @(bill.CategoryName ?? "未分类")
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-right font-medium whitespace-nowrap @(bill.TransactionType == "Income" ? "text-green-600" : "text-red-600")">
+                                    @(bill.TransactionType == "Income" ? "+" : "-")@bill.Amount.ToString("F2")
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-500">@bill.PlatformName</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                <button @onclick="PrevPage" disabled="@(result.Page <= 1)"
+                        class="px-3 py-1 rounded-lg text-sm border border-gray-300 disabled:opacity-50 hover:bg-gray-50">
+                    上一页
+                </button>
+                <span class="text-sm text-gray-500">@result.Page / @((int)Math.Ceiling((double)result.TotalCount / result.PageSize))</span>
+                <button @onclick="NextPage" disabled="@(result.Page * result.PageSize >= result.TotalCount)"
+                        class="px-3 py-1 rounded-lg text-sm border border-gray-300 disabled:opacity-50 hover:bg-gray-50">
+                    下一页
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="p-12 text-center text-gray-400">
+                <span class="material-icons text-5xl block mb-3">receipt_long</span>
+                <p>暂无账单数据</p>
+                <p class="text-sm mt-1">请先 <a href="import" class="text-purple-600 hover:underline">导入对账单</a></p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private PagedResult? result;
+    private FilterParams filter = new();
+
+    private async Task LoadBills()
+    {
+        try
+        {
+            var url = $"api/bills?page={filter.Page}&pageSize=20";
+            if (filter.StartDate.HasValue) url += $"&startDate={filter.StartDate:yyyy-MM-dd}";
+            if (filter.EndDate.HasValue) url += $"&endDate={filter.EndDate:yyyy-MM-dd}";
+            if (filter.PlatformId.HasValue) url += $"&platformId={filter.PlatformId}";
+            if (!string.IsNullOrWhiteSpace(filter.TransactionType)) url += $"&transactionType={filter.TransactionType}";
+            if (!string.IsNullOrWhiteSpace(filter.Keyword)) url += $"&keyword={Uri.EscapeDataString(filter.Keyword)}";
+
+            result = await Http.GetFromJsonAsync<PagedResult>(url);
+        }
+        catch { }
+    }
+
+    private async Task PrevPage() { if (filter.Page > 1) { filter.Page--; await LoadBills(); } }
+    private async Task NextPage() { filter.Page++; await LoadBills(); }
+
+    protected override async Task OnInitializedAsync() => await LoadBills();
+
+    private class FilterParams
+    {
+        public int Page { get; set; } = 1;
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public int? PlatformId { get; set; }
+        public string? TransactionType { get; set; }
+        public string? Keyword { get; set; }
+    }
+
+    private record PagedResult(List<BillItem> Items, int TotalCount, int Page, int PageSize);
+    private record BillItem(int Id, DateTime TransactionDate, string Counterparty, string Merchant,
+        string? CategoryName, int? CategoryId, string ProductName, decimal Amount,
+        string TransactionType, string PlatformName, string? FundAccountName, string Status, bool IsManualAdjusted);
+}

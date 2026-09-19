@@ -1,0 +1,49 @@
+@page "/accounts"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>资金账户</PageTitle>
+<div class="space-y-6">
+    <h1 class="text-2xl font-bold text-gray-800">资金账户</h1>
+    @if (accounts != null)
+    {
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="text-left py-3 px-4 font-medium text-gray-500">账户名</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-500">平台</th>
+                        <th class="text-left py-3 px-4 font-medium text-gray-500">类型</th>
+                        <th class="text-right py-3 px-4 font-medium text-gray-500">余额</th>
+                        <th class="text-center py-3 px-4 font-medium text-gray-500">状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in accounts)
+                    {
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-3 px-4 font-medium">@a.Name</td>
+                            <td class="py-3 px-4 text-gray-600">@a.PlatformName</td>
+                            <td class="py-3 px-4 text-gray-500">@a.AccountType</td>
+                            <td class="py-3 px-4 text-right font-medium">@a.Balance.ToString("F2")</td>
+                            <td class="py-3 px-4 text-center">
+                                <span class="px-2 py-1 rounded-full text-xs @(a.IsActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500")">
+                                    @(a.IsActive ? "活跃" : "停用")
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<AccountDto>? accounts;
+    protected override async Task OnInitializedAsync()
+    {
+        accounts = await Http.GetFromJsonAsync<List<AccountDto>>("api/accounts");
+    }
+    private record AccountDto(int Id, string Name, int PlatformId, string PlatformName, string AccountType, decimal Balance, bool IsActive);
+}
