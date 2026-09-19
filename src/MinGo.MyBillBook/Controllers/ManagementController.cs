@@ -19,6 +19,41 @@ public class ManagementController(AppDbContext db) : ControllerBase
         return Ok(platforms);
     }
 
+    [HttpPost("platforms")]
+    public async Task<ActionResult> CreatePlatform([FromBody] CreatePlatformRequest req, CancellationToken ct)
+    {
+        var platform = new PaymentPlatform { Name = req.Name, Code = req.Code, IconUrl = req.IconUrl };
+        db.PaymentPlatforms.Add(platform);
+        await db.SaveChangesAsync(ct);
+        return Created($"/api/platforms/{platform.Id}", new { platform.Id });
+    }
+
+    [HttpPut("platforms/{id:int}")]
+    public async Task<ActionResult> UpdatePlatform(int id, [FromBody] CreatePlatformRequest req, CancellationToken ct)
+    {
+        var platform = await db.PaymentPlatforms.FindAsync([id], ct);
+        if (platform == null) return NotFound();
+        platform.Name = req.Name;
+        platform.Code = req.Code;
+        platform.IconUrl = req.IconUrl;
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpDelete("platforms/{id:int}")]
+    public async Task<ActionResult> DeletePlatform(int id, CancellationToken ct)
+    {
+        var platform = await db.PaymentPlatforms
+            .Include(p => p.FundAccounts)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (platform == null) return NotFound();
+        if (platform.FundAccounts.Count > 0)
+            return BadRequest(new { message = "该平台下还有资金账户，无法删除" });
+        db.PaymentPlatforms.Remove(platform);
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     // === 资金账户 ===
     [HttpGet("accounts")]
     public async Task<ActionResult> GetAccounts(CancellationToken ct)
@@ -33,7 +68,7 @@ public class ManagementController(AppDbContext db) : ControllerBase
     [HttpPost("accounts")]
     public async Task<ActionResult> CreateAccount([FromBody] CreateAccountRequest req, CancellationToken ct)
     {
-        var account = new FundAccount { Name = req.Name, PlatformId = req.PlatformId, AccountType = req.AccountType };
+        var account = new FundAccount { Name = req.Name, PlatformId = req.PlatformId, AccountType = req.AccountType, Balance = req.Balance };
         db.FundAccounts.Add(account);
         await db.SaveChangesAsync(ct);
         return Created($"/api/accounts/{account.Id}", new { account.Id });
@@ -47,6 +82,7 @@ public class ManagementController(AppDbContext db) : ControllerBase
         account.Name = req.Name;
         account.PlatformId = req.PlatformId;
         account.AccountType = req.AccountType;
+        account.Balance = req.Balance;
         await db.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -94,6 +130,26 @@ public class ManagementController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("categories/{id:int}")]
+    public async Task<ActionResult> DeleteCategory(int id, CancellationToken ct)
+    {
+        var cat = await db.BillCategories
+            .Include(c => c.Children)
+            .Include(c => c.Rules)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (cat == null) return NotFound();
+        if (cat.Children.Count > 0)
+            return BadRequest(new { message = "该分类下有子分类，无法删除" });
+        if (cat.Rules.Count > 0)
+            return BadRequest(new { message = "该分类下有关联规则，请先删除相关规则" });
+        var hasBills = await db.BillRecords.AnyAsync(b => b.CategoryId == id, ct);
+        if (hasBills)
+            return BadRequest(new { message = "该分类下有关联账单，无法删除" });
+        db.BillCategories.Remove(cat);
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     // === 分类规则 ===
     [HttpGet("category-rules")]
     public async Task<ActionResult> GetRules(CancellationToken ct)
@@ -115,6 +171,19 @@ public class ManagementController(AppDbContext db) : ControllerBase
         return Created($"/api/category-rules/{rule.Id}", new { rule.Id });
     }
 
+    [HttpPut("category-rules/{id:int}")]
+    public async Task<ActionResult> UpdateRule(int id, [FromBody] CreateRuleRequest req, CancellationToken ct)
+    {
+        var rule = await db.CategoryRules.FindAsync([id], ct);
+        if (rule == null) return NotFound();
+        rule.CategoryId = req.CategoryId;
+        rule.MatchField = req.MatchField;
+        rule.MatchPattern = req.MatchPattern;
+        rule.Priority = req.Priority;
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     [HttpDelete("category-rules/{id:int}")]
     public async Task<ActionResult> DeleteRule(int id, CancellationToken ct)
     {
@@ -126,6 +195,7 @@ public class ManagementController(AppDbContext db) : ControllerBase
     }
 }
 
-public record CreateAccountRequest(string Name, int PlatformId, AccountType AccountType);
+public record CreatePlatformRequest(string Name, string Code, string? IconUrl);
+public record CreateAccountRequest(string Name, int PlatformId, AccountType AccountType, decimal Balance = 0);
 public record CreateCategoryRequest(string Name, string Icon, int? ParentId, int SortOrder);
 public record CreateRuleRequest(int CategoryId, MatchField MatchField, string MatchPattern, int Priority);

@@ -1,10 +1,28 @@
 @page "/accounts"
 @using System.Net.Http.Json
+@using MinGo.MyBillBook.Core.Models
 @inject HttpClient Http
 
 <PageTitle>资金账户</PageTitle>
 <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-800">资金账户</h1>
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-800">资金账户</h1>
+        <button @onclick="OpenCreateDialog" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+            <span class="material-icons mr-2">add</span>
+            新增账户
+        </button>
+    </div>
+
+    @if (errorMessage != null)
+    {
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
+            <span>@errorMessage</span>
+            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700">
+                <span class="material-icons text-lg">close</span>
+            </button>
+        </div>
+    }
+
     @if (accounts != null)
     {
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -16,6 +34,7 @@
                         <th class="text-left py-3 px-4 font-medium text-gray-500">类型</th>
                         <th class="text-right py-3 px-4 font-medium text-gray-500">余额</th>
                         <th class="text-center py-3 px-4 font-medium text-gray-500">状态</th>
+                        <th class="text-right py-3 px-4 font-medium text-gray-500">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,12 +43,22 @@
                         <tr class="border-b border-gray-100 hover:bg-gray-50">
                             <td class="py-3 px-4 font-medium">@a.Name</td>
                             <td class="py-3 px-4 text-gray-600">@a.PlatformName</td>
-                            <td class="py-3 px-4 text-gray-500">@a.AccountType</td>
+                            <td class="py-3 px-4 text-gray-500">@GetAccountTypeName(a.AccountType)</td>
                             <td class="py-3 px-4 text-right font-medium">@a.Balance.ToString("F2")</td>
                             <td class="py-3 px-4 text-center">
                                 <span class="px-2 py-1 rounded-full text-xs @(a.IsActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500")">
                                     @(a.IsActive ? "活跃" : "停用")
                                 </span>
+                            </td>
+                            <td class="py-3 px-4 text-right">
+                                <div class="flex justify-end gap-1">
+                                    <button @onclick="() => OpenEditDialog(a)" class="p-1.5 text-gray-400 hover:text-purple-600 transition-colors" title="编辑">
+                                        <span class="material-icons text-lg">edit</span>
+                                    </button>
+                                    <button @onclick="() => DeleteAccount(a)" class="p-1.5 text-gray-400 hover:text-red-600 transition-colors" title="删除">
+                                        <span class="material-icons text-lg">delete</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -39,11 +68,214 @@
     }
 </div>
 
+<!-- 删除确认弹窗 -->
+@if (confirmDeleteName != null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CancelDelete">
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4" @onclick:stopPropagation>
+            <div class="flex items-center mb-4">
+                <div class="p-2 rounded-lg bg-red-100 mr-3">
+                    <span class="material-icons text-red-600">warning</span>
+                </div>
+                <h2 class="text-lg font-semibold text-gray-800">确认删除</h2>
+            </div>
+            <p class="text-gray-600 mb-6">确定要删除账户「<strong>@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
+            <div class="flex justify-end gap-3">
+                <button @onclick="CancelDelete" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">取消</button>
+                <button @onclick="ConfirmDelete" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">确认删除</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- 新增/编辑弹窗 -->
+@if (showDialog)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CloseDialog">
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" @onclick:stopPropagation>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingId.HasValue ? "编辑账户" : "新增账户")</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">账户名</label>
+                    <input @bind="formName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="如：支付宝余额" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">所属平台</label>
+                    <select @bind="formPlatformId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <option value="0">请选择平台</option>
+                        @if (platforms != null)
+                        {
+                            @foreach (var p in platforms)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">账户类型</label>
+                    <select @bind="formAccountType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        @foreach (var type in Enum.GetValues<AccountType>())
+                        {
+                            <option value="@((int)type)">@GetAccountTypeName((int)type)</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">余额</label>
+                    <input @bind="formBalance" type="number" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="0.00" />
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button @onclick="CloseDialog" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">取消</button>
+                <button @onclick="SaveAccount" disabled="@isSaving" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
+                    @(isSaving ? "保存中..." : "保存")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<AccountDto>? accounts;
+    private List<PlatformDto>? platforms;
+    private bool showDialog;
+    private int? editingId;
+    private int? confirmDeleteId;
+    private string? confirmDeleteName;
+    private string formName = string.Empty;
+    private int formPlatformId;
+    private int formAccountType;
+    private decimal formBalance;
+    private bool isSaving;
+    private string? errorMessage;
+
     protected override async Task OnInitializedAsync()
     {
-        accounts = await Http.GetFromJsonAsync<List<AccountDto>>("api/accounts");
+        await LoadData();
     }
-    private record AccountDto(int Id, string Name, int PlatformId, string PlatformName, string AccountType, decimal Balance, bool IsActive);
+
+    private async Task LoadData()
+    {
+        accounts = await Http.GetFromJsonAsync<List<AccountDto>>("api/accounts");
+        platforms = await Http.GetFromJsonAsync<List<PlatformDto>>("api/platforms");
+    }
+
+    private void OpenCreateDialog()
+    {
+        editingId = null;
+        formName = string.Empty;
+        formPlatformId = platforms?.FirstOrDefault()?.Id ?? 0;
+        formAccountType = 0;
+        formBalance = 0;
+        errorMessage = null;
+        showDialog = true;
+    }
+
+    private void OpenEditDialog(AccountDto a)
+    {
+        editingId = a.Id;
+        formName = a.Name;
+        formPlatformId = a.PlatformId;
+        formAccountType = a.AccountType;
+        formBalance = a.Balance;
+        errorMessage = null;
+        showDialog = true;
+    }
+
+    private void CloseDialog()
+    {
+        showDialog = false;
+        editingId = null;
+    }
+
+    private async Task SaveAccount()
+    {
+        if (string.IsNullOrWhiteSpace(formName))
+        {
+            errorMessage = "账户名为必填项";
+            return;
+        }
+        if (formPlatformId == 0)
+        {
+            errorMessage = "请选择所属平台";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            var payload = new { Name = formName, PlatformId = formPlatformId, AccountType = formAccountType, Balance = formBalance };
+
+            if (editingId.HasValue)
+            {
+                var response = await Http.PutAsJsonAsync($"api/accounts/{editingId.Value}", payload);
+                if (!response.IsSuccessStatusCode)
+                {
+                    errorMessage = "保存失败";
+                    return;
+                }
+            }
+            else
+            {
+                var response = await Http.PostAsJsonAsync("api/accounts", payload);
+                if (!response.IsSuccessStatusCode)
+                {
+                    errorMessage = "创建失败";
+                    return;
+                }
+            }
+
+            CloseDialog();
+            await LoadData();
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteAccount(AccountDto a)
+    {
+        confirmDeleteId = a.Id;
+        confirmDeleteName = a.Name;
+    }
+
+    private void CancelDelete()
+    {
+        confirmDeleteId = null;
+        confirmDeleteName = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (confirmDeleteId == null) return;
+        var response = await Http.DeleteAsync($"api/accounts/{confirmDeleteId}");
+        if (response.IsSuccessStatusCode)
+        {
+            await LoadData();
+        }
+        else
+        {
+            var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            errorMessage = error?.Message ?? "删除失败";
+        }
+        CancelDelete();
+    }
+
+    private static string GetAccountTypeName(int type) => type switch
+    {
+        0 => "余额",
+        1 => "余额宝",
+        2 => "银行卡",
+        3 => "零钱",
+        4 => "零钱通",
+        _ => "未知"
+    };
+
+    private record AccountDto(int Id, string Name, int PlatformId, string PlatformName, int AccountType, decimal Balance, bool IsActive);
+    private record PlatformDto(int Id, string Name, string Code, string? IconUrl, int AccountCount);
+    private record ErrorResponse(string Message);
 }
