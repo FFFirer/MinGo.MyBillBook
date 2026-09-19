@@ -11,6 +11,14 @@ using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Logging - SimpleConsole 单行格式
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.SingleLine = true;
+    options.TimestampFormat = "HH:mm:ss ";
+});
+
 // EF Core + SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
