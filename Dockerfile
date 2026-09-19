@@ -10,13 +10,15 @@ COPY src/MinGo.MyBillBook.Client/MinGo.MyBillBook.Client.csproj src/MinGo.MyBill
 COPY src/MinGo.MyBillBook/MinGo.MyBillBook.csproj src/MinGo.MyBillBook/
 COPY tests/MinGo.MyBillBook.Tests/MinGo.MyBillBook.Tests.csproj tests/MinGo.MyBillBook.Tests/
 
-# Restore dependencies
-RUN dotnet restore
+# Restore dependencies (cached layer + NuGet cache mount)
+# Only re-runs when csproj files change
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet restore
 
 # Copy all source code
 COPY . .
 
-# Build
+# Build (skip restore, assets already generated above)
 RUN dotnet publish src/MinGo.MyBillBook/MinGo.MyBillBook.csproj \
     -c Release \
     -o /app/publish \
