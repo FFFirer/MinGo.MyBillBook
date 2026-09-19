@@ -7,10 +7,9 @@ public class BillParserFactory(IEnumerable<IBillParser> parsers) : IBillParserFa
         var name = fileName.ToLowerInvariant();
         if (name.Contains("alipay") || name.Contains("支付宝"))
             return parsers.FirstOrDefault(p => p.PlatformCode == "ALIPAY");
-        if (name.Contains("wechat") || name.Contains("微信"))
+        if (name.Contains("wechat") || name.Contains("微信") || name.EndsWith(".xlsx") || name.EndsWith(".xls"))
             return parsers.FirstOrDefault(p => p.PlatformCode == "WECHAT");
 
-        // 尝试检测文件编码
         return null;
     }
 

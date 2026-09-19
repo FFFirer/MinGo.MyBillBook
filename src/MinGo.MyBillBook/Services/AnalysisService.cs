@@ -20,10 +20,10 @@ public class AnalysisService(DuckDbContext duckDb, DuckDbSyncService syncService
                 COALESCE(SUM(CASE WHEN transaction_type = 1 THEN amount ELSE 0 END), 0) as total_expense,
                 COUNT(*) as transaction_count
             FROM bill_records
-            WHERE transaction_date >= @start AND transaction_date <= @end
+            WHERE transaction_date >= @startDate AND transaction_date <= @endDate
             """;
-        AddDateParam(cmd, "@start", start);
-        AddDateParam(cmd, "@end", end);
+        AddDateParam(cmd, "@startDate", start);
+        AddDateParam(cmd, "@endDate", end);
 
         using var reader = cmd.ExecuteReader();
         var result = new AnalysisSummary();
@@ -46,12 +46,12 @@ public class AnalysisService(DuckDbContext duckDb, DuckDbSyncService syncService
             SELECT category_name, category_icon, 
                    SUM(amount) as total_amount, COUNT(*) as cnt
             FROM bill_records
-            WHERE transaction_type = 1 AND transaction_date >= @start AND transaction_date <= @end
+            WHERE transaction_type = 1 AND transaction_date >= @startDate AND transaction_date <= @endDate
             GROUP BY category_name, category_icon
             ORDER BY total_amount DESC
             """;
-        AddDateParam(cmd, "@start", start);
-        AddDateParam(cmd, "@end", end);
+        AddDateParam(cmd, "@startDate", start);
+        AddDateParam(cmd, "@endDate", end);
 
         using var reader = cmd.ExecuteReader();
         var stats = new List<CategoryStat>();
@@ -112,13 +112,13 @@ public class AnalysisService(DuckDbContext duckDb, DuckDbSyncService syncService
         cmd.CommandText = $"""
             SELECT merchant, SUM(amount) as total_amount, COUNT(*) as cnt
             FROM bill_records
-            WHERE transaction_type = 1 AND transaction_date >= @start AND transaction_date <= @end
+            WHERE transaction_type = 1 AND transaction_date >= @startDate AND transaction_date <= @endDate
             GROUP BY merchant
             ORDER BY total_amount DESC
             LIMIT {limit}
             """;
-        AddDateParam(cmd, "@start", start);
-        AddDateParam(cmd, "@end", end);
+        AddDateParam(cmd, "@startDate", start);
+        AddDateParam(cmd, "@endDate", end);
 
         using var reader = cmd.ExecuteReader();
         var merchants = new List<MerchantRank>();

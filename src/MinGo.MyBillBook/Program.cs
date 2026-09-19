@@ -64,7 +64,6 @@ builder.Services.AddSignalR();
 
 // Blazor
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
 var app = builder.Build();
@@ -96,7 +95,6 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 
 // Map Blazor
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(MinGo.MyBillBook.Client._Imports).Assembly);
 

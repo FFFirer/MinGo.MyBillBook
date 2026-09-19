@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
 
@@ -13,19 +12,18 @@ public class AlipayCsvParser : IBillParser
     {
         var result = new ParseResult();
 
-        // 支付宝 CSV 使用 GBK 编码
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        var encoding = Encoding.GetEncoding("GBK");
+        // 检测文件编码（支付宝账单通常为 GBK，但也可能是 UTF-8）
+        var encoding = EncodingDetector.Detect(fileStream);
 
         using var reader = new StreamReader(fileStream, encoding);
         var content = reader.ReadToEnd();
         var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-        // 跳过说明行, 找到表头行 (包含 "交易号" 或 "交易创建时间")
+        // 跳过说明行, 找到表头行 (包含 "交易时间" 和 "交易订单号")
         int headerIndex = -1;
-        for (int i = 0; i < Math.Min(lines.Length, 30); i++)
+        for (int i = 0; i < Math.Min(lines.Length, 50); i++)
         {
-            if (lines[i].Contains("交易创建时间") || lines[i].Contains("交易号"))
+            if (lines[i].Contains("交易时间") && lines[i].Contains("交易订单号"))
             {
                 headerIndex = i;
                 break;
@@ -40,7 +38,24 @@ public class AlipayCsvParser : IBillParser
 
         // 清理表头 (去除 # 前缀)
         var headerLine = lines[headerIndex].TrimStart('#').Trim();
-        var headerFields = ParseCsvLine(headerLine);
+
+        // 用 CsvHelper 解析表头行, 正确处理字段内含逗号的情况
+        using var headerCsvReader = new StringReader(headerLine);
+        var headerConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = false,
+            Delimiter = ",",
+            MissingFieldFound = null,
+            BadDataFound = _ => { },
+        };
+        string[] headerFields;
+        using (var headerCsv = new CsvReader(headerCsvReader, headerConfig))
+        {
+            headerCsv.Read();
+            headerFields = Enumerable.Range(0, headerCsv.Parser.Count)
+                .Select(i => headerCsv.GetField(i)?.Trim().Trim('"') ?? string.Empty)
+                .ToArray();
+        }
 
         using var csvReader = new StringReader(headerLine + "\n" + string.Join("\n", lines.Skip(headerIndex + 1)));
         var config = new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -57,7 +72,7 @@ public class AlipayCsvParser : IBillParser
         var columnMap = new Dictionary<string, int>();
         for (int i = 0; i < headerFields.Length; i++)
         {
-            var name = headerFields[i].Trim().Trim('"');
+            var name = headerFields[i];
             if (!string.IsNullOrEmpty(name))
                 columnMap[name] = i;
         }
@@ -68,13 +83,13 @@ public class AlipayCsvParser : IBillParser
             {
                 var rawRow = new RawBillRow
                 {
-                    TransactionId = GetField(csv, columnMap, "交易号"),
-                    TransactionDate = ParseDate(GetField(csv, columnMap, "交易创建时间")),
-                    ProductName = GetField(csv, columnMap, "商品名称"),
+                    TransactionId = GetField(csv, columnMap, "交易订单号"),
+                    TransactionDate = ParseDate(GetField(csv, columnMap, "交易时间")),
+                    ProductName = GetField(csv, columnMap, "商品说明"),
                     Amount = ParseAmount(GetField(csv, columnMap, "金额")),
                     Direction = GetField(csv, columnMap, "收/支"),
                     Counterparty = GetField(csv, columnMap, "交易对方"),
-                    PaymentMethod = GetField(csv, columnMap, "支付方式"),
+                    PaymentMethod = GetField(csv, columnMap, "收/付款方式"),
                     Status = GetField(csv, columnMap, "交易状态"),
                 };
 
@@ -98,11 +113,6 @@ public class AlipayCsvParser : IBillParser
             catch { return string.Empty; }
         }
         return string.Empty;
-    }
-
-    private static string[] ParseCsvLine(string line)
-    {
-        return line.Split(',');
     }
 
     private static DateTime ParseDate(string? value)
