@@ -8,7 +8,6 @@
 **/.idea
 **/data-samples
 **/*.md
-**/tests
 **/.gitignore
 **/Dockerfile
 **/.dockerignore
