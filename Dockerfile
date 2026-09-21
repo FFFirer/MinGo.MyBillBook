@@ -18,10 +18,14 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
 # Copy all source code
 COPY . .
 
-# Build
+# Build (restore + compile)
+RUN dotnet build src/MinGo.MyBillBook/MinGo.MyBillBook.csproj -c Release
+
+# Publish (skip build, just copy output to /app/publish)
 RUN dotnet publish src/MinGo.MyBillBook/MinGo.MyBillBook.csproj \
     -c Release \
-    -o /app/publish
+    -o /app/publish \
+    --no-build
 
 # ==================== Runtime Stage ====================
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
