@@ -2,11 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using MinGo.MyBillBook.BackgroundJobs;
 using MinGo.MyBillBook.Components;
 using MinGo.MyBillBook.Core.Interfaces;
+using MinGo.MyBillBook.Core.Pipeline;
 using MinGo.MyBillBook.Core.Parsing;
 using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Data.DuckDb;
 using MinGo.MyBillBook.Hubs;
 using MinGo.MyBillBook.Services;
+using MinGo.MyBillBook.Services.Pipeline;
+using MinGo.MyBillBook.Services.Pipeline.Steps;
 using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,12 +54,29 @@ builder.Services.AddScoped<IBillImportService, BillImportService>();
 builder.Services.AddScoped<IBillProcessingService, BillProcessingService>();
 builder.Services.AddScoped<IBillQueryService, BillQueryService>();
 builder.Services.AddScoped<ICategoryRuleEngine, CategoryRuleEngine>();
+builder.Services.AddScoped<ICategoryClassifier, NullCategoryClassifier>();
+builder.Services.AddScoped<IMerchantResolver, MerchantResolver>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 builder.Services.AddScoped<DuckDbSyncService>();
 builder.Services.AddScoped<CsvExportService>();
 builder.Services.AddSingleton<IBillParserFactory, BillParserFactory>();
 builder.Services.AddSingleton<IBillParser, AlipayCsvParser>();
 builder.Services.AddSingleton<IBillParser, WechatCsvParser>();
+
+// Pipeline engine
+builder.Services.AddScoped<IPipelineRunner, PipelineRunner>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, NormalizeStep>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, ResolveMerchantStep>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, DeduplicateStep>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, ClassifyCategoryStep>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, DetectTransferStep>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, ApplyTagsStep>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, PublishCanonicalStep>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, ReconcileStep>();
+
+// Phase 9: 局部重跑 + Job 队列（BackgroundService 轮询 Pending 任务异步执行）
+builder.Services.AddScoped<IRebuildService, RebuildService>();
+builder.Services.AddHostedService<PipelineJobWorker>();
 
 // Add controllers for Web API
 builder.Services.AddControllers();

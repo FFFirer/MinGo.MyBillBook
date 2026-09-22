@@ -23,6 +23,7 @@ public class DuckDbContext : IDisposable
                 raw_record_id INTEGER,
                 platform_id INTEGER,
                 fund_account_id INTEGER,
+                merchant_id INTEGER,
                 transaction_date DATE,
                 counterparty VARCHAR,
                 merchant VARCHAR,
@@ -30,15 +31,39 @@ public class DuckDbContext : IDisposable
                 category_name VARCHAR,
                 category_icon VARCHAR,
                 product_name VARCHAR,
-                amount DECIMAL(18,2),
+                amount_minor BIGINT,
                 transaction_type INTEGER,
                 status VARCHAR,
                 source_file VARCHAR,
                 is_manual_adjusted BOOLEAN,
                 synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS merchants (
+                id INTEGER PRIMARY KEY,
+                canonical_name VARCHAR,
+                default_category_id INTEGER
+            );
+            CREATE TABLE IF NOT EXISTS tags (
+                id INTEGER PRIMARY KEY,
+                name VARCHAR,
+                tag_type INTEGER,
+                scope INTEGER
+            );
+            CREATE TABLE IF NOT EXISTS transaction_tags (
+                transaction_id INTEGER,
+                tag_id INTEGER,
+                tag_name VARCHAR,
+                source INTEGER,
+                confidence DOUBLE,
+                PRIMARY KEY (transaction_id, tag_id)
+            );
             """;
         cmd.ExecuteNonQuery();
+
+        // 对既有分析库补充新增列（允许破坏性重建，但兼容旧库）。
+        using var alter = _connection.CreateCommand();
+        alter.CommandText = "ALTER TABLE bill_records ADD COLUMN IF NOT EXISTS merchant_id INTEGER;";
+        alter.ExecuteNonQuery();
     }
 
     public IDbConnection Connection => _connection;

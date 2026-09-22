@@ -9,9 +9,12 @@ public class BillRecord
     public DateTime TransactionDate { get; set; }
     public string Counterparty { get; set; } = string.Empty;
     public string Merchant { get; set; } = string.Empty;
+    /// <summary>归一化商户 FK（设计第 4 节）。Merchant 字符串保留为原始快照。</summary>
+    public int? MerchantId { get; set; }
     public int? CategoryId { get; set; }
     public string ProductName { get; set; } = string.Empty;
-    public decimal Amount { get; set; }
+    /// <summary>金额（最小货币单位，分）。</summary>
+    public long AmountMinor { get; set; }
     public TransactionType TransactionType { get; set; }
     public string Status { get; set; } = string.Empty;
     public string SourceFile { get; set; } = string.Empty;
@@ -22,4 +25,7 @@ public class BillRecord
     public PaymentPlatform Platform { get; set; } = null!;
     public FundAccount? FundAccount { get; set; }
     public BillCategory? Category { get; set; }
+    public Merchant? MerchantRef { get; set; }
+    public ICollection<ClassificationResult> ClassificationResults { get; set; } = [];
+    public ICollection<TransactionTag> Tags { get; set; } = [];
 }

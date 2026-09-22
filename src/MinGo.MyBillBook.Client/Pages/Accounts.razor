@@ -33,6 +33,7 @@
                         <th class="text-left py-3 px-4 font-medium text-gray-500">平台</th>
                         <th class="text-left py-3 px-4 font-medium text-gray-500">类型</th>
                         <th class="text-right py-3 px-4 font-medium text-gray-500">余额</th>
+                        <th class="text-right py-3 px-4 font-medium text-gray-500">银行/计算</th>
                         <th class="text-center py-3 px-4 font-medium text-gray-500">状态</th>
                         <th class="text-right py-3 px-4 font-medium text-gray-500">操作</th>
                     </tr>
@@ -45,6 +46,23 @@
                             <td class="py-3 px-4 text-gray-600">@a.PlatformName</td>
                             <td class="py-3 px-4 text-gray-500">@GetAccountTypeName(a.AccountType)</td>
                             <td class="py-3 px-4 text-right font-medium">@a.Balance.ToString("F2")</td>
+                            <td class="py-3 px-4 text-right text-xs">
+                                @{ var rc = ReconFor(a.Id); }
+                                @if (rc == null)
+                                {
+                                    <span class="text-gray-400">未对账</span>
+                                }
+                                else
+                                {
+                                    var diff = rc.Difference ?? 0m;
+                                    <div class="text-gray-600">银行 @rc.BankBalance?.ToString("F2")</div>
+                                    <div class="text-gray-400">计算 @rc.CalculatedBalance?.ToString("F2")</div>
+                                    @if (Math.Abs(diff) > 0.01m)
+                                    {
+                                        <div class="text-red-600">差异 @diff.ToString("F2")</div>
+                                    }
+                                }
+                            </td>
                             <td class="py-3 px-4 text-center">
                                 <span class="px-2 py-1 rounded-full text-xs @(a.IsActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500")">
                                     @(a.IsActive ? "活跃" : "停用")
@@ -139,6 +157,7 @@
 @code {
     private List<AccountDto>? accounts;
     private List<PlatformDto>? platforms;
+    private List<AccountReconDto>? recon;
     private bool showDialog;
     private int? editingId;
     private int? confirmDeleteId;
@@ -159,7 +178,11 @@
     {
         accounts = await Http.GetFromJsonAsync<List<AccountDto>>("api/accounts");
         platforms = await Http.GetFromJsonAsync<List<PlatformDto>>("api/platforms");
+        recon = await Http.GetFromJsonAsync<List<AccountReconDto>>("api/reconciliation/accounts");
     }
+
+    private AccountReconDto? ReconFor(int accountId) =>
+        recon?.FirstOrDefault(r => r.Id == accountId);
 
     private void OpenCreateDialog()
     {
@@ -277,5 +300,6 @@
 
     private record AccountDto(int Id, string Name, int PlatformId, string PlatformName, int AccountType, decimal Balance, bool IsActive);
     private record PlatformDto(int Id, string Name, string Code, string? IconUrl, int AccountCount);
+    private record AccountReconDto(int Id, string Name, bool IsActive, decimal? BankBalance, decimal? CalculatedBalance, decimal? Difference, DateTime? SnapshotDate);
     private record ErrorResponse(string Message);
 }

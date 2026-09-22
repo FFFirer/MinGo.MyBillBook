@@ -7,6 +7,9 @@ namespace MinGo.MyBillBook.Services;
 public class CategoryRuleEngine(AppDbContext db) : ICategoryRuleEngine
 {
     public int? MatchCategory(string counterparty, string productName, string? merchant = null)
+        => MatchCategoryDetailed(counterparty, productName, merchant)?.CategoryId;
+
+    public CategoryMatch? MatchCategoryDetailed(string counterparty, string productName, string? merchant = null)
     {
         var rules = db.CategoryRules
             .Where(r => r.IsActive)
@@ -23,8 +26,8 @@ public class CategoryRuleEngine(AppDbContext db) : ICategoryRuleEngine
                 _ => string.Empty
             };
 
-            if (text.Contains(rule.MatchPattern, StringComparison.OrdinalIgnoreCase))
-                return rule.CategoryId;
+            if (!string.IsNullOrEmpty(text) && text.Contains(rule.MatchPattern, StringComparison.OrdinalIgnoreCase))
+                return new CategoryMatch(rule.CategoryId, rule.Id);
         }
 
         return null;

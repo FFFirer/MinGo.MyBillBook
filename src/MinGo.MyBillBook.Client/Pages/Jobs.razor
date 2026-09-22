@@ -1,0 +1,262 @@
+@page "/jobs"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@implements IDisposable
+
+<PageTitle>任务与重建</PageTitle>
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-800">任务与重建</h1>
+        <button @onclick="LoadAllAsync" class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">
+            <span class="material-icons text-sm mr-1 align-middle">refresh</span>刷新
+        </button>
+    </div>
+
+    @if (toast != null)
+    {
+        <div class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white @(toastIsError ? "bg-red-500" : "bg-green-500")">
+            @toast
+        </div>
+    }
+
+    <!-- 触发局部重建 -->
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <h2 class="text-lg font-semibold mb-1">局部重建</h2>
+        <p class="text-sm text-gray-500 mb-4">规则变更后从指定步骤起重算 Canonical 层，无需重导 CSV。请求入队后立即返回，由后台 Worker 异步执行。</p>
+        <div class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">起点步骤</label>
+                <select @bind="fromStep" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="Normalize">Normalize（全量重建）</option>
+                    <option value="ResolveMerchant">ResolveMerchant（商户重算）</option>
+                    <option value="ClassifyCategory">ClassifyCategory（分类/标签重算）</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">批次 Id（留空=全部）</label>
+                <input type="number" @bind="batchId" placeholder="全部批次"
+                       class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-40" />
+            </div>
+            <button @onclick="TriggerRebuildAsync" disabled="@busy"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                <span class="material-icons text-sm mr-1 align-middle">build</span>
+                @(busy ? "入队中..." : "入队重建")
+            </button>
+        </div>
+    </div>
+
+    <!-- 任务队列 -->
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <h2 class="text-lg font-semibold mb-4">后台任务</h2>
+        @if (jobs == null)
+        {
+            <p class="text-sm text-gray-400">加载中...</p>
+        }
+        else if (jobs.Count == 0)
+        {
+            <p class="text-sm text-gray-400">暂无任务</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 text-gray-500">
+                            <th class="text-left py-2">Id</th>
+                            <th class="text-left py-2">类型</th>
+                            <th class="text-left py-2">参数</th>
+                            <th class="text-left py-2">状态</th>
+                            <th class="text-left py-2">创建</th>
+                            <th class="text-left py-2">完成</th>
+                            <th class="text-left py-2">错误</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var j in jobs)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="py-2">@j.Id</td>
+                                <td class="py-2">@j.Type</td>
+                                <td class="py-2 text-gray-500 font-mono text-xs">@j.Payload</td>
+                                <td class="py-2">
+                                    <span class="px-2 py-0.5 rounded-full text-xs @StatusClass(j.Status)">@StatusText(j.Status)</span>
+                                </td>
+                                <td class="py-2 text-gray-500">@j.CreatedAt.ToString("MM-dd HH:mm:ss")</td>
+                                <td class="py-2 text-gray-500">@(j.CompletedAt?.ToString("MM-dd HH:mm:ss") ?? "-")</td>
+                                <td class="py-2 text-red-500 text-xs max-w-xs truncate" title="@j.Error">@(j.Error ?? "")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- 统一清洗规则视图 -->
+    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <h2 class="text-lg font-semibold mb-1">统一清洗规则</h2>
+        <p class="text-sm text-gray-500 mb-4">Category / Merchant / Tag 规则收敛视图（按优先级降序）。</p>
+        @if (rules == null)
+        {
+            <p class="text-sm text-gray-400">加载中...</p>
+        }
+        else if (rules.Count == 0)
+        {
+            <p class="text-sm text-gray-400">暂无规则</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 text-gray-500">
+                            <th class="text-left py-2">类型</th>
+                            <th class="text-left py-2">条件</th>
+                            <th class="text-left py-2">动作</th>
+                            <th class="text-right py-2">优先级</th>
+                            <th class="text-center py-2">启用</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in rules)
+                        {
+                            <tr class="border-b border-gray-100">
+                                <td class="py-2">
+                                    <span class="px-2 py-0.5 rounded-full text-xs @TypeClass(r.Type)">@r.Type</span>
+                                </td>
+                                <td class="py-2 font-mono text-xs text-gray-600">@r.Condition</td>
+                                <td class="py-2">@r.Action</td>
+                                <td class="py-2 text-right text-gray-500">@r.Priority</td>
+                                <td class="py-2 text-center">
+                                    @if (r.IsActive)
+                                    {
+                                        <span class="material-icons text-green-500 text-base">check_circle</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="material-icons text-gray-300 text-base">remove_circle</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<JobDto>? jobs;
+    private List<RuleDto>? rules;
+    private string fromStep = "ResolveMerchant";
+    private int? batchId;
+    private bool busy;
+    private string? toast;
+    private bool toastIsError;
+    private CancellationTokenSource? cts;
+    private Task? pollTask;
+
+    protected override void OnInitialized()
+    {
+        cts = new CancellationTokenSource();
+        pollTask = PollLoopAsync(cts.Token);
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await LoadAllAsync();
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(3000, ct);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task LoadAllAsync()
+    {
+        try
+        {
+            jobs = await Http.GetFromJsonAsync<List<JobDto>>("api/jobs?take=50");
+            rules = await Http.GetFromJsonAsync<List<RuleDto>>("api/cleaning-rules");
+        }
+        catch { /* 忽略瞬时错误，下轮重试 */ }
+    }
+
+    private async Task TriggerRebuildAsync()
+    {
+        busy = true;
+        try
+        {
+            var url = $"api/bill/rebuild?from={fromStep}";
+            if (batchId.HasValue) url += $"&batchId={batchId.Value}";
+            var resp = await Http.PostAsync(url, null);
+            if (resp.IsSuccessStatusCode)
+            {
+                ShowToast("重建任务已入队，Worker 将异步执行", false);
+                await LoadAllAsync();
+            }
+            else
+            {
+                ShowToast($"入队失败：{(int)resp.StatusCode}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"入队异常：{ex.Message}", true);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void ShowToast(string msg, bool isError)
+    {
+        toast = msg;
+        toastIsError = isError;
+        StateHasChanged();
+        _ = Task.Delay(3000).ContinueWith(_ => { toast = null; InvokeAsync(StateHasChanged); });
+    }
+
+    private static string StatusText(string s) => s switch
+    {
+        "Pending" => "等待中",
+        "Running" => "执行中",
+        "Completed" => "已完成",
+        "Failed" => "失败",
+        _ => s
+    };
+
+    private static string StatusClass(string s) => s switch
+    {
+        "Pending" => "bg-gray-100 text-gray-600",
+        "Running" => "bg-blue-100 text-blue-700",
+        "Completed" => "bg-green-100 text-green-700",
+        "Failed" => "bg-red-100 text-red-700",
+        _ => "bg-gray-100 text-gray-600"
+    };
+
+    private static string TypeClass(string t) => t switch
+    {
+        "Category" => "bg-purple-100 text-purple-700",
+        "Merchant" => "bg-amber-100 text-amber-700",
+        "Tag" => "bg-teal-100 text-teal-700",
+        _ => "bg-gray-100 text-gray-600"
+    };
+
+    public void Dispose()
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+    }
+
+    private record JobDto(int Id, string Type, string Payload, string Status,
+        DateTime CreatedAt, DateTime? StartedAt, DateTime? CompletedAt, string? Error);
+
+    private record RuleDto(string Type, int RuleId, string Condition, string Action, int Priority, bool IsActive);
+}

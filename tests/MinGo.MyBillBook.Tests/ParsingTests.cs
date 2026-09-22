@@ -32,13 +32,13 @@ public class AlipayCsvParserTests
 
         // Find rows by TransactionId (first row might be header parsed as data)
         var row1 = result.Rows.First(r => r.TransactionId == "2024011500001");
-        Assert.Equal(35.50m, row1.Amount);
+        Assert.Equal(3550L, row1.AmountMinor);
         Assert.Equal("支出", row1.Direction);
         Assert.Equal("美团外卖", row1.Counterparty);
         Assert.Equal("午餐", row1.ProductName);
 
         var row3 = result.Rows.First(r => r.TransactionId == "2024011600001");
-        Assert.Equal(8000.00m, row3.Amount);
+        Assert.Equal(800000L, row3.AmountMinor);
         Assert.Equal("收入", row3.Direction);
     }
 
@@ -95,11 +95,11 @@ public class WechatCsvParserTests
         Assert.True(result.Rows.Count >= 2, $"Expected at least 2 rows, got {result.Rows.Count}");
 
         var row1 = result.Rows.First(r => r.TransactionId == "4200001234001");
-        Assert.Equal(35.50m, row1.Amount);
+        Assert.Equal(3550L, row1.AmountMinor);
         Assert.Equal("美团外卖", row1.Counterparty);
 
         var row2 = result.Rows.First(r => r.TransactionId == "4200001234002");
-        Assert.Equal(200.00m, row2.Amount);
+        Assert.Equal(20000L, row2.AmountMinor);
     }
 
     [Fact]

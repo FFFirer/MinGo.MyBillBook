@@ -1,0 +1,273 @@
+@page "/merchants"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>商户归一化</PageTitle>
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-800">商户归一化</h1>
+        <div class="flex gap-2">
+            <button @onclick="OpenAliasDialog" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                <span class="material-icons mr-2">rule</span>新增别名
+            </button>
+            <button @onclick="OpenMerchantDialog" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                <span class="material-icons mr-2">add</span>新增商户
+            </button>
+        </div>
+    </div>
+
+    @if (errorMessage != null)
+    {
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
+            <span>@errorMessage</span>
+            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700">
+                <span class="material-icons text-lg">close</span>
+            </button>
+        </div>
+    }
+
+    <!-- 商户列表 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 font-semibold text-gray-700">商户</div>
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500">
+                <tr>
+                    <th class="text-left px-6 py-3">规范名称</th>
+                    <th class="text-left px-6 py-3">默认分类</th>
+                    <th class="text-left px-6 py-3">别名数</th>
+                    <th class="text-left px-6 py-3">关联账单</th>
+                    <th class="text-right px-6 py-3">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (merchants != null)
+                {
+                    @foreach (var m in merchants)
+                    {
+                        <tr class="border-t border-gray-100">
+                            <td class="px-6 py-3 font-medium text-gray-800">@m.CanonicalName</td>
+                            <td class="px-6 py-3 text-gray-500">@(m.DefaultCategoryName ?? "—")</td>
+                            <td class="px-6 py-3 text-gray-500">@m.AliasCount</td>
+                            <td class="px-6 py-3 text-gray-500">@m.BillCount</td>
+                            <td class="px-6 py-3 text-right">
+                                <button @onclick="() => OpenEditMerchantDialog(m)" class="p-1 text-gray-400 hover:text-purple-600" title="编辑"><span class="material-icons text-lg">edit</span></button>
+                                <button @onclick="() => DeleteMerchant(m)" class="p-1 text-gray-400 hover:text-red-600" title="删除"><span class="material-icons text-lg">delete</span></button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 别名规则列表 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 font-semibold text-gray-700">别名规则（按优先级降序匹配）</div>
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500">
+                <tr>
+                    <th class="text-left px-6 py-3">模式</th>
+                    <th class="text-left px-6 py-3">匹配方式</th>
+                    <th class="text-left px-6 py-3">归一到</th>
+                    <th class="text-left px-6 py-3">优先级</th>
+                    <th class="text-left px-6 py-3">启用</th>
+                    <th class="text-right px-6 py-3">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (aliases != null)
+                {
+                    @foreach (var a in aliases)
+                    {
+                        <tr class="border-t border-gray-100">
+                            <td class="px-6 py-3 font-mono text-gray-800">@a.Pattern</td>
+                            <td class="px-6 py-3 text-gray-500">@a.MatchType</td>
+                            <td class="px-6 py-3 text-gray-700">@a.MerchantName</td>
+                            <td class="px-6 py-3 text-gray-500">@a.Priority</td>
+                            <td class="px-6 py-3">
+                                <span class="@(a.IsActive ? "text-green-600" : "text-gray-400")">@(a.IsActive ? "是" : "否")</span>
+                            </td>
+                            <td class="px-6 py-3 text-right">
+                                <button @onclick="() => OpenEditAliasDialog(a)" class="p-1 text-gray-400 hover:text-indigo-600" title="编辑"><span class="material-icons text-lg">edit</span></button>
+                                <button @onclick="() => DeleteAlias(a)" class="p-1 text-gray-400 hover:text-red-600" title="删除"><span class="material-icons text-lg">delete</span></button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 商户新增/编辑弹窗 -->
+@if (showMerchantDialog)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CloseMerchantDialog">
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" @onclick:stopPropagation>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")</h2>
+            <label class="block text-sm font-medium text-gray-700 mb-1">规范名称</label>
+            <input @bind="merchantName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="如：星巴克" />
+            <label class="block text-sm font-medium text-gray-700 mb-1 mt-4">默认分类（MerchantRule 层）</label>
+            <select @bind="merchantDefaultCategoryId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                <option value="0">— 无（走兜底分类）—</option>
+                @if (categories != null)
+                {
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                }
+            </select>
+            <div class="flex justify-end gap-3 mt-6">
+                <button @onclick="CloseMerchantDialog" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">取消</button>
+                <button @onclick="SaveMerchant" disabled="@isSaving" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50">@(isSaving ? "保存中..." : "保存")</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- 别名新增/编辑弹窗 -->
+@if (showAliasDialog)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CloseAliasDialog">
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" @onclick:stopPropagation>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingAliasId.HasValue ? "编辑别名" : "新增别名")</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">模式</label>
+                    <input @bind="aliasPattern" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="如：STARBUCKS" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">匹配方式</label>
+                    <select @bind="aliasMatchType" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <option value="0">Regex</option>
+                        <option value="1">Contains</option>
+                        <option value="2">Exact</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">归一到商户</label>
+                    <select @bind="aliasMerchantId" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <option value="0">— 请选择 —</option>
+                        @if (merchants != null)
+                        {
+                            @foreach (var m in merchants)
+                            {
+                                <option value="@m.Id">@m.CanonicalName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">优先级</label>
+                    <input type="number" @bind="aliasPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" @bind="aliasIsActive" /> 启用
+                </label>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button @onclick="CloseAliasDialog" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">取消</button>
+                <button @onclick="SaveAlias" disabled="@isSaving" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">@(isSaving ? "保存中..." : "保存")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<MerchantDto>? merchants;
+    private List<AliasDto>? aliases;
+    private List<CategoryOption>? categories;
+    private bool showMerchantDialog, showAliasDialog, isSaving;
+    private string? errorMessage;
+
+    private int? editingMerchantId;
+    private string merchantName = string.Empty;
+    private int merchantDefaultCategoryId;
+
+    private int? editingAliasId;
+    private string aliasPattern = string.Empty;
+    private int aliasMatchType = 1;
+    private int aliasMerchantId;
+    private int aliasPriority;
+    private bool aliasIsActive = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAll();
+
+    private async Task LoadAll()
+    {
+        merchants = await Http.GetFromJsonAsync<List<MerchantDto>>("api/merchants");
+        aliases = await Http.GetFromJsonAsync<List<AliasDto>>("api/merchant-aliases");
+        categories = await Http.GetFromJsonAsync<List<CategoryOption>>("api/categories");
+    }
+
+    // === 商户 ===
+    private void OpenMerchantDialog() { editingMerchantId = null; merchantName = string.Empty; merchantDefaultCategoryId = 0; errorMessage = null; showMerchantDialog = true; }
+    private void OpenEditMerchantDialog(MerchantDto m) { editingMerchantId = m.Id; merchantName = m.CanonicalName; merchantDefaultCategoryId = m.DefaultCategoryId ?? 0; errorMessage = null; showMerchantDialog = true; }
+    private void CloseMerchantDialog() { showMerchantDialog = false; editingMerchantId = null; }
+
+    private async Task SaveMerchant()
+    {
+        if (string.IsNullOrWhiteSpace(merchantName)) { errorMessage = "规范名称为必填项"; return; }
+        isSaving = true; errorMessage = null;
+        try
+        {
+            var payload = new { CanonicalName = merchantName, DefaultCategoryId = (int?)((merchantDefaultCategoryId == 0) ? null : merchantDefaultCategoryId) };
+            var resp = editingMerchantId.HasValue
+                ? await Http.PutAsJsonAsync($"api/merchants/{editingMerchantId.Value}", payload)
+                : await Http.PostAsJsonAsync("api/merchants", payload);
+            if (!resp.IsSuccessStatusCode) { errorMessage = "保存失败"; return; }
+            CloseMerchantDialog();
+            await LoadAll();
+        }
+        finally { isSaving = false; }
+    }
+
+    private async Task DeleteMerchant(MerchantDto m)
+    {
+        var resp = await Http.DeleteAsync($"api/merchants/{m.Id}");
+        if (resp.IsSuccessStatusCode) await LoadAll();
+        else errorMessage = $"删除「{m.CanonicalName}」失败";
+    }
+
+    // === 别名 ===
+    private void OpenAliasDialog()
+    {
+        editingAliasId = null; aliasPattern = string.Empty; aliasMatchType = 1; aliasMerchantId = 0; aliasPriority = 0; aliasIsActive = true;
+        errorMessage = null; showAliasDialog = true;
+    }
+    private void OpenEditAliasDialog(AliasDto a)
+    {
+        editingAliasId = a.Id; aliasPattern = a.Pattern; aliasMatchType = (int)a.MatchType; aliasMerchantId = a.MerchantId;
+        aliasPriority = a.Priority; aliasIsActive = a.IsActive; errorMessage = null; showAliasDialog = true;
+    }
+    private void CloseAliasDialog() { showAliasDialog = false; editingAliasId = null; }
+
+    private async Task SaveAlias()
+    {
+        if (string.IsNullOrWhiteSpace(aliasPattern) || aliasMerchantId == 0) { errorMessage = "模式与目标商户为必填项"; return; }
+        isSaving = true; errorMessage = null;
+        try
+        {
+            var payload = new { Pattern = aliasPattern, MatchType = aliasMatchType, MerchantId = aliasMerchantId, Priority = aliasPriority, IsActive = aliasIsActive };
+            var resp = editingAliasId.HasValue
+                ? await Http.PutAsJsonAsync($"api/merchant-aliases/{editingAliasId.Value}", payload)
+                : await Http.PostAsJsonAsync("api/merchant-aliases", payload);
+            if (!resp.IsSuccessStatusCode) { errorMessage = "保存失败"; return; }
+            CloseAliasDialog();
+            await LoadAll();
+        }
+        finally { isSaving = false; }
+    }
+
+    private async Task DeleteAlias(AliasDto a)
+    {
+        var resp = await Http.DeleteAsync($"api/merchant-aliases/{a.Id}");
+        if (resp.IsSuccessStatusCode) await LoadAll();
+        else errorMessage = "删除别名失败";
+    }
+
+    private record MerchantDto(int Id, string CanonicalName, DateTime CreatedAt, int? DefaultCategoryId, string? DefaultCategoryName, int AliasCount, int BillCount);
+    private record AliasDto(int Id, string Pattern, int MatchType, int MerchantId, string MerchantName, int Priority, bool IsActive);
+    private record CategoryOption(int Id, string Name);
+}

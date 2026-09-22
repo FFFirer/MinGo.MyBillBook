@@ -23,7 +23,8 @@ public class AlipayCsvParser : IBillParser
         int headerIndex = -1;
         for (int i = 0; i < Math.Min(lines.Length, 50); i++)
         {
-            if (lines[i].Contains("交易时间") && lines[i].Contains("交易订单号"))
+            if ((lines[i].Contains("交易时间") || lines[i].Contains("交易创建时间"))
+                && (lines[i].Contains("交易订单号") || lines[i].Contains("交易号")))
             {
                 headerIndex = i;
                 break;
@@ -83,13 +84,13 @@ public class AlipayCsvParser : IBillParser
             {
                 var rawRow = new RawBillRow
                 {
-                    TransactionId = GetField(csv, columnMap, "交易订单号"),
-                    TransactionDate = ParseDate(GetField(csv, columnMap, "交易时间")),
-                    ProductName = GetField(csv, columnMap, "商品说明"),
-                    Amount = ParseAmount(GetField(csv, columnMap, "金额")),
+                    TransactionId = GetField(csv, columnMap, "交易订单号", "交易号"),
+                    TransactionDate = ParseDate(GetField(csv, columnMap, "交易时间", "交易创建时间")),
+                    ProductName = GetField(csv, columnMap, "商品说明", "商品名称"),
+                    AmountMinor = ParseAmountMinor(GetField(csv, columnMap, "金额")),
                     Direction = GetField(csv, columnMap, "收/支"),
                     Counterparty = GetField(csv, columnMap, "交易对方"),
-                    PaymentMethod = GetField(csv, columnMap, "收/付款方式"),
+                    PaymentMethod = GetField(csv, columnMap, "收/付款方式", "支付方式"),
                     Status = GetField(csv, columnMap, "交易状态"),
                 };
 
@@ -105,12 +106,15 @@ public class AlipayCsvParser : IBillParser
         return result;
     }
 
-    private static string GetField(CsvReader csv, Dictionary<string, int> map, string fieldName)
+    private static string GetField(CsvReader csv, Dictionary<string, int> map, params string[] fieldNames)
     {
-        if (map.TryGetValue(fieldName, out var index))
+        foreach (var fieldName in fieldNames)
         {
-            try { return csv.GetField(index)?.Trim() ?? string.Empty; }
-            catch { return string.Empty; }
+            if (map.TryGetValue(fieldName, out var index))
+            {
+                try { return csv.GetField(index)?.Trim() ?? string.Empty; }
+                catch { return string.Empty; }
+            }
         }
         return string.Empty;
     }
@@ -122,10 +126,10 @@ public class AlipayCsvParser : IBillParser
         return DateTime.MinValue;
     }
 
-    private static decimal ParseAmount(string? value)
+    private static long ParseAmountMinor(string? value)
     {
         if (decimal.TryParse(value?.Replace("¥", "").Replace(",", "").Trim(), out var amount))
-            return amount;
+            return decimal.ToInt64(Math.Round(amount * 100m, MidpointRounding.AwayFromZero));
         return 0;
     }
 }

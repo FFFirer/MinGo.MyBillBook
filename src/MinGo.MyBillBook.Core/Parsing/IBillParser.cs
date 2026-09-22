@@ -3,7 +3,8 @@ namespace MinGo.MyBillBook.Core.Parsing;
 public class RawBillRow
 {
     public DateTime TransactionDate { get; set; }
-    public decimal Amount { get; set; }
+    /// <summary>金额（最小货币单位，分）。</summary>
+    public long AmountMinor { get; set; }
     public string Direction { get; set; } = string.Empty;
     public string Counterparty { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;

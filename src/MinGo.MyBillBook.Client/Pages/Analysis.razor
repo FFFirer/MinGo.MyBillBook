@@ -10,7 +10,7 @@
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-800">消费分析</h1>
         <div class="flex gap-2">
-            <select @bind="selectedYear" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            <select @bind="selectedYear" @bind:after="LoadData" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
                 @foreach (var y in years)
                 {
                     <option value="@y">@y 年</option>
@@ -146,6 +146,149 @@
                 </div>
             }
         </div>
+
+        <!-- 现金流 + 净资产 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h2 class="text-lg font-semibold mb-4">净资产</h2>
+                @if (netWorth != null)
+                {
+                    <p class="text-3xl font-bold text-blue-600 mb-4">@netWorth.Total.ToString("F2")</p>
+                    <div class="space-y-2">
+                        @foreach (var a in netWorth.Accounts)
+                        {
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">@a.AccountName</span>
+                                <span class="font-medium">@a.Balance.ToString("F2")</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h2 class="text-lg font-semibold mb-4">现金流 (@selectedYear 年、Transfer 不计)</h2>
+                @if (cashFlow != null)
+                {
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-200 text-gray-500">
+                                    <th class="text-left py-2">月份</th>
+                                    <th class="text-right py-2">流入</th>
+                                    <th class="text-right py-2">流出</th>
+                                    <th class="text-right py-2">净额</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var cf in cashFlow.Where(c => c.Inflow != 0 || c.Outflow != 0))
+                                {
+                                    <tr class="border-b border-gray-100">
+                                        <td class="py-1.5">@cf.Month</td>
+                                        <td class="py-1.5 text-right text-green-600">@cf.Inflow.ToString("F2")</td>
+                                        <td class="py-1.5 text-right text-red-600">@cf.Outflow.ToString("F2")</td>
+                                        <td class="py-1.5 text-right font-medium @(cf.Net >= 0 ? "text-blue-600" : "text-orange-600")">@cf.Net.ToString("F2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- 多维月度交叉分析 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold">多维月度分析 (@selectedYear 年)</h2>
+                <div class="flex gap-2">
+                    @foreach (var d in dimensions)
+                    {
+                        <button @onclick="() => SwitchDimension(d)" class="px-3 py-1.5 rounded-lg text-sm @(selectedDimension == d ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")">@d</button>
+                    }
+                </div>
+            </div>
+            @if (dimensionStats != null && dimensionStats.Any())
+            {
+                var names = dimensionStats.Select(s => s.Name).Distinct().ToList();
+                var months = Enumerable.Range(1, 12).Select(m => $"{selectedYear}-{m:D2}").ToList();
+                var lookup = dimensionStats.GroupBy(s => (s.Name, s.Month)).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+                var maxAmt = dimensionStats.Max(s => Math.Abs(s.Amount));
+                <div class="overflow-x-auto">
+                    <table class="text-sm border-collapse">
+                        <thead>
+                            <tr>
+                                <th class="text-left py-2 px-2">@DimensionLabel()</th>
+                                @foreach (var mo in months)
+                                {
+                                    <th class="py-2 px-2 text-right text-gray-400 font-normal">@mo.Substring(5)</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var n in names)
+                            {
+                                <tr class="border-t border-gray-100">
+                                    <td class="py-1.5 px-2 font-medium">@n</td>
+                                    @foreach (var mo in months)
+                                    {
+                                        var amt = lookup.GetValueOrDefault((n, mo), 0m);
+                                        var intensity = maxAmt > 0 ? Math.Abs(amt) / maxAmt * 0.5m : 0m;
+                                        <td class="py-1.5 px-2 text-right" style="background-color:rgba(147,51,234,@intensity.ToString("0.###"))">@((amt != 0) ? amt.ToString("F0") : "")</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-gray-400 text-sm">该维度暂无数据</p>
+            }
+        </div>
+
+        <!-- Category × Tag 矩阵 -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4">Category × Tag 交叉矩阵</h2>
+            @if (categoryTagMatrix != null && categoryTagMatrix.Any())
+            {
+                var cats = categoryTagMatrix.Select(c => c.CategoryName).Distinct().ToList();
+                var tags = categoryTagMatrix.Select(c => c.TagName).Distinct().ToList();
+                var lookup = categoryTagMatrix.GroupBy(c => (c.CategoryName, c.TagName)).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+                var maxAmt = categoryTagMatrix.Max(c => c.Amount);
+                <div class="overflow-x-auto">
+                    <table class="text-sm border-collapse">
+                        <thead>
+                            <tr>
+                                <th class="text-left py-2 px-2">分类＼标签</th>
+                                @foreach (var t in tags)
+                                {
+                                    <th class="py-2 px-2 text-right text-gray-400 font-normal">@t</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cat in cats)
+                            {
+                                <tr class="border-t border-gray-100">
+                                    <td class="py-1.5 px-2 font-medium">@cat</td>
+                                    @foreach (var t in tags)
+                                    {
+                                        var amt = lookup.GetValueOrDefault((cat, t), 0m);
+                                        var intensity = maxAmt > 0 ? amt / maxAmt * 0.5m : 0m;
+                                        <td class="py-1.5 px-2 text-right" style="background-color:rgba(147,51,234,@intensity.ToString("0.###"))">@((amt != 0) ? amt.ToString("F0") : "")</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-gray-400 text-sm">暂无标签交叉数据（请先给账单打标签并同步）</p>
+            }
+        </div>
     }
     else
     {
@@ -162,6 +305,12 @@
     private List<CategoryStatDto>? categoryStats;
     private List<MonthlyTrendDto>? monthlyTrends;
     private List<MerchantRankDto>? topMerchants;
+    private NetWorthDto? netWorth;
+    private List<CashFlowDto>? cashFlow;
+    private List<DimensionMonthStatDto>? dimensionStats;
+    private List<CategoryTagCellDto>? categoryTagMatrix;
+    private string[] dimensions = ["账户", "商户", "标签"];
+    private string selectedDimension = "商户";
     private int selectedYear = DateTime.Today.Year;
     private int[] years = Enumerable.Range(DateTime.Today.Year - 3, 4).Reverse().ToArray();
     private bool isSyncing;
@@ -204,7 +353,35 @@
         categoryStats = await Http.GetFromJsonAsync<List<CategoryStatDto>>($"api/analysis/category?start={startStr}&end={endStr}");
         monthlyTrends = await Http.GetFromJsonAsync<List<MonthlyTrendDto>>($"api/analysis/trend?year={selectedYear}");
         topMerchants = await Http.GetFromJsonAsync<List<MerchantRankDto>>($"api/analysis/merchants?start={startStr}&end={endStr}&limit=10");
+        netWorth = await Http.GetFromJsonAsync<NetWorthDto>("api/analysis/net-worth");
+        cashFlow = await Http.GetFromJsonAsync<List<CashFlowDto>>($"api/analysis/cash-flow?year={selectedYear}");
+        categoryTagMatrix = await Http.GetFromJsonAsync<List<CategoryTagCellDto>>($"api/analysis/category-tag-matrix?start={startStr}&end={endStr}");
+        await LoadDimensionAsync();
     }
+
+    private async Task LoadDimensionAsync()
+    {
+        var endpoint = selectedDimension switch
+        {
+            "账户" => "account-monthly",
+            "标签" => "tag-monthly",
+            _ => "merchant-monthly"
+        };
+        dimensionStats = await Http.GetFromJsonAsync<List<DimensionMonthStatDto>>($"api/analysis/{endpoint}?year={selectedYear}");
+    }
+
+    private async Task SwitchDimension(string d)
+    {
+        selectedDimension = d;
+        await LoadDimensionAsync();
+    }
+
+    private string DimensionLabel() => selectedDimension switch
+    {
+        "账户" => "账户＼月",
+        "标签" => "标签＼月",
+        _ => "商户＼月"
+    };
 
     private async Task SyncData()
     {
@@ -245,4 +422,9 @@
     private record CategoryStatDto(string CategoryName, string Icon, decimal Amount, int Count, double Percentage);
     private record MonthlyTrendDto(string Month, decimal Income, decimal Expense);
     private record MerchantRankDto(string Merchant, decimal Amount, int Count);
+    private record NetWorthDto(decimal Total, List<NetWorthItemDto> Accounts);
+    private record NetWorthItemDto(string AccountName, decimal Balance);
+    private record CashFlowDto(string Month, decimal Inflow, decimal Outflow, decimal Net);
+    private record DimensionMonthStatDto(string Name, string Month, decimal Amount, int Count);
+    private record CategoryTagCellDto(string CategoryName, string TagName, decimal Amount, int Count);
 }

@@ -3,6 +3,9 @@
 *.db-shm
 *.db-wal
 *.duckdb
+*.duckdb.wal
+# Parquet 同步输出（运行时生成）
+data/
 data-samples/
 
 # Build output

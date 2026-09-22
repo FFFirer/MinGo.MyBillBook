@@ -17,6 +17,37 @@ namespace MinGo.MyBillBook.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.BalanceSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("BankBalance")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CalculatedBalance")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Difference")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SnapshotDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId", "SnapshotDate");
+
+                    b.ToTable("BalanceSnapshots");
+                });
+
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.BillCategory", b =>
                 {
                     b.Property<int>("Id")
@@ -26,6 +57,9 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Property<string>("Icon")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -87,16 +121,11 @@ namespace MinGo.MyBillBook.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("TEXT");
+                    b.Property<double>("DuplicateScore")
+                        .HasColumnType("REAL");
 
-                    b.Property<string>("Counterparty")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Direction")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<int>("DuplicateStatus")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("ImportBatchId")
                         .HasColumnType("INTEGER");
@@ -104,29 +133,17 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Property<bool>("IsProcessed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("PaymentMethod")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("PlatformId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("ProductName")
+                    b.Property<string>("RawPayload")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("RawData")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<int>("RowNumber")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("TransactionDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TransactionId")
+                    b.Property<string>("SourceTransactionId")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
@@ -137,7 +154,7 @@ namespace MinGo.MyBillBook.Data.Migrations
 
                     b.HasIndex("PlatformId");
 
-                    b.HasIndex("TransactionId");
+                    b.HasIndex("SourceTransactionId");
 
                     b.ToTable("BillRawRecords");
                 });
@@ -148,8 +165,8 @@ namespace MinGo.MyBillBook.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("TEXT");
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("CategoryId")
                         .HasColumnType("INTEGER");
@@ -169,6 +186,9 @@ namespace MinGo.MyBillBook.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("MerchantId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("PlatformId")
                         .HasColumnType("INTEGER");
@@ -203,6 +223,8 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("FundAccountId");
+
+                    b.HasIndex("MerchantId");
 
                     b.HasIndex("PlatformId");
 
@@ -247,6 +269,96 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.ToTable("CategoryRules");
                 });
 
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.CategoryTag", b =>
+                {
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("CategoryId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("CategoryTags");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.ClassificationResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Field")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RuleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TransactionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransactionId");
+
+                    b.HasIndex("TransactionId", "Field");
+
+                    b.ToTable("ClassificationResults");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.DuplicateCandidate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LeftRecordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MatchReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RightRecordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Score")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeftRecordId");
+
+                    b.HasIndex("RightRecordId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("DuplicateCandidates");
+                });
+
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.FundAccount", b =>
                 {
                     b.Property<int>("Id")
@@ -277,6 +389,135 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.ToTable("FundAccounts");
                 });
 
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Merchant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CanonicalName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DefaultCategoryId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CanonicalName")
+                        .IsUnique();
+
+                    b.HasIndex("DefaultCategoryId");
+
+                    b.ToTable("Merchants");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.MerchantAlias", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MatchType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MerchantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Pattern")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantId");
+
+                    b.HasIndex("Priority");
+
+                    b.ToTable("MerchantAliases");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.NormalizedTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Counterparty")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("DuplicateScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("DuplicateStatus")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RawDescription")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RawRecordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SourceTransactionId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("RawRecordId");
+
+                    b.ToTable("NormalizedTransactions");
+                });
+
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.PaymentPlatform", b =>
                 {
                     b.Property<int>("Id")
@@ -302,6 +543,300 @@ namespace MinGo.MyBillBook.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("PaymentPlatforms");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.PipelineJob", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("PipelineJobs");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.PipelineRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ImportBatchId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PipelineType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImportBatchId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("PipelineRuns");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.PipelineStepRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ErrorCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("InputCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("OutputCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PipelineRunId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("StepName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WarningCount")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PipelineRunId");
+
+                    b.ToTable("PipelineStepRuns");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.ReconciliationIssue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Difference")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SnapshotId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("SnapshotId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("ReconciliationIssues");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Tag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ScopeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TagType")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("TagType");
+
+                    b.ToTable("Tags");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.TagRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Condition")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ConditionValue")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Priority");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("TagRules");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.TransactionTag", b =>
+                {
+                    b.Property<int>("TransactionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("TransactionId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("TransactionTags");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Transfer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("FromAccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MatchedRecordIds")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ToAccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromAccountId");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ToAccountId");
+
+                    b.ToTable("Transfers");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.BalanceSnapshot", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.FundAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.BillCategory", b =>
@@ -353,6 +888,10 @@ namespace MinGo.MyBillBook.Data.Migrations
                         .WithMany()
                         .HasForeignKey("FundAccountId");
 
+                    b.HasOne("MinGo.MyBillBook.Core.Models.Merchant", "MerchantRef")
+                        .WithMany("BillRecords")
+                        .HasForeignKey("MerchantId");
+
                     b.HasOne("MinGo.MyBillBook.Core.Models.PaymentPlatform", "Platform")
                         .WithMany()
                         .HasForeignKey("PlatformId")
@@ -368,6 +907,8 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("FundAccount");
+
+                    b.Navigation("MerchantRef");
 
                     b.Navigation("Platform");
 
@@ -385,6 +926,55 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.CategoryTag", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BillCategory", "Category")
+                        .WithMany("CategoryTags")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MinGo.MyBillBook.Core.Models.Tag", "Tag")
+                        .WithMany("CategoryTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.ClassificationResult", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BillRecord", "Transaction")
+                        .WithMany("ClassificationResults")
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.DuplicateCandidate", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BillRecord", "LeftRecord")
+                        .WithMany()
+                        .HasForeignKey("LeftRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BillRecord", "RightRecord")
+                        .WithMany()
+                        .HasForeignKey("RightRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LeftRecord");
+
+                    b.Navigation("RightRecord");
+                });
+
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.FundAccount", b =>
                 {
                     b.HasOne("MinGo.MyBillBook.Core.Models.PaymentPlatform", "Platform")
@@ -396,8 +986,129 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Navigation("Platform");
                 });
 
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Merchant", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BillCategory", "DefaultCategory")
+                        .WithMany()
+                        .HasForeignKey("DefaultCategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("DefaultCategory");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.MerchantAlias", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.Merchant", "Merchant")
+                        .WithMany("Aliases")
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Merchant");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.NormalizedTransaction", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BillRawRecord", "RawRecord")
+                        .WithMany()
+                        .HasForeignKey("RawRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RawRecord");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.PipelineRun", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BillImportBatch", "ImportBatch")
+                        .WithMany()
+                        .HasForeignKey("ImportBatchId");
+
+                    b.Navigation("ImportBatch");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.PipelineStepRun", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.PipelineRun", "Run")
+                        .WithMany("Steps")
+                        .HasForeignKey("PipelineRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Run");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.ReconciliationIssue", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.FundAccount", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BalanceSnapshot", "Snapshot")
+                        .WithMany("Issues")
+                        .HasForeignKey("SnapshotId");
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Snapshot");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.TagRule", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.Tag", "Tag")
+                        .WithMany("Rules")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.TransactionTag", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.Tag", "Tag")
+                        .WithMany("TransactionTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MinGo.MyBillBook.Core.Models.BillRecord", "Transaction")
+                        .WithMany("Tags")
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tag");
+
+                    b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Transfer", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.FundAccount", "FromAccount")
+                        .WithMany()
+                        .HasForeignKey("FromAccountId");
+
+                    b.HasOne("MinGo.MyBillBook.Core.Models.FundAccount", "ToAccount")
+                        .WithMany()
+                        .HasForeignKey("ToAccountId");
+
+                    b.Navigation("FromAccount");
+
+                    b.Navigation("ToAccount");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.BalanceSnapshot", b =>
+                {
+                    b.Navigation("Issues");
+                });
+
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.BillCategory", b =>
                 {
+                    b.Navigation("CategoryTags");
+
                     b.Navigation("Children");
 
                     b.Navigation("Rules");
@@ -408,9 +1119,37 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Navigation("RawRecords");
                 });
 
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.BillRecord", b =>
+                {
+                    b.Navigation("ClassificationResults");
+
+                    b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Merchant", b =>
+                {
+                    b.Navigation("Aliases");
+
+                    b.Navigation("BillRecords");
+                });
+
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.PaymentPlatform", b =>
                 {
                     b.Navigation("FundAccounts");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.PipelineRun", b =>
+                {
+                    b.Navigation("Steps");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Tag", b =>
+                {
+                    b.Navigation("CategoryTags");
+
+                    b.Navigation("Rules");
+
+                    b.Navigation("TransactionTags");
                 });
 #pragma warning restore 612, 618
         }

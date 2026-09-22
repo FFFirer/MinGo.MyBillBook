@@ -29,6 +29,16 @@
                 <option value="Expense">支出</option>
                 <option value="Transfer">转账</option>
             </select>
+            <select @bind="filter.TagId" class="rounded-lg border-gray-300 text-sm px-3 py-2 border">
+                <option value="">全部标签</option>
+                @if (allTags != null)
+                {
+                    @foreach (var t in allTags)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                }
+            </select>
             <div class="flex gap-2">
                 <input type="text" @bind="filter.Keyword" @bind:event="oninput" placeholder="搜索关键词..."
                        class="flex-1 rounded-lg border-gray-300 text-sm px-3 py-2 border" />
@@ -59,6 +69,7 @@
                             <th class="text-left py-3 px-4 font-medium text-gray-500">商户/对方</th>
                             <th class="text-left py-3 px-4 font-medium text-gray-500">商品</th>
                             <th class="text-left py-3 px-4 font-medium text-gray-500">分类</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-500">标签</th>
                             <th class="text-right py-3 px-4 font-medium text-gray-500">金额</th>
                             <th class="text-center py-3 px-4 font-medium text-gray-500">平台</th>
                         </tr>
@@ -66,7 +77,7 @@
                     <tbody>
                         @foreach (var bill in result.Items)
                         {
-                            <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" @onclick="() => OpenDetail(bill)">
                                 <td class="py-3 px-4 text-gray-600 whitespace-nowrap">@bill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
                                 <td class="py-3 px-4">
                                     <div class="font-medium text-gray-800 truncate max-w-48">@bill.Merchant</div>
@@ -80,6 +91,14 @@
                                     <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
                                         @(bill.CategoryName ?? "未分类")
                                     </span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex flex-wrap gap-1">
+                                        @foreach (var tag in bill.Tags)
+                                        {
+                                            <span class="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700">@tag</span>
+                                        }
+                                    </div>
                                 </td>
                                 <td class="py-3 px-4 text-right font-medium whitespace-nowrap @(bill.TransactionType == "Income" ? "text-green-600" : "text-red-600")">
                                     @(bill.TransactionType == "Income" ? "+" : "-")@bill.Amount.ToString("F2")
@@ -115,9 +134,75 @@
     </div>
 </div>
 
+<!-- 账单详情 / 标签管理弹窗 -->
+@if (detailBill != null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CloseDetail">
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-lg w-full mx-4" @onclick:stopPropagation>
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">@detailBill.Merchant</h2>
+                    <p class="text-sm text-gray-500">@detailBill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) · @(detailBill.CategoryName ?? "未分类") · @((detailBill.TransactionType == "Income" ? "+" : "-") + detailBill.Amount.ToString("F2"))</p>
+                    @if (!string.IsNullOrWhiteSpace(detailBill.ProductName))
+                    {
+                        <p class="text-sm text-gray-400 mt-0.5">@detailBill.ProductName</p>
+                    }
+                </div>
+                <button @onclick="CloseDetail" class="text-gray-400 hover:text-gray-600"><span class="material-icons">close</span></button>
+            </div>
+
+            <div class="mb-4">
+                <div class="text-sm font-medium text-gray-700 mb-2">当前标签</div>
+                @if (detailTags == null)
+                {
+                    <div class="text-sm text-gray-400">加载中...</div>
+                }
+                else if (detailTags.Count == 0)
+                {
+                    <div class="text-sm text-gray-400">暂无标签</div>
+                }
+                else
+                {
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var t in detailTags)
+                        {
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium @(t.Source == "User" ? "bg-purple-600 text-white" : "bg-purple-100 text-purple-800")">
+                                @t.Name
+                                <span class="opacity-70">(@(t.Source == "User" ? "手工" : t.Source == "Rule" ? "规则" : t.Source))</span>
+                                <button @onclick="() => RemoveDetailTag(t)" class="hover:text-red-400" title="移除"><span class="material-icons text-sm">close</span></button>
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="flex items-end gap-2">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">添加标签（手工，Source=User）</label>
+                    <select @bind="addTagId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="0">— 请选择 —</option>
+                        @if (allTags != null)
+                        {
+                            @foreach (var t in allTags)
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <button @onclick="AddDetailTag" disabled="@(addTagId == 0)" class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50">添加</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private PagedResult? result;
     private FilterParams filter = new();
+    private List<TagOption>? allTags;
+    private BillItem? detailBill;
+    private List<BillTag>? detailTags;
+    private int addTagId;
 
     private async Task LoadBills()
     {
@@ -129,6 +214,7 @@
             if (filter.PlatformId.HasValue) url += $"&platformId={filter.PlatformId}";
             if (!string.IsNullOrWhiteSpace(filter.TransactionType)) url += $"&transactionType={filter.TransactionType}";
             if (!string.IsNullOrWhiteSpace(filter.Keyword)) url += $"&keyword={Uri.EscapeDataString(filter.Keyword)}";
+            if (filter.TagId.HasValue) url += $"&tagIds={filter.TagId.Value}";
 
             result = await Http.GetFromJsonAsync<PagedResult>(url);
         }
@@ -138,7 +224,35 @@
     private async Task PrevPage() { if (filter.Page > 1) { filter.Page--; await LoadBills(); } }
     private async Task NextPage() { filter.Page++; await LoadBills(); }
 
-    protected override async Task OnInitializedAsync() => await LoadBills();
+    protected override async Task OnInitializedAsync()
+    {
+        allTags = await Http.GetFromJsonAsync<List<TagOption>>("api/tags");
+        await LoadBills();
+    }
+
+    private async Task OpenDetail(BillItem bill)
+    {
+        detailBill = bill; addTagId = 0; detailTags = null;
+        detailTags = await Http.GetFromJsonAsync<List<BillTag>>($"api/bills/{bill.Id}/tags");
+    }
+    private void CloseDetail() { detailBill = null; detailTags = null; }
+
+    private async Task AddDetailTag()
+    {
+        if (detailBill == null || addTagId == 0) return;
+        await Http.PostAsJsonAsync($"api/bills/{detailBill.Id}/tags", new { TagId = addTagId });
+        addTagId = 0;
+        detailTags = await Http.GetFromJsonAsync<List<BillTag>>($"api/bills/{detailBill.Id}/tags");
+        await LoadBills();
+    }
+
+    private async Task RemoveDetailTag(BillTag t)
+    {
+        if (detailBill == null) return;
+        await Http.DeleteAsync($"api/bills/{detailBill.Id}/tags/{t.TagId}");
+        detailTags = await Http.GetFromJsonAsync<List<BillTag>>($"api/bills/{detailBill.Id}/tags");
+        await LoadBills();
+    }
 
     private class FilterParams
     {
@@ -148,10 +262,14 @@
         public int? PlatformId { get; set; }
         public string? TransactionType { get; set; }
         public string? Keyword { get; set; }
+        public int? TagId { get; set; }
     }
 
     private record PagedResult(List<BillItem> Items, int TotalCount, int Page, int PageSize);
     private record BillItem(int Id, DateTime TransactionDate, string Counterparty, string Merchant,
         string? CategoryName, int? CategoryId, string ProductName, decimal Amount,
-        string TransactionType, string PlatformName, string? FundAccountName, string Status, bool IsManualAdjusted);
+        string TransactionType, string PlatformName, string? FundAccountName, string Status, bool IsManualAdjusted,
+        List<string> Tags);
+    private record TagOption(int Id, string Name);
+    private record BillTag(int TagId, string Name, string Source, double Confidence);
 }

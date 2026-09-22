@@ -30,11 +30,12 @@ public class BillImportService(AppDbContext db, IBillParserFactory parserFactory
         db.BillImportBatches.Add(batch);
         await db.SaveChangesAsync(ct);
 
-        int success = 0, duplicate = 0;
+        int success = 0, duplicate = 0, rowNumber = 0;
         foreach (var row in result.Rows)
         {
+            rowNumber++;
             if (!string.IsNullOrEmpty(row.TransactionId) &&
-                await db.BillRawRecords.AnyAsync(r => r.TransactionId == row.TransactionId, ct))
+                await db.BillRawRecords.AnyAsync(r => r.SourceTransactionId == row.TransactionId, ct))
             {
                 duplicate++;
                 continue;
@@ -44,15 +45,9 @@ public class BillImportService(AppDbContext db, IBillParserFactory parserFactory
             {
                 ImportBatchId = batch.Id,
                 PlatformId = platformId,
-                RawData = JsonSerializer.Serialize(row),
-                TransactionDate = row.TransactionDate,
-                Amount = row.Amount,
-                Direction = row.Direction,
-                Counterparty = row.Counterparty,
-                ProductName = row.ProductName,
-                PaymentMethod = row.PaymentMethod,
-                Status = row.Status,
-                TransactionId = row.TransactionId,
+                RowNumber = rowNumber,
+                RawPayload = JsonSerializer.Serialize(row),
+                SourceTransactionId = row.TransactionId,
                 IsProcessed = false
             };
             db.BillRawRecords.Add(raw);

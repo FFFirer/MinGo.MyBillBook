@@ -44,7 +44,7 @@ public static class SeedData
             new BillCategory { Name = "转账", Icon = "swap_horiz", SortOrder = 17 },
             new BillCategory { Name = "工资", Icon = "payments", SortOrder = 18 },
             new BillCategory { Name = "理财", Icon = "trending_up", SortOrder = 19 },
-            new BillCategory { Name = "其他", Icon = "more_horiz", SortOrder = 99 },
+            new BillCategory { Name = "其他", Icon = "more_horiz", SortOrder = 99, IsDefault = true },
         };
         context.BillCategories.AddRange(categories);
         context.SaveChanges();
@@ -92,6 +92,69 @@ public static class SeedData
         AddRule(16, MatchField.ProductName, "转账", 10);
 
         context.CategoryRules.AddRange(rules);
+        context.SaveChanges();
+
+        // 归一化商户 + 常见别名（多写法 -> 统一商户）
+        // DefaultCategoryId 用于分类优先级链的 MerchantRule 层（星巴克/瑞幸/美团 -> 餐饮，滴滴 -> 交通）。
+        var merchants = new[]
+        {
+            new Merchant { CanonicalName = "星巴克", CreatedAt = DateTime.Now, DefaultCategoryId = categories[0].Id },
+            new Merchant { CanonicalName = "瑞幸咖啡", CreatedAt = DateTime.Now, DefaultCategoryId = categories[0].Id },
+            new Merchant { CanonicalName = "美团", CreatedAt = DateTime.Now, DefaultCategoryId = categories[0].Id },
+            new Merchant { CanonicalName = "滴滴出行", CreatedAt = DateTime.Now, DefaultCategoryId = categories[1].Id },
+        };
+        context.Merchants.AddRange(merchants);
+        context.SaveChanges();
+
+        var starbucks = merchants[0];
+        var luckin = merchants[1];
+        var meituan = merchants[2];
+        var didi = merchants[3];
+
+        context.MerchantAliases.AddRange(
+            new MerchantAlias { MerchantId = starbucks.Id, Pattern = "星巴克", MatchType = AliasMatchType.Contains, Priority = 10 },
+            new MerchantAlias { MerchantId = starbucks.Id, Pattern = "STARBUCKS", MatchType = AliasMatchType.Contains, Priority = 10 },
+            new MerchantAlias { MerchantId = luckin.Id, Pattern = "瑞幸", MatchType = AliasMatchType.Contains, Priority = 10 },
+            new MerchantAlias { MerchantId = luckin.Id, Pattern = "LUCKIN", MatchType = AliasMatchType.Contains, Priority = 10 },
+            new MerchantAlias { MerchantId = meituan.Id, Pattern = "美团", MatchType = AliasMatchType.Contains, Priority = 10 },
+            new MerchantAlias { MerchantId = meituan.Id, Pattern = "饿了么", MatchType = AliasMatchType.Contains, Priority = 5 },
+            new MerchantAlias { MerchantId = didi.Id, Pattern = "滴滴", MatchType = AliasMatchType.Contains, Priority = 10 },
+            new MerchantAlias { MerchantId = didi.Id, Pattern = "DI(DI)?", MatchType = AliasMatchType.Regex, Priority = 1 }
+        );
+        context.SaveChanges();
+
+        // 标签（正交横向维度，设计第 1-10 节）+ TagType 归类
+        var tags = new[]
+        {
+            new Tag { Name = "旅行", TagType = TagType.Scenario, Scope = TagScope.Global, SortOrder = 1 },
+            new Tag { Name = "社交", TagType = TagType.Scenario, Scope = TagScope.Global, SortOrder = 2 },
+            new Tag { Name = "周末", TagType = TagType.Scenario, Scope = TagScope.Global, SortOrder = 3 },
+            new Tag { Name = "咖啡", TagType = TagType.Scenario, Scope = TagScope.Global, SortOrder = 4 },
+            new Tag { Name = "工作", TagType = TagType.Purpose, Scope = TagScope.Global, SortOrder = 5 },
+            new Tag { Name = "家庭", TagType = TagType.Purpose, Scope = TagScope.Global, SortOrder = 6 },
+            new Tag { Name = "报销", TagType = TagType.Purpose, Scope = TagScope.Global, SortOrder = 7 },
+            new Tag { Name = "必要", TagType = TagType.Nature, Scope = TagScope.Global, SortOrder = 8 },
+            new Tag { Name = "非必要", TagType = TagType.Nature, Scope = TagScope.Global, SortOrder = 9 },
+        };
+        context.Tags.AddRange(tags);
+        context.SaveChanges();
+
+        var tagTravel = tags[0];
+        var tagWeekend = tags[2];
+        var tagCoffee = tags[3];
+        var tagReimburse = tags[6];
+
+        // 标签规则（自动打标，Source=Rule；不覆盖 User 手工标签）
+        context.TagRules.AddRange(
+            // IF Merchant=星巴克 THEN Tag=咖啡
+            new TagRule { Condition = TagRuleCondition.Merchant, ConditionValue = "星巴克", TagId = tagCoffee.Id, Priority = 10 },
+            // IF DayOfWeek∈{Sat,Sun} THEN Tag=周末
+            new TagRule { Condition = TagRuleCondition.DayOfWeek, ConditionValue = "Sat,Sun", TagId = tagWeekend.Id, Priority = 5 },
+            // IF Category=旅行 THEN Tag=旅行
+            new TagRule { Condition = TagRuleCondition.Category, ConditionValue = "旅行", TagId = tagTravel.Id, Priority = 5 },
+            // IF Keyword 含 "报销" THEN Tag=报销
+            new TagRule { Condition = TagRuleCondition.Keyword, ConditionValue = "报销", TagId = tagReimburse.Id, Priority = 5 }
+        );
         context.SaveChanges();
     }
 }
