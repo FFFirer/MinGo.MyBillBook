@@ -48,7 +48,19 @@
                             <td class="px-6 py-3 font-medium text-gray-800">@m.CanonicalName</td>
                             <td class="px-6 py-3 text-gray-500">@(m.DefaultCategoryName ?? "—")</td>
                             <td class="px-6 py-3 text-gray-500">@m.AliasCount</td>
-                            <td class="px-6 py-3 text-gray-500">@m.BillCount</td>
+                            <td class="px-6 py-3">
+                                @if (m.BillCount > 0)
+                                {
+                                    <a href="@($"bills?keyword={Uri.EscapeDataString(m.CanonicalName)}")" title="查看该商户的关联账单"
+                                       class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200 hover:bg-purple-100 transition-colors">
+                                        <span class="material-icons text-sm">receipt_long</span>@m.BillCount
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-gray-300">—</span>
+                                }
+                            </td>
                             <td class="px-6 py-3 text-right">
                                 <button @onclick="() => OpenEditMerchantDialog(m)" class="p-1 text-gray-400 hover:text-purple-600" title="编辑"><span class="material-icons text-lg">edit</span></button>
                                 <button @onclick="() => DeleteMerchant(m)" class="p-1 text-gray-400 hover:text-red-600" title="删除"><span class="material-icons text-lg">delete</span></button>
@@ -81,7 +93,11 @@
                     {
                         <tr class="border-t border-gray-100">
                             <td class="px-6 py-3 font-mono text-gray-800">@a.Pattern</td>
-                            <td class="px-6 py-3 text-gray-500">@a.MatchType</td>
+                            <td class="px-6 py-3">
+                                <span title="@MatchTypeHint(a.MatchType)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset @MatchTypeBadgeClass(a.MatchType)">
+                                    <span class="material-icons text-sm">@MatchTypeIcon(a.MatchType)</span>@MatchTypeLabel(a.MatchType)
+                                </span>
+                            </td>
                             <td class="px-6 py-3 text-gray-700">@a.MerchantName</td>
                             <td class="px-6 py-3 text-gray-500">@a.Priority</td>
                             <td class="px-6 py-3">
@@ -140,9 +156,9 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">匹配方式</label>
                     <select @bind="aliasMatchType" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                        <option value="0">Regex</option>
-                        <option value="1">Contains</option>
-                        <option value="2">Exact</option>
+                        <option value="1">包含（Contains）</option>
+                        <option value="2">精确（Exact）</option>
+                        <option value="0">正则（Regex）</option>
                     </select>
                 </div>
                 <div>
@@ -266,6 +282,39 @@
         if (resp.IsSuccessStatusCode) await LoadAll();
         else errorMessage = "删除别名失败";
     }
+
+    // === 匹配方式展示 ===
+    private static string MatchTypeLabel(int matchType) => matchType switch
+    {
+        0 => "正则",
+        1 => "包含",
+        2 => "精确",
+        _ => "未知"
+    };
+
+    private static string MatchTypeIcon(int matchType) => matchType switch
+    {
+        0 => "code",
+        1 => "find_in_page",
+        2 => "equal",
+        _ => "help_outline"
+    };
+
+    private static string MatchTypeBadgeClass(int matchType) => matchType switch
+    {
+        0 => "bg-indigo-50 text-indigo-700 ring-indigo-200",
+        1 => "bg-sky-50 text-sky-700 ring-sky-200",
+        2 => "bg-emerald-50 text-emerald-700 ring-emerald-200",
+        _ => "bg-gray-100 text-gray-600 ring-gray-200"
+    };
+
+    private static string MatchTypeHint(int matchType) => matchType switch
+    {
+        0 => "按正则表达式匹配（忽略大小写）",
+        1 => "商户名包含该模式即命中（忽略大小写）",
+        2 => "与商户名完全一致才命中（忽略大小写）",
+        _ => "未知的匹配方式"
+    };
 
     private record MerchantDto(int Id, string CanonicalName, DateTime CreatedAt, int? DefaultCategoryId, string? DefaultCategoryName, int AliasCount, int BillCount);
     private record AliasDto(int Id, string Pattern, int MatchType, int MerchantId, string MerchantName, int Priority, bool IsActive);

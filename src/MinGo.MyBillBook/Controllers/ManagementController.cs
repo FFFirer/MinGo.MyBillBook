@@ -211,7 +211,11 @@ public class ManagementController(AppDbContext db) : ControllerBase
     [HttpPost("merchants")]
     public async Task<ActionResult> CreateMerchant([FromBody] CreateMerchantRequest req, CancellationToken ct)
     {
-        var merchant = new Merchant { CanonicalName = req.CanonicalName.Trim(), CreatedAt = DateTime.Now, DefaultCategoryId = req.DefaultCategoryId };
+        var name = req.CanonicalName.Trim();
+        if (await db.Merchants.AnyAsync(m => m.CanonicalName == name, ct))
+            return BadRequest(new { message = $"商户「{name}」已存在" });
+
+        var merchant = new Merchant { CanonicalName = name, CreatedAt = DateTime.Now, DefaultCategoryId = req.DefaultCategoryId };
         db.Merchants.Add(merchant);
         await db.SaveChangesAsync(ct);
         return Created($"/api/merchants/{merchant.Id}", new { merchant.Id });
@@ -222,7 +226,12 @@ public class ManagementController(AppDbContext db) : ControllerBase
     {
         var merchant = await db.Merchants.FindAsync([id], ct);
         if (merchant == null) return NotFound();
-        merchant.CanonicalName = req.CanonicalName.Trim();
+
+        var name = req.CanonicalName.Trim();
+        if (await db.Merchants.AnyAsync(m => m.Id != id && m.CanonicalName == name, ct))
+            return BadRequest(new { message = $"商户「{name}」已存在" });
+
+        merchant.CanonicalName = name;
         merchant.DefaultCategoryId = req.DefaultCategoryId;
         await db.SaveChangesAsync(ct);
         return NoContent();
