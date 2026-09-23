@@ -8,8 +8,8 @@
     <div class="page-header">
         <h1>资金账户</h1>
         <div class="actions">
-            <button @onclick="OpenCreateDialog" class="inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors min-h-[44px]">
-                <span class="material-icons mr-1 sm:mr-2 text-base">add</span>
+            <button @onclick="OpenCreateDialog" class="md-btn-filled state-layer">
+                <span class="material-symbols-outlined mr-1 sm:mr-2">add</span>
                 <span class="hidden xs:inline">新增账户</span><span class="xs:hidden">新增</span>
             </button>
         </div>
@@ -17,67 +17,67 @@
 
     @if (errorMessage != null)
     {
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-start gap-3" role="alert">
-            <span class="flex-1 text-sm break-words">@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700 shrink-0 inline-flex items-center justify-center rounded-lg" style="width:36px;height:36px;" aria-label="关闭">
-                <span class="material-icons text-lg">close</span>
+        <div class="bg-error-container text-on-error-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="alert">
+            <span class="flex-1 text-body-medium break-words">@errorMessage</span>
+            <button @onclick="() => errorMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
     }
 
     @if (accounts != null)
     {
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="md-card-elevated overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-sm responsive-cards">
+                <table class="w-full text-body-medium responsive-cards">
                     <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200">
-                            <th class="text-left py-3 px-4 font-medium text-gray-500">账户名</th>
-                            <th class="text-left py-3 px-4 font-medium text-gray-500">平台</th>
-                            <th class="text-left py-3 px-4 font-medium text-gray-500 hide-mobile">类型</th>
-                            <th class="text-right py-3 px-4 font-medium text-gray-500">余额</th>
-                            <th class="text-right py-3 px-4 font-medium text-gray-500 hide-mobile">银行/计算</th>
-                            <th class="text-center py-3 px-4 font-medium text-gray-500 hide-mobile">状态</th>
-                            <th class="text-right py-3 px-4 font-medium text-gray-500">操作</th>
+                        <tr class="bg-surface-container border-b border-outline-variant">
+                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">账户名</th>
+                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">平台</th>
+                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">类型</th>
+                            <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">余额</th>
+                            <th class="text-right py-3 px-4 text-label-large text-on-surface-variant hide-mobile">银行/计算</th>
+                            <th class="text-center py-3 px-4 text-label-large text-on-surface-variant hide-mobile">状态</th>
+                            <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var a in accounts)
                         {
-                            <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                <td data-label="账户名" class="py-3 px-4 font-medium wrap-cell"><span class="break-words">@a.Name</span></td>
-                                <td data-label="平台" class="py-3 px-4 text-gray-600">@a.PlatformName</td>
-                                <td data-label="类型" class="py-3 px-4 text-gray-500 hide-mobile">@GetAccountTypeName(a.AccountType)</td>
-                                <td data-label="余额" class="py-3 px-4 text-right font-medium tabular-nums">@a.Balance.ToString("F2")</td>
-                                <td data-label="银行/计算" class="py-3 px-4 text-right text-xs hide-mobile wrap-cell">
+                            <tr class="border-b border-outline-variant hover:bg-surface-container">
+                                <td data-label="账户名" class="py-3 px-4 font-medium text-on-surface wrap-cell"><span class="break-words">@a.Name</span></td>
+                                <td data-label="平台" class="py-3 px-4 text-on-surface-variant">@a.PlatformName</td>
+                                <td data-label="类型" class="py-3 px-4 text-on-surface-variant hide-mobile">@GetAccountTypeName(a.AccountType)</td>
+                                <td data-label="余额" class="py-3 px-4 text-right font-medium tabular-nums text-on-surface">@a.Balance.ToString("F2")</td>
+                                <td data-label="银行/计算" class="py-3 px-4 text-right text-body-small hide-mobile wrap-cell">
                                     @{ var rc = ReconFor(a.Id); }
                                     @if (rc == null)
                                     {
-                                        <span class="text-gray-400">未对账</span>
+                                        <span class="text-on-surface-variant">未对账</span>
                                     }
                                     else
                                     {
                                         var diff = rc.Difference ?? 0m;
-                                        <div class="text-gray-600 tabular-nums">银行 @rc.BankBalance?.ToString("F2")</div>
-                                        <div class="text-gray-400 tabular-nums">计算 @rc.CalculatedBalance?.ToString("F2")</div>
+                                        <div class="text-on-surface-variant tabular-nums">银行 @rc.BankBalance?.ToString("F2")</div>
+                                        <div class="text-on-surface-variant tabular-nums">计算 @rc.CalculatedBalance?.ToString("F2")</div>
                                         @if (Math.Abs(diff) > 0.01m)
                                         {
-                                            <div class="text-red-600 tabular-nums">差异 @diff.ToString("F2")</div>
+                                            <div class="text-error tabular-nums">差异 @diff.ToString("F2")</div>
                                         }
                                     }
                                 </td>
                                 <td data-label="状态" class="py-3 px-4 text-center hide-mobile">
-                                    <span class="px-2 py-1 rounded-full text-xs @(a.IsActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500")">
+                                    <span class="md-chip @(a.IsActive ? "md-chip-assist-success" : "md-chip-assist-info")">
                                         @(a.IsActive ? "活跃" : "停用")
                                     </span>
                                 </td>
                                 <td data-label="操作" class="py-3 px-4 text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
-                                        <button @onclick="() => OpenEditDialog(a)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 active:bg-purple-100 transition-colors" style="width:40px;height:40px;" title="编辑" aria-label="编辑 @a.Name">
-                                            <span class="material-icons text-lg">edit</span>
+                                        <button @onclick="() => OpenEditDialog(a)" class="md-icon-btn" title="编辑" aria-label="编辑 @a.Name">
+                                            <span class="material-symbols-outlined">edit</span>
                                         </button>
-                                        <button @onclick="() => DeleteAccount(a)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors" style="width:40px;height:40px;" title="删除" aria-label="删除 @a.Name">
-                                            <span class="material-icons text-lg">delete</span>
+                                        <button @onclick="() => DeleteAccount(a)" class="md-icon-btn" title="删除" aria-label="删除 @a.Name">
+                                            <span class="material-symbols-outlined text-error">delete</span>
                                         </button>
                                     </div>
                                 </td>
@@ -96,15 +96,15 @@
     <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-lg bg-red-100 mr-3 shrink-0">
-                    <span class="material-icons text-red-600">warning</span>
+                <div class="p-2 rounded-md bg-error-container mr-3 shrink-0">
+                    <span class="material-symbols-outlined text-error">warning</span>
                 </div>
-                <h2 class="text-lg font-semibold text-gray-800">确认删除</h2>
+                <h2 class="text-title-large text-on-surface">确认删除</h2>
             </div>
-            <p class="text-gray-600 mb-6 text-sm sm:text-base">确定要删除账户「<strong>@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
+            <p class="text-body-medium text-on-surface-variant mb-6">确定要删除账户「<strong class="text-on-surface">@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
             <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-                <button @onclick="CancelDelete" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]">取消</button>
-                <button @onclick="ConfirmDelete" class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors min-h-[44px]">确认删除</button>
+                <button @onclick="CancelDelete" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                <button @onclick="ConfirmDelete" class="md-btn-danger state-layer w-full sm:w-auto">确认删除</button>
             </div>
         </div>
     </div>
@@ -115,15 +115,15 @@
 {
     <div class="modal-root" @onclick="CloseDialog" role="dialog" aria-modal="true" aria-label="@(editingId.HasValue ? "编辑账户" : "新增账户")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingId.HasValue ? "编辑账户" : "新增账户")</h2>
+            <h2 class="text-title-large text-on-surface mb-4">@(editingId.HasValue ? "编辑账户" : "新增账户")</h2>
             <div class="space-y-4">
                 <div>
-                    <label for="accNameInput" class="block text-sm font-medium text-gray-700 mb-1">账户名</label>
-                    <input id="accNameInput" @bind="formName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="如：支付宝余额" />
+                    <label for="accNameInput" class="block text-body-small text-on-surface-variant mb-1">账户名</label>
+                    <input id="accNameInput" @bind="formName" class="md-text-field-outlined w-full" placeholder="如：支付宝余额" />
                 </div>
                 <div>
-                    <label for="accPlatformSelect" class="block text-sm font-medium text-gray-700 mb-1">所属平台</label>
-                    <select id="accPlatformSelect" @bind="formPlatformId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]">
+                    <label for="accPlatformSelect" class="block text-body-small text-on-surface-variant mb-1">所属平台</label>
+                    <select id="accPlatformSelect" @bind="formPlatformId" class="md-text-field-outlined w-full">
                         <option value="0">请选择平台</option>
                         @if (platforms != null)
                         {
@@ -135,8 +135,8 @@
                     </select>
                 </div>
                 <div>
-                    <label for="accTypeSelect" class="block text-sm font-medium text-gray-700 mb-1">账户类型</label>
-                    <select id="accTypeSelect" @bind="formAccountType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]">
+                    <label for="accTypeSelect" class="block text-body-small text-on-surface-variant mb-1">账户类型</label>
+                    <select id="accTypeSelect" @bind="formAccountType" class="md-text-field-outlined w-full">
                         @foreach (var type in Enum.GetValues<AccountType>())
                         {
                             <option value="@((int)type)">@GetAccountTypeName((int)type)</option>
@@ -144,13 +144,13 @@
                     </select>
                 </div>
                 <div>
-                    <label for="accBalanceInput" class="block text-sm font-medium text-gray-700 mb-1">余额</label>
-                    <input id="accBalanceInput" @bind="formBalance" type="number" step="0.01" inputmode="decimal" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="0.00" />
+                    <label for="accBalanceInput" class="block text-body-small text-on-surface-variant mb-1">余额</label>
+                    <input id="accBalanceInput" @bind="formBalance" type="number" step="0.01" inputmode="decimal" class="md-text-field-outlined w-full" placeholder="0.00" />
                 </div>
             </div>
             <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseDialog" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]">取消</button>
-                <button @onclick="SaveAccount" disabled="@isSaving" class="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors disabled:opacity-50 min-h-[44px]">
+                <button @onclick="CloseDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                <button @onclick="SaveAccount" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">
                     @(isSaving ? "保存中…" : "保存")
                 </button>
             </div>

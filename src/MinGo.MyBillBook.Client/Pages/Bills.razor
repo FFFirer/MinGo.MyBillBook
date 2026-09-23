@@ -10,47 +10,47 @@
     <div class="page-header">
         <h1>账单明细</h1>
         <div class="actions">
-            <a href="api/export/bills" class="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 active:bg-green-800 transition-colors min-h-[44px]">
-                <span class="material-icons text-sm mr-1">download</span><span class="hidden xs:inline">导出 CSV</span><span class="xs:hidden">导出</span>
+            <a href="api/export/bills" class="md-btn-filled state-layer !bg-success !text-on-success">
+                <span class="material-symbols-outlined mr-1">download</span><span class="hidden xs:inline">导出 CSV</span><span class="xs:hidden">导出</span>
             </a>
         </div>
     </div>
 
     <!-- 筛选面板：移动端可折叠 -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="md-card-elevated overflow-hidden">
         <button type="button" class="filter-toggle" @onclick="ToggleFilters" aria-expanded="@(!filtersCollapsed)">
             <span class="inline-flex items-center gap-2">
-                <span class="material-icons text-base">tune</span>
+                <span class="material-symbols-outlined">tune</span>
                 筛选条件
                 @if (ActiveFilterCount > 0)
                 {
-                    <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-700 min-w-[1.25rem]">@ActiveFilterCount</span>
+                    <span class="md-badge">@ActiveFilterCount</span>
                 }
             </span>
-            <span class="material-icons text-base transition-transform @(filtersCollapsed ? "" : "rotate-180")">expand_more</span>
+            <span class="material-symbols-outlined transition-transform @(filtersCollapsed ? "" : "rotate-180")">expand_more</span>
         </button>
         <div class="filter-body @(filtersCollapsed ? "collapsed" : "") p-3 sm:p-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <label class="block">
-                    <span class="block text-xs text-gray-500 mb-1 sm:hidden">开始日期</span>
-                    <input type="date" @bind="filter.StartDate" class="w-full rounded-lg border-gray-300 text-sm px-3 py-2 border" placeholder="开始日期" />
+                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">开始日期</span>
+                    <input type="date" @bind="filter.StartDate" class="md-text-field-outlined w-full" placeholder="开始日期" />
                 </label>
                 <label class="block">
-                    <span class="block text-xs text-gray-500 mb-1 sm:hidden">结束日期</span>
-                    <input type="date" @bind="filter.EndDate" class="w-full rounded-lg border-gray-300 text-sm px-3 py-2 border" placeholder="结束日期" />
+                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">结束日期</span>
+                    <input type="date" @bind="filter.EndDate" class="md-text-field-outlined w-full" placeholder="结束日期" />
                 </label>
-                <select @bind="filter.PlatformId" class="w-full rounded-lg border-gray-300 text-sm px-3 py-2 border" aria-label="支付平台">
+                <select @bind="filter.PlatformId" class="md-text-field-outlined w-full" aria-label="支付平台">
                     <option value="">全部平台</option>
                     <option value="1">支付宝</option>
                     <option value="2">微信支付</option>
                 </select>
-                <select @bind="filter.TransactionType" class="w-full rounded-lg border-gray-300 text-sm px-3 py-2 border" aria-label="交易类型">
+                <select @bind="filter.TransactionType" class="md-text-field-outlined w-full" aria-label="交易类型">
                     <option value="">全部类型</option>
                     <option value="Income">收入</option>
                     <option value="Expense">支出</option>
                     <option value="Transfer">转账</option>
                 </select>
-                <select @bind="filter.TagId" class="w-full rounded-lg border-gray-300 text-sm px-3 py-2 border" aria-label="标签">
+                <select @bind="filter.TagId" class="md-text-field-outlined w-full" aria-label="标签">
                     <option value="">全部标签</option>
                     @if (allTags != null)
                     {
@@ -62,9 +62,9 @@
                 </select>
                 <div class="flex gap-2 sm:col-span-2 lg:col-span-5">
                     <input type="search" @bind="filter.Keyword" @bind:event="oninput" placeholder="搜索关键词…"
-                           class="flex-1 min-w-0 rounded-lg border-gray-300 text-sm px-3 py-2 border" />
-                    <button @onclick="LoadBills" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 text-sm inline-flex items-center justify-center min-w-[44px] min-h-[44px] shrink-0" aria-label="搜索">
-                        <span class="material-icons text-lg">search</span>
+                           class="md-text-field-outlined flex-1 min-w-0" />
+                    <button @onclick="LoadBills" class="md-btn-filled state-layer shrink-0" aria-label="搜索">
+                        <span class="material-symbols-outlined">search</span>
                     </button>
                 </div>
             </div>
@@ -74,43 +74,43 @@
     <!-- 统计摘要 -->
     @if (result != null)
     {
-        <div class="text-sm text-gray-500">
+        <div class="text-body-small text-on-surface-variant">
             共 @result.TotalCount 条记录，第 @result.Page / @((int)Math.Ceiling((double)result.TotalCount / result.PageSize)) 页
         </div>
     }
 
     <!-- 账单列表 -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="md-card-elevated overflow-hidden">
         @if (result?.Items.Count > 0)
         {
             <div class="overflow-x-auto">
-                <table class="w-full text-sm responsive-cards">
+                <table class="w-full text-body-medium responsive-cards">
                     <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200">
-                            <th class="text-left py-3 px-4 font-medium text-gray-500">日期</th>
-                            <th class="text-left py-3 px-4 font-medium text-gray-500">商户/对方</th>
-                            <th class="text-left py-3 px-4 font-medium text-gray-500 hide-mobile">商品</th>
-                            <th class="text-left py-3 px-4 font-medium text-gray-500">分类</th>
-                            <th class="text-left py-3 px-4 font-medium text-gray-500 hide-mobile">标签</th>
-                            <th class="text-right py-3 px-4 font-medium text-gray-500">金额</th>
-                            <th class="text-center py-3 px-4 font-medium text-gray-500 hide-mobile">平台</th>
+                        <tr class="bg-surface-container border-b border-outline-variant">
+                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">日期</th>
+                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">商户/对方</th>
+                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">商品</th>
+                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">分类</th>
+                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">标签</th>
+                            <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">金额</th>
+                            <th class="text-center py-3 px-4 text-label-large text-on-surface-variant hide-mobile">平台</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var bill in result.Items)
                         {
-                            <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" @onclick="() => OpenDetail(bill)">
-                                <td data-label="日期" class="py-3 px-4 text-gray-600 whitespace-nowrap">@bill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                            <tr class="border-b border-outline-variant hover:bg-surface-container cursor-pointer" @onclick="() => OpenDetail(bill)">
+                                <td data-label="日期" class="py-3 px-4 text-on-surface-variant whitespace-nowrap">@bill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
                                 <td data-label="商户" class="py-3 px-4 wrap-cell">
-                                    <div class="font-medium text-gray-800 truncate max-w-48">@bill.Merchant</div>
+                                    <div class="font-medium text-on-surface truncate max-w-48">@bill.Merchant</div>
                                     @if (bill.IsManualAdjusted)
                                     {
-                                        <span class="text-xs text-purple-500">已修正</span>
+                                        <span class="text-body-small text-primary">已修正</span>
                                     }
                                 </td>
-                                <td data-label="商品" class="py-3 px-4 text-gray-600 truncate max-w-48 wrap-cell hide-mobile">@bill.ProductName</td>
+                                <td data-label="商品" class="py-3 px-4 text-on-surface-variant truncate max-w-48 wrap-cell hide-mobile">@bill.ProductName</td>
                                 <td data-label="分类" class="py-3 px-4">
-                                    <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                                    <span class="md-chip md-chip-assist-info">
                                         @(bill.CategoryName ?? "未分类")
                                     </span>
                                 </td>
@@ -118,14 +118,14 @@
                                     <div class="flex flex-wrap gap-1">
                                         @foreach (var tag in bill.Tags)
                                         {
-                                            <span class="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700">@tag</span>
+                                            <span class="md-chip md-chip-assist-primary">@tag</span>
                                         }
                                     </div>
                                 </td>
-                                <td data-label="金额" class="py-3 px-4 text-right font-medium whitespace-nowrap @(bill.TransactionType == "Income" ? "text-green-600" : "text-red-600")">
+                                <td data-label="金额" class="py-3 px-4 text-right font-medium whitespace-nowrap @(bill.TransactionType == "Income" ? "text-success" : "text-error")">
                                     @(bill.TransactionType == "Income" ? "+" : "-")@bill.Amount.ToString("F2")
                                 </td>
-                                <td data-label="平台" class="py-3 px-4 text-center text-gray-500 hide-mobile">@bill.PlatformName</td>
+                                <td data-label="平台" class="py-3 px-4 text-center text-on-surface-variant hide-mobile">@bill.PlatformName</td>
                             </tr>
                         }
                     </tbody>
@@ -133,24 +133,24 @@
             </div>
 
             <!-- 分页 -->
-            <div class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-gray-200">
+            <div class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-outline-variant">
                 <button @onclick="PrevPage" disabled="@(result.Page <= 1)"
-                        class="px-4 py-2 rounded-lg text-sm border border-gray-300 disabled:opacity-50 hover:bg-gray-50 active:bg-gray-100 min-h-[44px] inline-flex items-center">
-                    <span class="material-icons text-base mr-1 sm:hidden">chevron_left</span><span class="hidden sm:inline">上一页</span>
+                        class="md-btn-outlined state-layer">
+                    <span class="material-symbols-outlined mr-1 sm:hidden">chevron_left</span><span class="hidden sm:inline">上一页</span>
                 </button>
-                <span class="text-sm text-gray-500 tabular-nums">@result.Page / @((int)Math.Ceiling((double)result.TotalCount / result.PageSize))</span>
+                <span class="text-body-medium text-on-surface-variant tabular-nums">@result.Page / @((int)Math.Ceiling((double)result.TotalCount / result.PageSize))</span>
                 <button @onclick="NextPage" disabled="@(result.Page * result.PageSize >= result.TotalCount)"
-                        class="px-4 py-2 rounded-lg text-sm border border-gray-300 disabled:opacity-50 hover:bg-gray-50 active:bg-gray-100 min-h-[44px] inline-flex items-center">
-                    <span class="hidden sm:inline">下一页</span><span class="material-icons text-base ml-1 sm:hidden">chevron_right</span>
+                        class="md-btn-outlined state-layer">
+                    <span class="hidden sm:inline">下一页</span><span class="material-symbols-outlined ml-1 sm:hidden">chevron_right</span>
                 </button>
             </div>
         }
         else
         {
             <div class="empty-state">
-                <span class="material-icons">receipt_long</span>
+                <span class="material-symbols-outlined">receipt_long</span>
                 <p>暂无账单数据</p>
-                <p class="text-sm mt-1">请先 <a href="import" class="text-purple-600 hover:underline">导入对账单</a></p>
+                <p class="text-body-medium mt-1">请先 <a href="import" class="text-primary hover:underline">导入对账单</a></p>
             </div>
         }
     </div>
@@ -163,38 +163,38 @@
         <div class="modal-panel" @onclick:stopPropagation>
             <div class="flex items-start justify-between gap-3 mb-4">
                 <div class="min-w-0 flex-1">
-                    <h2 class="text-lg font-semibold text-gray-800 truncate">@detailBill.Merchant</h2>
-                    <p class="text-sm text-gray-500 mt-0.5">@detailBill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) · @(detailBill.CategoryName ?? "未分类") · <span class="@(detailBill.TransactionType == "Income" ? "text-green-600" : "text-red-600") font-medium">@((detailBill.TransactionType == "Income" ? "+" : "-") + detailBill.Amount.ToString("F2"))</span></p>
+                    <h2 class="text-title-large text-on-surface truncate">@detailBill.Merchant</h2>
+                    <p class="text-body-medium text-on-surface-variant mt-0.5">@detailBill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) · @(detailBill.CategoryName ?? "未分类") · <span class="@(detailBill.TransactionType == "Income" ? "text-success" : "text-error") font-medium">@((detailBill.TransactionType == "Income" ? "+" : "-") + detailBill.Amount.ToString("F2"))</span></p>
                     @if (!string.IsNullOrWhiteSpace(detailBill.ProductName))
                     {
-                        <p class="text-sm text-gray-400 mt-0.5 break-words">@detailBill.ProductName</p>
+                        <p class="text-body-small text-on-surface-variant mt-0.5 break-words">@detailBill.ProductName</p>
                     }
                 </div>
-                <button @onclick="CloseDetail" class="shrink-0 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-colors" style="width:40px;height:40px;" aria-label="关闭">
-                    <span class="material-icons">close</span>
+                <button @onclick="CloseDetail" class="md-icon-btn shrink-0" aria-label="关闭">
+                    <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
 
             <div class="mb-4">
-                <div class="text-sm font-medium text-gray-700 mb-2">当前标签</div>
+                <div class="text-body-medium font-medium text-on-surface mb-2">当前标签</div>
                 @if (detailTags == null)
                 {
-                    <div class="text-sm text-gray-400 flex items-center gap-2"><span class="loading-spinner"></span>加载中…</div>
+                    <div class="text-body-medium text-on-surface-variant flex items-center gap-2"><span class="md-circular-progress"></span>加载中…</div>
                 }
                 else if (detailTags.Count == 0)
                 {
-                    <div class="text-sm text-gray-400">暂无标签</div>
+                    <div class="text-body-medium text-on-surface-variant">暂无标签</div>
                 }
                 else
                 {
                     <div class="flex flex-wrap gap-2">
                         @foreach (var t in detailTags)
                         {
-                            <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-xs font-medium @(t.Source == "User" ? "bg-purple-600 text-white" : "bg-purple-100 text-purple-800")">
+                            <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-label-small font-medium @(t.Source == "User" ? "bg-primary text-on-primary" : "bg-primary-container text-on-primary-container")">
                                 @t.Name
                                 <span class="opacity-70 text-[10px]">(@(t.Source == "User" ? "手工" : t.Source == "Rule" ? "规则" : t.Source))</span>
                                 <button @onclick="() => RemoveDetailTag(t)" class="inline-flex items-center justify-center rounded-full hover:bg-black/10 active:bg-black/20 transition-colors" style="width:24px;height:24px;" title="移除" aria-label="移除标签 @t.Name">
-                                    <span class="material-icons" style="font-size:16px;">close</span>
+                                    <span class="material-symbols-outlined" style="font-size:16px;">close</span>
                                 </button>
                             </span>
                         }
@@ -204,8 +204,8 @@
 
             <div class="flex flex-col sm:flex-row sm:items-end gap-2">
                 <div class="flex-1 min-w-0">
-                    <label for="addTagSelect" class="block text-sm font-medium text-gray-700 mb-1">添加标签（手工）</label>
-                    <select id="addTagSelect" @bind="addTagId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[44px]">
+                    <label for="addTagSelect" class="block text-body-small text-on-surface-variant mb-1">添加标签（手工）</label>
+                    <select id="addTagSelect" @bind="addTagId" class="md-text-field-outlined w-full">
                         <option value="0">— 请选择 —</option>
                         @if (allTags != null)
                         {
@@ -216,7 +216,7 @@
                         }
                     </select>
                 </div>
-                <button @onclick="AddDetailTag" disabled="@(addTagId == 0)" class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 active:bg-purple-800 disabled:opacity-50 min-h-[44px] shrink-0 sm:w-auto w-full">添加</button>
+                <button @onclick="AddDetailTag" disabled="@(addTagId == 0)" class="md-btn-filled state-layer shrink-0 sm:w-auto w-full">添加</button>
             </div>
         </div>
     </div>
@@ -250,7 +250,7 @@
 
     private void ToggleFilters() => filtersCollapsed = !filtersCollapsed;
 
-    /// <summary>支持 /bills?keyword=xxx 直达筛选（商户页“关联账单”跳转）。</summary>
+    /// <summary>支持 /bills?keyword=xxx 直达筛选（商户页"关联账单"跳转）。</summary>
     [SupplyParameterFromQuery(Name = "keyword")]
     public string? QueryKeyword { get; set; }
 

@@ -1,0 +1,63 @@
+@inject IJSRuntime JS
+
+<button type="button"
+        class="md-icon-btn"
+        @onclick="CycleTheme"
+        title="@TooltipText"
+        aria-label="@TooltipText">
+    <span class="material-symbols-outlined">@IconName</span>
+</button>
+
+@code {
+    private string mode = "auto";
+
+    private string IconName => mode switch
+    {
+        "light" => "light_mode",
+        "dark" => "dark_mode",
+        _ => "brightness_auto"
+    };
+
+    private string TooltipText => mode switch
+    {
+        "light" => "浅色主题（点击切换）",
+        "dark" => "深色主题（点击切换）",
+        _ => "跟随系统（点击切换）"
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var current = await JS.InvokeAsync<string?>("mbbTheme.get");
+                if (!string.IsNullOrEmpty(current)) mode = current;
+                StateHasChanged();
+            }
+            catch
+            {
+                // JS not ready yet; keep default 'auto'
+            }
+        }
+    }
+
+    private async Task CycleTheme()
+    {
+        try
+        {
+            var next = await JS.InvokeAsync<string>("mbbTheme.cycle");
+            if (!string.IsNullOrEmpty(next)) mode = next;
+        }
+        catch
+        {
+            // Fallback: cycle locally
+            mode = mode switch
+            {
+                "auto" => "light",
+                "light" => "dark",
+                _ => "auto"
+            };
+        }
+    }
+}

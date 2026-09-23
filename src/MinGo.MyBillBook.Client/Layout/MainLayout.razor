@@ -1,17 +1,17 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="min-h-screen bg-gray-50">
-    @* 移动端顶栏：汉堡按钮 + 标题 *@
+<div class="min-h-screen bg-surface text-on-surface">
+    @* 移动端顶栏：MD3 Top App Bar（surface-container 底色） *@
     <header class="mobile-appbar">
         <button type="button"
-                class="inline-flex items-center justify-center rounded-lg text-white/90 hover:bg-white/10 active:bg-white/20 transition-colors"
-                style="width:44px;height:44px;"
+                class="md-icon-btn"
                 aria-label="打开导航菜单"
                 aria-expanded="@sidebarOpen"
                 @onclick="ToggleSidebar">
-            <span class="material-icons">menu</span>
+            <span class="material-symbols-outlined">menu</span>
         </button>
-        <span class="text-base font-semibold truncate flex-1">个人财务分析</span>
+        <span class="text-title-large truncate flex-1 text-on-surface">个人财务分析</span>
+        <ThemeToggle />
     </header>
 
     @* 抽屉遮罩：点击关闭 *@

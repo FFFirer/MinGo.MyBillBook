@@ -7,23 +7,399 @@
     <base href="/" />
     <title>个人财务分析</title>
     <meta name="description" content="导入支付宝、微信对账单，自动解析分类，消费分析" />
-    <meta name="theme-color" content="#6750A4" />
+    <meta name="theme-color" content="#FEF7FF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#141218" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+
+    @* 防闪烁：在样式加载前根据 localStorage 预设 html class（auto/light/dark） *@
+    <script src="theme.js"></script>
+    <script>
+        (function () {
+            try {
+                var mode = localStorage.getItem('mbb-theme') || 'auto';
+                var root = document.documentElement;
+                root.classList.remove('light', 'dark');
+                if (mode === 'light') root.classList.add('light');
+                else if (mode === 'dark') root.classList.add('dark');
+                // auto: 不加 class，由 @@media (prefers-color-scheme: dark) 处理
+            } catch (e) { }
+        })();
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/@@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+
     <style type="text/tailwindcss">
+        /* ============================================================
+           Material Design 3 Baseline tokens (Light scheme, default)
+           Reference: https://m3.material.io/styles/color/system/overview
+           ============================================================ */
         @@theme {
             --breakpoint-xs: 30rem;
+
+            /* ---- Color roles: Primary ---- */
+            --color-primary: #6750A4;
+            --color-on-primary: #FFFFFF;
+            --color-primary-container: #EADDFF;
+            --color-on-primary-container: #21005D;
+
+            /* ---- Color roles: Secondary ---- */
+            --color-secondary: #625B71;
+            --color-on-secondary: #FFFFFF;
+            --color-secondary-container: #E8DEF8;
+            --color-on-secondary-container: #1D192B;
+
+            /* ---- Color roles: Tertiary ---- */
+            --color-tertiary: #7D5260;
+            --color-on-tertiary: #FFFFFF;
+            --color-tertiary-container: #FFD8E4;
+            --color-on-tertiary-container: #31111D;
+
+            /* ---- Color roles: Error ---- */
+            --color-error: #B3261E;
+            --color-on-error: #FFFFFF;
+            --color-error-container: #F9DEDC;
+            --color-on-error-container: #410E0B;
+
+            /* ---- Color roles: Surface ---- */
+            --color-background: #FEF7FF;
+            --color-on-background: #1D1B20;
+            --color-surface: #FEF7FF;
+            --color-on-surface: #1D1B20;
+            --color-surface-variant: #E7E0EC;
+            --color-on-surface-variant: #49454F;
+            --color-surface-dim: #DED8E1;
+            --color-surface-bright: #FFFBFE;
+            --color-surface-container-lowest: #FFFFFF;
+            --color-surface-container-low: #F7F2FA;
+            --color-surface-container: #F3EDF7;
+            --color-surface-container-high: #ECE6F0;
+            --color-surface-container-highest: #E6E0E9;
+
+            /* ---- Color roles: Outline & Inverse ---- */
+            --color-outline: #79747E;
+            --color-outline-variant: #CAC4D0;
+            --color-inverse-surface: #322F35;
+            --color-inverse-on-surface: #F5EFF7;
+            --color-inverse-primary: #D0BCFF;
+            --color-scrim: #000000;
+            --color-shadow: #000000;
+
+            /* ---- Custom colors (MD3 "custom color" pattern): Success / Warning / Info ---- */
+            --color-success: #146C2E;
+            --color-on-success: #FFFFFF;
+            --color-success-container: #C4EED3;
+            --color-on-success-container: #072711;
+
+            --color-warning: #8B5000;
+            --color-on-warning: #FFFFFF;
+            --color-warning-container: #FFDDB3;
+            --color-on-warning-container: #2C1600;
+
+            --color-info: #0061A4;
+            --color-on-info: #FFFFFF;
+            --color-info-container: #D1E4FF;
+            --color-on-info-container: #001D36;
+
+            /* ---- Shape scale (MD3 official) ---- */
+            --radius-none: 0;
+            --radius-xs: 4px;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 28px;
+            --radius-full: 9999px;
+
+            /* ---- Elevation (MD3 5-level official shadows) ---- */
+            --shadow-elevation-0: none;
+            --shadow-elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.30), 0 1px 3px 1px rgb(0 0 0 / 0.15);
+            --shadow-elevation-2: 0 1px 2px 0 rgb(0 0 0 / 0.30), 0 2px 6px 2px rgb(0 0 0 / 0.15);
+            --shadow-elevation-3: 0 1px 3px 0 rgb(0 0 0 / 0.30), 0 4px 8px 3px rgb(0 0 0 / 0.15);
+            --shadow-elevation-4: 0 2px 3px 0 rgb(0 0 0 / 0.30), 0 6px 10px 4px rgb(0 0 0 / 0.15);
+            --shadow-elevation-5: 0 4px 4px 0 rgb(0 0 0 / 0.30), 0 8px 12px 6px rgb(0 0 0 / 0.15);
+
+            /* ---- Typography roles (Roboto, MD3 official type scale) ---- */
+            --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+            --text-display-large: 57px;
+            --text-display-large--line-height: 64px;
+            --text-display-large--font-weight: 400;
+            --text-display-large--letter-spacing: -0.25px;
+
+            --text-display-medium: 45px;
+            --text-display-medium--line-height: 52px;
+            --text-display-medium--font-weight: 400;
+            --text-display-medium--letter-spacing: 0;
+
+            --text-display-small: 36px;
+            --text-display-small--line-height: 44px;
+            --text-display-small--font-weight: 400;
+            --text-display-small--letter-spacing: 0;
+
+            --text-headline-large: 32px;
+            --text-headline-large--line-height: 40px;
+            --text-headline-large--font-weight: 400;
+            --text-headline-large--letter-spacing: 0;
+
+            --text-headline-medium: 28px;
+            --text-headline-medium--line-height: 36px;
+            --text-headline-medium--font-weight: 400;
+            --text-headline-medium--letter-spacing: 0;
+
+            --text-headline-small: 24px;
+            --text-headline-small--line-height: 32px;
+            --text-headline-small--font-weight: 400;
+            --text-headline-small--letter-spacing: 0;
+
+            --text-title-large: 22px;
+            --text-title-large--line-height: 28px;
+            --text-title-large--font-weight: 400;
+            --text-title-large--letter-spacing: 0;
+
+            --text-title-medium: 16px;
+            --text-title-medium--line-height: 24px;
+            --text-title-medium--font-weight: 500;
+            --text-title-medium--letter-spacing: 0.15px;
+
+            --text-title-small: 14px;
+            --text-title-small--line-height: 20px;
+            --text-title-small--font-weight: 500;
+            --text-title-small--letter-spacing: 0.1px;
+
+            --text-body-large: 16px;
+            --text-body-large--line-height: 24px;
+            --text-body-large--font-weight: 400;
+            --text-body-large--letter-spacing: 0.5px;
+
+            --text-body-medium: 14px;
+            --text-body-medium--line-height: 20px;
+            --text-body-medium--font-weight: 400;
+            --text-body-medium--letter-spacing: 0.25px;
+
+            --text-body-small: 12px;
+            --text-body-small--line-height: 16px;
+            --text-body-small--font-weight: 400;
+            --text-body-small--letter-spacing: 0.4px;
+
+            --text-label-large: 14px;
+            --text-label-large--line-height: 20px;
+            --text-label-large--font-weight: 500;
+            --text-label-large--letter-spacing: 0.1px;
+
+            --text-label-medium: 12px;
+            --text-label-medium--line-height: 16px;
+            --text-label-medium--font-weight: 500;
+            --text-label-medium--letter-spacing: 0.5px;
+
+            --text-label-small: 11px;
+            --text-label-small--line-height: 16px;
+            --text-label-small--font-weight: 500;
+            --text-label-small--letter-spacing: 0.5px;
+        }
+
+        /* ============================================================
+           Dark scheme overrides
+           Manual: html.dark class
+           Auto:   @@media (prefers-color-scheme: dark) on :root:not(.light)
+           ============================================================ */
+        @@media (prefers-color-scheme: dark) {
+            :root:not(.light) {
+                --color-primary: #D0BCFF;
+                --color-on-primary: #381E72;
+                --color-primary-container: #4F378B;
+                --color-on-primary-container: #EADDFF;
+
+                --color-secondary: #CCC2DC;
+                --color-on-secondary: #332D41;
+                --color-secondary-container: #4A4458;
+                --color-on-secondary-container: #E8DEF8;
+
+                --color-tertiary: #EFB8C8;
+                --color-on-tertiary: #492532;
+                --color-tertiary-container: #633B48;
+                --color-on-tertiary-container: #FFD8E4;
+
+                --color-error: #F2B8B5;
+                --color-on-error: #601410;
+                --color-error-container: #8C1D18;
+                --color-on-error-container: #F9DEDC;
+
+                --color-background: #141218;
+                --color-on-background: #E6E0E9;
+                --color-surface: #141218;
+                --color-on-surface: #E6E0E9;
+                --color-surface-variant: #49454F;
+                --color-on-surface-variant: #CAC4D0;
+                --color-surface-dim: #141218;
+                --color-surface-bright: #3B383E;
+                --color-surface-container-lowest: #0F0D13;
+                --color-surface-container-low: #1D1B20;
+                --color-surface-container: #211F26;
+                --color-surface-container-high: #2B2930;
+                --color-surface-container-highest: #36343B;
+
+                --color-outline: #938F99;
+                --color-outline-variant: #49454F;
+                --color-inverse-surface: #E6E0E9;
+                --color-inverse-on-surface: #322F35;
+                --color-inverse-primary: #6750A4;
+
+                --color-success: #6BD98A;
+                --color-on-success: #00391A;
+                --color-success-container: #005227;
+                --color-on-success-container: #C4EED3;
+
+                --color-warning: #FFB95C;
+                --color-on-warning: #4A2800;
+                --color-warning-container: #693C00;
+                --color-on-warning-container: #FFDDB3;
+
+                --color-info: #9ECAFF;
+                --color-on-info: #003258;
+                --color-info-container: #00497D;
+                --color-on-info-container: #D1E4FF;
+            }
+        }
+
+        .dark {
+            --color-primary: #D0BCFF;
+            --color-on-primary: #381E72;
+            --color-primary-container: #4F378B;
+            --color-on-primary-container: #EADDFF;
+
+            --color-secondary: #CCC2DC;
+            --color-on-secondary: #332D41;
+            --color-secondary-container: #4A4458;
+            --color-on-secondary-container: #E8DEF8;
+
+            --color-tertiary: #EFB8C8;
+            --color-on-tertiary: #492532;
+            --color-tertiary-container: #633B48;
+            --color-on-tertiary-container: #FFD8E4;
+
+            --color-error: #F2B8B5;
+            --color-on-error: #601410;
+            --color-error-container: #8C1D18;
+            --color-on-error-container: #F9DEDC;
+
+            --color-background: #141218;
+            --color-on-background: #E6E0E9;
+            --color-surface: #141218;
+            --color-on-surface: #E6E0E9;
+            --color-surface-variant: #49454F;
+            --color-on-surface-variant: #CAC4D0;
+            --color-surface-dim: #141218;
+            --color-surface-bright: #3B383E;
+            --color-surface-container-lowest: #0F0D13;
+            --color-surface-container-low: #1D1B20;
+            --color-surface-container: #211F26;
+            --color-surface-container-high: #2B2930;
+            --color-surface-container-highest: #36343B;
+
+            --color-outline: #938F99;
+            --color-outline-variant: #49454F;
+            --color-inverse-surface: #E6E0E9;
+            --color-inverse-on-surface: #322F35;
+            --color-inverse-primary: #6750A4;
+
+            --color-success: #6BD98A;
+            --color-on-success: #00391A;
+            --color-success-container: #005227;
+            --color-on-success-container: #C4EED3;
+
+            --color-warning: #FFB95C;
+            --color-on-warning: #4A2800;
+            --color-warning-container: #693C00;
+            --color-on-warning-container: #FFDDB3;
+
+            --color-info: #9ECAFF;
+            --color-on-info: #003258;
+            --color-info-container: #00497D;
+            --color-on-info-container: #D1E4FF;
+        }
+
+        /* Explicit light overrides (when user picks light while system is dark) */
+        @@media (prefers-color-scheme: dark) {
+            .light {
+                --color-primary: #6750A4;
+                --color-on-primary: #FFFFFF;
+                --color-primary-container: #EADDFF;
+                --color-on-primary-container: #21005D;
+
+                --color-secondary: #625B71;
+                --color-on-secondary: #FFFFFF;
+                --color-secondary-container: #E8DEF8;
+                --color-on-secondary-container: #1D192B;
+
+                --color-tertiary: #7D5260;
+                --color-on-tertiary: #FFFFFF;
+                --color-tertiary-container: #FFD8E4;
+                --color-on-tertiary-container: #31111D;
+
+                --color-error: #B3261E;
+                --color-on-error: #FFFFFF;
+                --color-error-container: #F9DEDC;
+                --color-on-error-container: #410E0B;
+
+                --color-background: #FEF7FF;
+                --color-on-background: #1D1B20;
+                --color-surface: #FEF7FF;
+                --color-on-surface: #1D1B20;
+                --color-surface-variant: #E7E0EC;
+                --color-on-surface-variant: #49454F;
+                --color-surface-dim: #DED8E1;
+                --color-surface-bright: #FFFBFE;
+                --color-surface-container-lowest: #FFFFFF;
+                --color-surface-container-low: #F7F2FA;
+                --color-surface-container: #F3EDF7;
+                --color-surface-container-high: #ECE6F0;
+                --color-surface-container-highest: #E6E0E9;
+
+                --color-outline: #79747E;
+                --color-outline-variant: #CAC4D0;
+                --color-inverse-surface: #322F35;
+                --color-inverse-on-surface: #F5EFF7;
+                --color-inverse-primary: #D0BCFF;
+
+                --color-success: #146C2E;
+                --color-on-success: #FFFFFF;
+                --color-success-container: #C4EED3;
+                --color-on-success-container: #072711;
+
+                --color-warning: #8B5000;
+                --color-on-warning: #FFFFFF;
+                --color-warning-container: #FFDDB3;
+                --color-on-warning-container: #2C1600;
+
+                --color-info: #0061A4;
+                --color-on-info: #FFFFFF;
+                --color-info-container: #D1E4FF;
+                --color-on-info-container: #001D36;
+            }
+        }
+
+        /* ============================================================
+           MD3 state layer tokens
+           ============================================================ */
+        :root {
+            --md-state-hover: 0.08;
+            --md-state-focus: 0.10;
+            --md-state-pressed: 0.10;
+            --md-state-dragged: 0.16;
+            --md-disabled-content-opacity: 0.38;
+            --md-disabled-container-opacity: 0.12;
+            --md-scrim-opacity: 0.32;
         }
     </style>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <link rel="stylesheet" href="@Assets["app.css"]" />
+
     <ImportMap />
     <HeadOutlet @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
 </head>
 
-<body class="bg-gray-50 font-sans">
+<body class="bg-surface text-on-surface font-sans antialiased">
     <Routes @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script>

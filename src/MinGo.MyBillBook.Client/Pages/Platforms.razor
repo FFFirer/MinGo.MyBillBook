@@ -7,8 +7,8 @@
     <div class="page-header">
         <h1>支付平台</h1>
         <div class="actions">
-            <button @onclick="OpenCreateDialog" class="inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors min-h-[44px]">
-                <span class="material-icons mr-1 sm:mr-2 text-base">add</span>
+            <button @onclick="OpenCreateDialog" class="md-btn-filled state-layer">
+                <span class="material-symbols-outlined mr-1 sm:mr-2">add</span>
                 <span class="hidden xs:inline">新增平台</span><span class="xs:hidden">新增</span>
             </button>
         </div>
@@ -16,10 +16,10 @@
 
     @if (errorMessage != null)
     {
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-start gap-3" role="alert">
-            <span class="flex-1 text-sm break-words">@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700 shrink-0 inline-flex items-center justify-center rounded-lg" style="width:36px;height:36px;" aria-label="关闭">
-                <span class="material-icons text-lg">close</span>
+        <div class="bg-error-container text-on-error-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="alert">
+            <span class="flex-1 text-body-medium break-words">@errorMessage</span>
+            <button @onclick="() => errorMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
     }
@@ -29,23 +29,23 @@
         {
             @foreach (var p in platforms)
             {
-                <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 card-hover">
+                <div class="md-card-elevated card-hover">
                     <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center min-w-0">
-                            <div class="p-2 sm:p-3 rounded-lg bg-purple-100 mr-3 sm:mr-4 shrink-0">
-                                <span class="material-icons text-purple-600 text-xl sm:text-2xl">payment</span>
+                            <div class="p-2 sm:p-3 rounded-md bg-primary-container mr-3 sm:mr-4 shrink-0">
+                                <span class="material-symbols-outlined text-primary text-xl sm:text-2xl">payment</span>
                             </div>
                             <div class="min-w-0">
-                                <h3 class="text-base sm:text-lg font-semibold text-gray-800 truncate">@p.Name</h3>
-                                <p class="text-xs sm:text-sm text-gray-500 truncate">代码: @p.Code · 账户数: @p.AccountCount</p>
+                                <h3 class="text-title-medium md:text-title-large text-on-surface truncate">@p.Name</h3>
+                                <p class="text-body-small text-on-surface-variant truncate">代码: @p.Code · 账户数: @p.AccountCount</p>
                             </div>
                         </div>
                         <div class="flex gap-1 shrink-0">
-                            <button @onclick="() => OpenEditDialog(p)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 active:bg-purple-100 transition-colors" style="width:40px;height:40px;" title="编辑" aria-label="编辑 @p.Name">
-                                <span class="material-icons text-lg">edit</span>
+                            <button @onclick="() => OpenEditDialog(p)" class="md-icon-btn" title="编辑" aria-label="编辑 @p.Name">
+                                <span class="material-symbols-outlined">edit</span>
                             </button>
-                            <button @onclick="() => DeletePlatform(p)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors" style="width:40px;height:40px;" title="删除" aria-label="删除 @p.Name">
-                                <span class="material-icons text-lg">delete</span>
+                            <button @onclick="() => DeletePlatform(p)" class="md-icon-btn" title="删除" aria-label="删除 @p.Name">
+                                <span class="material-symbols-outlined text-error">delete</span>
                             </button>
                         </div>
                     </div>
@@ -61,15 +61,15 @@
     <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-lg bg-red-100 mr-3 shrink-0">
-                    <span class="material-icons text-red-600">warning</span>
+                <div class="p-2 rounded-md bg-error-container mr-3 shrink-0">
+                    <span class="material-symbols-outlined text-error">warning</span>
                 </div>
-                <h2 class="text-lg font-semibold text-gray-800">确认删除</h2>
+                <h2 class="text-title-large text-on-surface">确认删除</h2>
             </div>
-            <p class="text-gray-600 mb-6 text-sm sm:text-base">确定要删除平台「<strong>@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
+            <p class="text-body-medium text-on-surface-variant mb-6">确定要删除平台「<strong class="text-on-surface">@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
             <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-                <button @onclick="CancelDelete" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]">取消</button>
-                <button @onclick="ConfirmDelete" class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors min-h-[44px]">确认删除</button>
+                <button @onclick="CancelDelete" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                <button @onclick="ConfirmDelete" class="md-btn-danger state-layer w-full sm:w-auto">确认删除</button>
             </div>
         </div>
     </div>
@@ -80,24 +80,24 @@
 {
     <div class="modal-root" @onclick="CloseDialog" role="dialog" aria-modal="true" aria-label="@(editingId.HasValue ? "编辑平台" : "新增平台")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingId.HasValue ? "编辑平台" : "新增平台")</h2>
+            <h2 class="text-title-large text-on-surface mb-4">@(editingId.HasValue ? "编辑平台" : "新增平台")</h2>
             <div class="space-y-4">
                 <div>
-                    <label for="platNameInput" class="block text-sm font-medium text-gray-700 mb-1">名称</label>
-                    <input id="platNameInput" @bind="formName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="如：支付宝" />
+                    <label for="platNameInput" class="block text-body-small text-on-surface-variant mb-1">名称</label>
+                    <input id="platNameInput" @bind="formName" class="md-text-field-outlined w-full" placeholder="如：支付宝" />
                 </div>
                 <div>
-                    <label for="platCodeInput" class="block text-sm font-medium text-gray-700 mb-1">代码</label>
-                    <input id="platCodeInput" @bind="formCode" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="如：ALIPAY" />
+                    <label for="platCodeInput" class="block text-body-small text-on-surface-variant mb-1">代码</label>
+                    <input id="platCodeInput" @bind="formCode" class="md-text-field-outlined w-full" placeholder="如：ALIPAY" />
                 </div>
                 <div>
-                    <label for="platIconInput" class="block text-sm font-medium text-gray-700 mb-1">图标 URL（可选）</label>
-                    <input id="platIconInput" @bind="formIconUrl" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="/icons/xxx.svg" />
+                    <label for="platIconInput" class="block text-body-small text-on-surface-variant mb-1">图标 URL（可选）</label>
+                    <input id="platIconInput" @bind="formIconUrl" class="md-text-field-outlined w-full" placeholder="/icons/xxx.svg" />
                 </div>
             </div>
             <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseDialog" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]">取消</button>
-                <button @onclick="SavePlatform" disabled="@isSaving" class="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors disabled:opacity-50 min-h-[44px]">
+                <button @onclick="CloseDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                <button @onclick="SavePlatform" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">
                     @(isSaving ? "保存中…" : "保存")
                 </button>
             </div>

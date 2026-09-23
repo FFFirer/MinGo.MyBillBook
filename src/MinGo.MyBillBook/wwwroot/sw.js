@@ -1,12 +1,12 @@
-const CACHE_NAME = 'mybillbook-v1';
+const CACHE_NAME = 'mybillbook-v3';
 const OFFLINE_URL = '/';
 
 const STATIC_ASSETS = [
     '/',
     '/manifest.json',
-    'https://cdn.jsdelivr.net/npm/tailwindcss@3/dist/tailwind.min.css',
+    '/theme.js',
     'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
-    'https://fonts.googleapis.com/icon?family=Material+Icons'
+    'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap'
 ];
 
 // Install: cache static assets
@@ -27,9 +27,24 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch: cache-first for static, network-first for API
+// Fetch: network-first for navigations/API, cache-first for other static
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
+
+    // 页面导航：network-first，保证新构建的 HTML（含新指纹资源名）能到达客户端，
+    // 离线时回退到缓存副本
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(event.request).then((c) => c || caches.match(OFFLINE_URL)))
+        );
+        return;
+    }
 
     // API requests: network-first
     if (url.pathname.startsWith('/api/')) {

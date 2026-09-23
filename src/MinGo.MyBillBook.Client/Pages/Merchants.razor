@@ -7,37 +7,37 @@
     <div class="page-header">
         <h1>商户归一化</h1>
         <div class="actions w-full sm:w-auto">
-            <button @onclick="OpenAliasDialog" class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors min-h-[44px]">
-                <span class="material-icons mr-1 sm:mr-2 text-base">rule</span><span class="hidden xs:inline">新增别名</span><span class="xs:hidden">别名</span>
+            <button @onclick="OpenAliasDialog" class="flex-1 sm:flex-none md-btn-tonal state-layer">
+                <span class="material-symbols-outlined mr-1 sm:mr-2">rule</span><span class="hidden xs:inline">新增别名</span><span class="xs:hidden">别名</span>
             </button>
-            <button @onclick="OpenMerchantDialog" class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors min-h-[44px]">
-                <span class="material-icons mr-1 sm:mr-2 text-base">add</span><span class="hidden xs:inline">新增商户</span><span class="xs:hidden">商户</span>
+            <button @onclick="OpenMerchantDialog" class="flex-1 sm:flex-none md-btn-filled state-layer">
+                <span class="material-symbols-outlined mr-1 sm:mr-2">add</span><span class="hidden xs:inline">新增商户</span><span class="xs:hidden">商户</span>
             </button>
         </div>
     </div>
 
     @if (errorMessage != null)
     {
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-start gap-3" role="alert">
-            <span class="flex-1 text-sm break-words">@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700 shrink-0 inline-flex items-center justify-center rounded-lg" style="width:36px;height:36px;" aria-label="关闭">
-                <span class="material-icons text-lg">close</span>
+        <div class="bg-error-container text-on-error-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="alert">
+            <span class="flex-1 text-body-medium break-words">@errorMessage</span>
+            <button @onclick="() => errorMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
     }
 
     <!-- 商户列表 -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 font-semibold text-gray-700 text-sm sm:text-base">商户</div>
+    <div class="md-card-elevated overflow-hidden">
+        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant font-semibold text-on-surface text-body-medium">商户</div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm responsive-cards">
-                <thead class="bg-gray-50 text-gray-500">
+            <table class="min-w-full text-body-medium responsive-cards">
+                <thead class="bg-surface-container">
                     <tr>
-                        <th class="text-left px-4 sm:px-6 py-3">规范名称</th>
-                        <th class="text-left px-4 sm:px-6 py-3">默认分类</th>
-                        <th class="text-left px-4 sm:px-6 py-3 hide-mobile">别名数</th>
-                        <th class="text-left px-4 sm:px-6 py-3">关联账单</th>
-                        <th class="text-right px-4 sm:px-6 py-3">操作</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">规范名称</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">默认分类</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant hide-mobile">别名数</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">关联账单</th>
+                        <th class="text-right px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,27 +45,27 @@
                     {
                         @foreach (var m in merchants)
                         {
-                            <tr class="border-t border-gray-100">
-                                <td data-label="规范名称" class="px-4 sm:px-6 py-3 font-medium text-gray-800 wrap-cell"><span class="break-words">@m.CanonicalName</span></td>
-                                <td data-label="默认分类" class="px-4 sm:px-6 py-3 text-gray-500">@(m.DefaultCategoryName ?? "—")</td>
-                                <td data-label="别名数" class="px-4 sm:px-6 py-3 text-gray-500 tabular-nums hide-mobile">@m.AliasCount</td>
+                            <tr class="border-t border-outline-variant hover:bg-surface-container">
+                                <td data-label="规范名称" class="px-4 sm:px-6 py-3 font-medium text-on-surface wrap-cell"><span class="break-words">@m.CanonicalName</span></td>
+                                <td data-label="默认分类" class="px-4 sm:px-6 py-3 text-on-surface-variant">@(m.DefaultCategoryName ?? "—")</td>
+                                <td data-label="别名数" class="px-4 sm:px-6 py-3 text-on-surface-variant tabular-nums hide-mobile">@m.AliasCount</td>
                                 <td data-label="关联账单" class="px-4 sm:px-6 py-3">
                                     @if (m.BillCount > 0)
                                     {
                                         <a href="@($"bills?keyword={Uri.EscapeDataString(m.CanonicalName)}")" title="查看该商户的关联账单"
-                                           class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200 hover:bg-purple-100 active:bg-purple-200 transition-colors min-h-[32px]">
-                                            <span class="material-icons text-sm">receipt_long</span><span class="tabular-nums">@m.BillCount</span>
+                                           class="md-chip md-chip-assist-primary hover:bg-primary-container/80 transition-colors">
+                                            <span class="material-symbols-outlined" style="font-size:16px;">receipt_long</span><span class="tabular-nums">@m.BillCount</span>
                                         </a>
                                     }
                                     else
                                     {
-                                        <span class="text-gray-300">—</span>
+                                        <span class="text-outline-variant">—</span>
                                     }
                                 </td>
                                 <td data-label="操作" class="px-4 sm:px-6 py-3 text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
-                                        <button @onclick="() => OpenEditMerchantDialog(m)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 active:bg-purple-100 transition-colors" style="width:40px;height:40px;" title="编辑" aria-label="编辑 @m.CanonicalName"><span class="material-icons text-lg">edit</span></button>
-                                        <button @onclick="() => DeleteMerchant(m)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors" style="width:40px;height:40px;" title="删除" aria-label="删除 @m.CanonicalName"><span class="material-icons text-lg">delete</span></button>
+                                        <button @onclick="() => OpenEditMerchantDialog(m)" class="md-icon-btn" title="编辑" aria-label="编辑 @m.CanonicalName"><span class="material-symbols-outlined">edit</span></button>
+                                        <button @onclick="() => DeleteMerchant(m)" class="md-icon-btn" title="删除" aria-label="删除 @m.CanonicalName"><span class="material-symbols-outlined text-error">delete</span></button>
                                     </div>
                                 </td>
                             </tr>
@@ -77,18 +77,18 @@
     </div>
 
     <!-- 别名规则列表 -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 font-semibold text-gray-700 text-sm sm:text-base">别名规则（按优先级降序匹配）</div>
+    <div class="md-card-elevated overflow-hidden">
+        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant font-semibold text-on-surface text-body-medium">别名规则（按优先级降序匹配）</div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm responsive-cards">
-                <thead class="bg-gray-50 text-gray-500">
+            <table class="min-w-full text-body-medium responsive-cards">
+                <thead class="bg-surface-container">
                     <tr>
-                        <th class="text-left px-4 sm:px-6 py-3">模式</th>
-                        <th class="text-left px-4 sm:px-6 py-3">匹配方式</th>
-                        <th class="text-left px-4 sm:px-6 py-3">归一到</th>
-                        <th class="text-left px-4 sm:px-6 py-3 hide-mobile">优先级</th>
-                        <th class="text-left px-4 sm:px-6 py-3 hide-mobile">启用</th>
-                        <th class="text-right px-4 sm:px-6 py-3">操作</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">模式</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">匹配方式</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">归一到</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant hide-mobile">优先级</th>
+                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant hide-mobile">启用</th>
+                        <th class="text-right px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -96,22 +96,22 @@
                     {
                         @foreach (var a in aliases)
                         {
-                            <tr class="border-t border-gray-100">
-                                <td data-label="模式" class="px-4 sm:px-6 py-3 font-mono text-gray-800 wrap-cell"><span class="break-all text-xs">@a.Pattern</span></td>
+                            <tr class="border-t border-outline-variant hover:bg-surface-container">
+                                <td data-label="模式" class="px-4 sm:px-6 py-3 font-mono text-on-surface wrap-cell"><span class="break-all text-body-small">@a.Pattern</span></td>
                                 <td data-label="匹配方式" class="px-4 sm:px-6 py-3">
-                                    <span title="@MatchTypeHint(a.MatchType)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset @MatchTypeBadgeClass(a.MatchType)">
-                                        <span class="material-icons text-sm">@MatchTypeIcon(a.MatchType)</span>@MatchTypeLabel(a.MatchType)
+                                    <span title="@MatchTypeHint(a.MatchType)" class="md-chip @MatchTypeBadgeClass(a.MatchType)">
+                                        <span class="material-symbols-outlined" style="font-size:16px;">@MatchTypeIcon(a.MatchType)</span>@MatchTypeLabel(a.MatchType)
                                     </span>
                                 </td>
-                                <td data-label="归一到" class="px-4 sm:px-6 py-3 text-gray-700 wrap-cell"><span class="break-words">@a.MerchantName</span></td>
-                                <td data-label="优先级" class="px-4 sm:px-6 py-3 text-gray-500 tabular-nums hide-mobile">@a.Priority</td>
+                                <td data-label="归一到" class="px-4 sm:px-6 py-3 text-on-surface wrap-cell"><span class="break-words">@a.MerchantName</span></td>
+                                <td data-label="优先级" class="px-4 sm:px-6 py-3 text-on-surface-variant tabular-nums hide-mobile">@a.Priority</td>
                                 <td data-label="启用" class="px-4 sm:px-6 py-3 hide-mobile">
-                                    <span class="@(a.IsActive ? "text-green-600" : "text-gray-400")">@(a.IsActive ? "是" : "否")</span>
+                                    <span class="@(a.IsActive ? "text-success" : "text-on-surface-variant")">@(a.IsActive ? "是" : "否")</span>
                                 </td>
                                 <td data-label="操作" class="px-4 sm:px-6 py-3 text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
-                                        <button @onclick="() => OpenEditAliasDialog(a)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 active:bg-indigo-100 transition-colors" style="width:40px;height:40px;" title="编辑" aria-label="编辑别名 @a.Pattern"><span class="material-icons text-lg">edit</span></button>
-                                        <button @onclick="() => DeleteAlias(a)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors" style="width:40px;height:40px;" title="删除" aria-label="删除别名 @a.Pattern"><span class="material-icons text-lg">delete</span></button>
+                                        <button @onclick="() => OpenEditAliasDialog(a)" class="md-icon-btn" title="编辑" aria-label="编辑别名 @a.Pattern"><span class="material-symbols-outlined">edit</span></button>
+                                        <button @onclick="() => DeleteAlias(a)" class="md-icon-btn" title="删除" aria-label="删除别名 @a.Pattern"><span class="material-symbols-outlined text-error">delete</span></button>
                                     </div>
                                 </td>
                             </tr>
@@ -128,11 +128,11 @@
 {
     <div class="modal-root" @onclick="CloseMerchantDialog" role="dialog" aria-modal="true" aria-label="@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")</h2>
-            <label for="merchantNameInput" class="block text-sm font-medium text-gray-700 mb-1">规范名称</label>
-            <input id="merchantNameInput" @bind="merchantName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 min-h-[44px]" placeholder="如：星巴克" />
-            <label for="merchantCatSelect" class="block text-sm font-medium text-gray-700 mb-1 mt-4">默认分类（MerchantRule 层）</label>
-            <select id="merchantCatSelect" @bind="merchantDefaultCategoryId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 min-h-[44px]">
+            <h2 class="text-title-large text-on-surface mb-4">@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")</h2>
+            <label for="merchantNameInput" class="block text-body-small text-on-surface-variant mb-1">规范名称</label>
+            <input id="merchantNameInput" @bind="merchantName" class="md-text-field-outlined w-full" placeholder="如：星巴克" />
+            <label for="merchantCatSelect" class="block text-body-small text-on-surface-variant mb-1 mt-4">默认分类（MerchantRule 层）</label>
+            <select id="merchantCatSelect" @bind="merchantDefaultCategoryId" class="md-text-field-outlined w-full">
                 <option value="0">— 无（走兜底分类）—</option>
                 @if (categories != null)
                 {
@@ -143,8 +143,8 @@
                 }
             </select>
             <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseMerchantDialog" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 min-h-[44px] transition-colors">取消</button>
-                <button @onclick="SaveMerchant" disabled="@isSaving" class="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 disabled:opacity-50 min-h-[44px] transition-colors">@(isSaving ? "保存中…" : "保存")</button>
+                <button @onclick="CloseMerchantDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                <button @onclick="SaveMerchant" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">@(isSaving ? "保存中…" : "保存")</button>
             </div>
         </div>
     </div>
@@ -155,23 +155,23 @@
 {
     <div class="modal-root" @onclick="CloseAliasDialog" role="dialog" aria-modal="true" aria-label="@(editingAliasId.HasValue ? "编辑别名" : "新增别名")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingAliasId.HasValue ? "编辑别名" : "新增别名")</h2>
+            <h2 class="text-title-large text-on-surface mb-4">@(editingAliasId.HasValue ? "编辑别名" : "新增别名")</h2>
             <div class="space-y-4">
                 <div>
-                    <label for="aliasPatternInput" class="block text-sm font-medium text-gray-700 mb-1">模式</label>
-                    <input id="aliasPatternInput" @bind="aliasPattern" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 min-h-[44px]" placeholder="如：STARBUCKS" />
+                    <label for="aliasPatternInput" class="block text-body-small text-on-surface-variant mb-1">模式</label>
+                    <input id="aliasPatternInput" @bind="aliasPattern" class="md-text-field-outlined w-full" placeholder="如：STARBUCKS" />
                 </div>
                 <div>
-                    <label for="aliasMatchSelect" class="block text-sm font-medium text-gray-700 mb-1">匹配方式</label>
-                    <select id="aliasMatchSelect" @bind="aliasMatchType" class="w-full px-3 py-2 border border-gray-300 rounded-lg min-h-[44px]">
+                    <label for="aliasMatchSelect" class="block text-body-small text-on-surface-variant mb-1">匹配方式</label>
+                    <select id="aliasMatchSelect" @bind="aliasMatchType" class="md-text-field-outlined w-full">
                         <option value="1">包含（Contains）</option>
                         <option value="2">精确（Exact）</option>
                         <option value="0">正则（Regex）</option>
                     </select>
                 </div>
                 <div>
-                    <label for="aliasMerchantSelect" class="block text-sm font-medium text-gray-700 mb-1">归一到商户</label>
-                    <select id="aliasMerchantSelect" @bind="aliasMerchantId" class="w-full px-3 py-2 border border-gray-300 rounded-lg min-h-[44px]">
+                    <label for="aliasMerchantSelect" class="block text-body-small text-on-surface-variant mb-1">归一到商户</label>
+                    <select id="aliasMerchantSelect" @bind="aliasMerchantId" class="md-text-field-outlined w-full">
                         <option value="0">— 请选择 —</option>
                         @if (merchants != null)
                         {
@@ -183,16 +183,16 @@
                     </select>
                 </div>
                 <div>
-                    <label for="aliasPriorityInput" class="block text-sm font-medium text-gray-700 mb-1">优先级</label>
-                    <input id="aliasPriorityInput" type="number" @bind="aliasPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg min-h-[44px]" />
+                    <label for="aliasPriorityInput" class="block text-body-small text-on-surface-variant mb-1">优先级</label>
+                    <input id="aliasPriorityInput" type="number" @bind="aliasPriority" class="md-text-field-outlined w-full" />
                 </div>
-                <label class="flex items-center gap-2 text-sm text-gray-700 min-h-[44px] cursor-pointer">
-                    <input type="checkbox" @bind="aliasIsActive" class="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500" /> 启用
+                <label class="flex items-center gap-2 text-body-medium text-on-surface min-h-[44px] cursor-pointer">
+                    <input type="checkbox" @bind="aliasIsActive" class="w-5 h-5 rounded border-outline text-primary focus:ring-primary/40" /> 启用
                 </label>
             </div>
             <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseAliasDialog" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 min-h-[44px] transition-colors">取消</button>
-                <button @onclick="SaveAlias" disabled="@isSaving" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 min-h-[44px] transition-colors">@(isSaving ? "保存中…" : "保存")</button>
+                <button @onclick="CloseAliasDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                <button @onclick="SaveAlias" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">@(isSaving ? "保存中…" : "保存")</button>
             </div>
         </div>
     </div>
@@ -310,10 +310,10 @@
 
     private static string MatchTypeBadgeClass(int matchType) => matchType switch
     {
-        0 => "bg-indigo-50 text-indigo-700 ring-indigo-200",
-        1 => "bg-sky-50 text-sky-700 ring-sky-200",
-        2 => "bg-emerald-50 text-emerald-700 ring-emerald-200",
-        _ => "bg-gray-100 text-gray-600 ring-gray-200"
+        0 => "md-chip-assist-primary",
+        1 => "md-chip-assist-info",
+        2 => "md-chip-assist-success",
+        _ => "md-chip-assist-info"
     };
 
     private static string MatchTypeHint(int matchType) => matchType switch
