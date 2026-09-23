@@ -1,11 +1,37 @@
 ﻿@inherits LayoutComponentBase
 
 <div class="min-h-screen bg-gray-50">
-    <NavMenu />
+    @* 移动端顶栏：汉堡按钮 + 标题 *@
+    <header class="mobile-appbar">
+        <button type="button"
+                class="inline-flex items-center justify-center rounded-lg text-white/90 hover:bg-white/10 active:bg-white/20 transition-colors"
+                style="width:44px;height:44px;"
+                aria-label="打开导航菜单"
+                aria-expanded="@sidebarOpen"
+                @onclick="ToggleSidebar">
+            <span class="material-icons">menu</span>
+        </button>
+        <span class="text-base font-semibold truncate flex-1">个人财务分析</span>
+    </header>
+
+    @* 抽屉遮罩：点击关闭 *@
+    <div class="sidebar-backdrop @(sidebarOpen ? "show" : "")"
+         @onclick="CloseSidebar"
+         aria-hidden="true"></div>
+
+    <NavMenu IsOpen="sidebarOpen" OnClose="CloseSidebar" />
 
     <main class="lg:ml-64">
-        <div class="p-4 md:p-6 lg:p-8">
+        <div class="p-3 sm:p-4 md:p-6 lg:p-8"
+             style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));">
             @Body
         </div>
     </main>
 </div>
+
+@code {
+    private bool sidebarOpen;
+
+    private void ToggleSidebar() => sidebarOpen = !sidebarOpen;
+    private void CloseSidebar() => sidebarOpen = false;
+}

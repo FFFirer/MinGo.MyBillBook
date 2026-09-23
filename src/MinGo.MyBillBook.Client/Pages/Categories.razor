@@ -4,21 +4,23 @@
 @inject HttpClient Http
 
 <PageTitle>消费分类</PageTitle>
-<div class="space-y-6">
+<div class="space-y-4 sm:space-y-6">
     <!-- 分类区域 -->
-    <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-800">消费分类</h1>
-        <button @onclick="OpenCreateCategoryDialog" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-            <span class="material-icons mr-2">add</span>
-            新增分类
-        </button>
+    <div class="page-header">
+        <h1>消费分类</h1>
+        <div class="actions">
+            <button @onclick="OpenCreateCategoryDialog" class="inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors min-h-[44px]">
+                <span class="material-icons mr-1 sm:mr-2 text-base">add</span>
+                <span class="hidden xs:inline">新增分类</span><span class="xs:hidden">新增</span>
+            </button>
+        </div>
     </div>
 
     @if (errorMessage != null)
     {
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
-            <span>@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-start gap-3" role="alert">
+            <span class="flex-1 text-sm break-words">@errorMessage</span>
+            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700 shrink-0 inline-flex items-center justify-center rounded-lg" style="width:36px;height:36px;" aria-label="关闭">
                 <span class="material-icons text-lg">close</span>
             </button>
         </div>
@@ -26,20 +28,21 @@
 
     @if (categories != null)
     {
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             @foreach (var c in categories)
             {
-                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 card-hover relative group">
-                    <div class="absolute top-2 right-2 hidden group-hover:flex gap-1">
-                        <button @onclick="() => OpenEditCategoryDialog(c)" class="p-1 text-gray-400 hover:text-purple-600 transition-colors bg-white rounded" title="编辑">
-                            <span class="material-icons text-sm">edit</span>
+                <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 border border-gray-100 card-hover relative group">
+                    @* 桌面端 hover 显示；移动端常驻显示（避免触屏无法触发 hover） *@
+                    <div class="absolute top-1.5 right-1.5 flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity">
+                        <button @onclick="() => OpenEditCategoryDialog(c)" class="inline-flex items-center justify-center rounded text-gray-400 hover:text-purple-600 hover:bg-purple-50 active:bg-purple-100 transition-colors bg-white/90" style="width:32px;height:32px;" title="编辑" aria-label="编辑 @c.Name">
+                            <span class="material-icons text-base">edit</span>
                         </button>
-                        <button @onclick="() => DeleteCategory(c)" class="p-1 text-gray-400 hover:text-red-600 transition-colors bg-white rounded" title="删除">
-                            <span class="material-icons text-sm">delete</span>
+                        <button @onclick="() => DeleteCategory(c)" class="inline-flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors bg-white/90" style="width:32px;height:32px;" title="删除" aria-label="删除 @c.Name">
+                            <span class="material-icons text-base">delete</span>
                         </button>
                     </div>
-                    <span class="material-icons text-3xl text-purple-600 block mb-2">@c.Icon</span>
-                    <p class="text-sm font-medium text-gray-800">@c.Name</p>
+                    <span class="material-icons text-2xl sm:text-3xl text-purple-600 block mb-1.5 sm:mb-2">@c.Icon</span>
+                    <p class="text-xs sm:text-sm font-medium text-gray-800 truncate pr-14 sm:pr-16" title="@c.Name">@c.Name</p>
                 </div>
             }
         </div>
@@ -48,22 +51,22 @@
     <!-- 分类规则区域 -->
     @if (rules != null)
     {
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold">分类规则 (@rules.Count 条)</h2>
-                <button @onclick="OpenCreateRuleDialog" class="inline-flex items-center px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors">
-                    <span class="material-icons mr-1 text-sm">add</span>
+        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <h2 class="text-base sm:text-lg font-semibold">分类规则 (@rules.Count 条)</h2>
+                <button @onclick="OpenCreateRuleDialog" class="inline-flex items-center justify-center px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors min-h-[44px] sm:w-auto w-full">
+                    <span class="material-icons mr-1 text-base">add</span>
                     新增规则
                 </button>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="w-full text-sm responsive-cards">
                     <thead>
                         <tr class="border-b border-gray-200">
                             <th class="text-left py-2 px-3 font-medium text-gray-500">分类</th>
                             <th class="text-left py-2 px-3 font-medium text-gray-500">匹配字段</th>
                             <th class="text-left py-2 px-3 font-medium text-gray-500">匹配模式</th>
-                            <th class="text-right py-2 px-3 font-medium text-gray-500">优先级</th>
+                            <th class="text-right py-2 px-3 font-medium text-gray-500 hide-mobile">优先级</th>
                             <th class="text-right py-2 px-3 font-medium text-gray-500">操作</th>
                         </tr>
                     </thead>
@@ -71,16 +74,16 @@
                         @foreach (var r in rules)
                         {
                             <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                <td class="py-2 px-3">@r.CategoryName</td>
-                                <td class="py-2 px-3 text-gray-500">@GetMatchFieldName(r.MatchField)</td>
-                                <td class="py-2 px-3 font-mono text-xs">@r.MatchPattern</td>
-                                <td class="py-2 px-3 text-right">@r.Priority</td>
-                                <td class="py-2 px-3 text-right">
-                                    <div class="flex justify-end gap-1">
-                                        <button @onclick="() => OpenEditRuleDialog(r)" class="p-1 text-gray-400 hover:text-purple-600 transition-colors" title="编辑">
+                                <td data-label="分类" class="py-2 px-3">@r.CategoryName</td>
+                                <td data-label="匹配字段" class="py-2 px-3 text-gray-500">@GetMatchFieldName(r.MatchField)</td>
+                                <td data-label="匹配模式" class="py-2 px-3 font-mono text-xs wrap-cell"><span class="break-all">@r.MatchPattern</span></td>
+                                <td data-label="优先级" class="py-2 px-3 text-right tabular-nums hide-mobile">@r.Priority</td>
+                                <td data-label="操作" class="py-2 px-3 text-right">
+                                    <div class="inline-flex items-center justify-end gap-1">
+                                        <button @onclick="() => OpenEditRuleDialog(r)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 active:bg-purple-100 transition-colors" style="width:40px;height:40px;" title="编辑" aria-label="编辑规则">
                                             <span class="material-icons text-lg">edit</span>
                                         </button>
-                                        <button @onclick="() => DeleteRule(r)" class="p-1 text-gray-400 hover:text-red-600 transition-colors" title="删除">
+                                        <button @onclick="() => DeleteRule(r)" class="inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors" style="width:40px;height:40px;" title="删除" aria-label="删除规则">
                                             <span class="material-icons text-lg">delete</span>
                                         </button>
                                     </div>
@@ -97,18 +100,18 @@
 <!-- 删除确认弹窗 -->
 @if (confirmDeleteName != null)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CancelDelete">
-        <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4" @onclick:stopPropagation>
+    <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
+        <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-lg bg-red-100 mr-3">
+                <div class="p-2 rounded-lg bg-red-100 mr-3 shrink-0">
                     <span class="material-icons text-red-600">warning</span>
                 </div>
                 <h2 class="text-lg font-semibold text-gray-800">确认删除</h2>
             </div>
-            <p class="text-gray-600 mb-6">确定要删除@(confirmDeleteIsRule ? "规则" : "分类")「<strong>@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
-            <div class="flex justify-end gap-3">
-                <button @onclick="CancelDelete" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">取消</button>
-                <button @onclick="ConfirmDelete" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">确认删除</button>
+            <p class="text-gray-600 mb-6 text-sm sm:text-base">确定要删除@(confirmDeleteIsRule ? "规则" : "分类")「<strong>@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+                <button @onclick="CancelDelete" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]">取消</button>
+                <button @onclick="ConfirmDelete" class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors min-h-[44px]">确认删除</button>
             </div>
         </div>
     </div>
@@ -117,17 +120,17 @@
 <!-- 分类新增/编辑弹窗 -->
 @if (showCategoryDialog)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CloseCategoryDialog">
-        <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" @onclick:stopPropagation>
+    <div class="modal-root" @onclick="CloseCategoryDialog" role="dialog" aria-modal="true" aria-label="@(editingCategoryId.HasValue ? "编辑分类" : "新增分类")">
+        <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingCategoryId.HasValue ? "编辑分类" : "新增分类")</h2>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">名称</label>
-                    <input @bind="catFormName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="如：餐饮" />
+                    <label for="catNameInput" class="block text-sm font-medium text-gray-700 mb-1">名称</label>
+                    <input id="catNameInput" @bind="catFormName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="如：餐饮" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">图标（Material Icons 名称）</label>
-                    <input @bind="catFormIcon" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="如：restaurant" />
+                    <label for="catIconInput" class="block text-sm font-medium text-gray-700 mb-1">图标（Material Icons 名称）</label>
+                    <input id="catIconInput" @bind="catFormIcon" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="如：restaurant" />
                     @if (!string.IsNullOrWhiteSpace(catFormIcon))
                     {
                         <div class="mt-2 flex items-center gap-2">
@@ -137,12 +140,12 @@
                     }
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">排序序号</label>
-                    <input @bind="catFormSortOrder" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                    <label for="catSortInput" class="block text-sm font-medium text-gray-700 mb-1">排序序号</label>
+                    <input id="catSortInput" @bind="catFormSortOrder" type="number" inputmode="numeric" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">父分类（可选）</label>
-                    <select @bind="catFormParentId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <label for="catParentSelect" class="block text-sm font-medium text-gray-700 mb-1">父分类（可选）</label>
+                    <select id="catParentSelect" @bind="catFormParentId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]">
                         <option value="">无（一级分类）</option>
                         @if (categories != null)
                         {
@@ -154,10 +157,10 @@
                     </select>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-6">
-                <button @onclick="CloseCategoryDialog" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">取消</button>
-                <button @onclick="SaveCategory" disabled="@isSaving" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
-                    @(isSaving ? "保存中..." : "保存")
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
+                <button @onclick="CloseCategoryDialog" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]">取消</button>
+                <button @onclick="SaveCategory" disabled="@isSaving" class="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors disabled:opacity-50 min-h-[44px]">
+                    @(isSaving ? "保存中…" : "保存")
                 </button>
             </div>
         </div>
@@ -167,13 +170,13 @@
 <!-- 规则新增/编辑弹窗 -->
 @if (showRuleDialog)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CloseRuleDialog">
-        <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" @onclick:stopPropagation>
+    <div class="modal-root" @onclick="CloseRuleDialog" role="dialog" aria-modal="true" aria-label="@(editingRuleId.HasValue ? "编辑规则" : "新增规则")">
+        <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <h2 class="text-lg font-semibold text-gray-800 mb-4">@(editingRuleId.HasValue ? "编辑规则" : "新增规则")</h2>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">分类</label>
-                    <select @bind="ruleFormCategoryId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <label for="ruleCatSelect" class="block text-sm font-medium text-gray-700 mb-1">分类</label>
+                    <select id="ruleCatSelect" @bind="ruleFormCategoryId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]">
                         <option value="0">请选择分类</option>
                         @if (categories != null)
                         {
@@ -185,8 +188,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">匹配字段</label>
-                    <select @bind="ruleFormMatchField" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <label for="ruleFieldSelect" class="block text-sm font-medium text-gray-700 mb-1">匹配字段</label>
+                    <select id="ruleFieldSelect" @bind="ruleFormMatchField" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]">
                         @foreach (var field in Enum.GetValues<MatchField>())
                         {
                             <option value="@((int)field)">@GetMatchFieldName((int)field)</option>
@@ -194,19 +197,19 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">匹配模式（关键词）</label>
-                    <input @bind="ruleFormMatchPattern" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="如：美团" />
+                    <label for="rulePatternInput" class="block text-sm font-medium text-gray-700 mb-1">匹配模式（关键词）</label>
+                    <input id="rulePatternInput" @bind="ruleFormMatchPattern" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="如：美团" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">优先级</label>
-                    <input @bind="ruleFormPriority" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                    <label for="rulePriorityInput" class="block text-sm font-medium text-gray-700 mb-1">优先级</label>
+                    <input id="rulePriorityInput" @bind="ruleFormPriority" type="number" inputmode="numeric" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" />
                     <p class="text-xs text-gray-500 mt-1">数值越大优先级越高</p>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-6">
-                <button @onclick="CloseRuleDialog" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">取消</button>
-                <button @onclick="SaveRule" disabled="@isSaving" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
-                    @(isSaving ? "保存中..." : "保存")
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
+                <button @onclick="CloseRuleDialog" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]">取消</button>
+                <button @onclick="SaveRule" disabled="@isSaving" class="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors disabled:opacity-50 min-h-[44px]">
+                    @(isSaving ? "保存中…" : "保存")
                 </button>
             </div>
         </div>

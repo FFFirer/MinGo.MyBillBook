@@ -2,59 +2,61 @@
 
 <PageTitle>个人财务分析</PageTitle>
 
-<div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-800">个人财务分析</h1>
+<div class="space-y-4 sm:space-y-6">
+    <div class="page-header">
+        <h1>个人财务分析</h1>
+    </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+    <div class="grid metric-grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 card-hover">
             <div class="flex items-center">
-                <div class="p-3 rounded-lg bg-green-100 mr-4">
-                    <span class="material-icons text-green-600">trending_up</span>
+                <div class="p-2.5 sm:p-3 rounded-lg bg-green-100 mr-3 sm:mr-4 shrink-0">
+                    <span class="material-icons text-green-600 text-xl sm:text-2xl">trending_up</span>
                 </div>
-                <div>
-                    <p class="text-sm text-gray-500">本月收入</p>
-                    <p class="text-2xl font-bold text-green-600">--</p>
+                <div class="min-w-0">
+                    <p class="text-xs sm:text-sm text-gray-500">本月收入</p>
+                    <p class="text-xl sm:text-2xl font-bold text-green-600 tabular-nums truncate">--</p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 card-hover">
             <div class="flex items-center">
-                <div class="p-3 rounded-lg bg-red-100 mr-4">
-                    <span class="material-icons text-red-600">trending_down</span>
+                <div class="p-2.5 sm:p-3 rounded-lg bg-red-100 mr-3 sm:mr-4 shrink-0">
+                    <span class="material-icons text-red-600 text-xl sm:text-2xl">trending_down</span>
                 </div>
-                <div>
-                    <p class="text-sm text-gray-500">本月支出</p>
-                    <p class="text-2xl font-bold text-red-600">--</p>
+                <div class="min-w-0">
+                    <p class="text-xs sm:text-sm text-gray-500">本月支出</p>
+                    <p class="text-xl sm:text-2xl font-bold text-red-600 tabular-nums truncate">--</p>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 card-hover">
             <div class="flex items-center">
-                <div class="p-3 rounded-lg bg-purple-100 mr-4">
-                    <span class="material-icons text-purple-600">account_balance_wallet</span>
+                <div class="p-2.5 sm:p-3 rounded-lg bg-purple-100 mr-3 sm:mr-4 shrink-0">
+                    <span class="material-icons text-purple-600 text-xl sm:text-2xl">account_balance_wallet</span>
                 </div>
-                <div>
-                    <p class="text-sm text-gray-500">本月结余</p>
-                    <p class="text-2xl font-bold text-purple-600">--</p>
+                <div class="min-w-0">
+                    <p class="text-xs sm:text-sm text-gray-500">本月结余</p>
+                    <p class="text-xl sm:text-2xl font-bold text-purple-600 tabular-nums truncate">--</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 class="text-lg font-semibold text-gray-800 mb-4">快速操作</h2>
-        <div class="flex flex-wrap gap-4">
-            <a href="import" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+        <h2 class="text-base sm:text-lg font-semibold text-gray-800 mb-4">快速操作</h2>
+        <div class="grid grid-cols-1 sm:flex sm:flex-wrap gap-3">
+            <a href="import" class="inline-flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors min-h-[48px] text-sm sm:text-base">
                 <span class="material-icons mr-2">upload_file</span>
                 导入对账单
             </a>
-            <a href="bills" class="inline-flex items-center px-4 py-2 bg-white text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">
+            <a href="bills" class="inline-flex items-center justify-center px-4 py-3 bg-white text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 active:bg-purple-100 transition-colors min-h-[48px] text-sm sm:text-base">
                 <span class="material-icons mr-2">receipt_long</span>
                 查看账单
             </a>
-            <a href="analysis" class="inline-flex items-center px-4 py-2 bg-white text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">
+            <a href="analysis" class="inline-flex items-center justify-center px-4 py-3 bg-white text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 active:bg-purple-100 transition-colors min-h-[48px] text-sm sm:text-base">
                 <span class="material-icons mr-2">analytics</span>
                 消费分析
             </a>

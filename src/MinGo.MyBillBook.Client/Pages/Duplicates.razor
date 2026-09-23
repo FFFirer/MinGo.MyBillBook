@@ -3,23 +3,27 @@
 @inject HttpClient Http
 
 <PageTitle>去重复核</PageTitle>
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-800">去重复核</h1>
-        <button @onclick="Load" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-            <span class="material-icons mr-2">refresh</span>刷新
-        </button>
+<div class="space-y-4 sm:space-y-6">
+    <div class="page-header">
+        <div class="min-w-0">
+            <h1>去重复核</h1>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1">
+                以下为去重评分落在疑似重复区间（80–99 分）的候选对，需人工复核。确认后将删除多余账单（保留原始数据），驳回则保留两条记录。
+            </p>
+        </div>
+        <div class="actions">
+            <button @onclick="Load" class="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px]">
+                <span class="material-icons mr-1 sm:mr-2 text-base">refresh</span>
+                <span class="hidden xs:inline">刷新</span>
+            </button>
+        </div>
     </div>
-
-    <p class="text-sm text-gray-500">
-        以下为去重评分落在疑似重复区间（80–99 分）的候选对，需人工复核。确认后将删除多余账单（保留原始数据），驳回则保留两条记录。
-    </p>
 
     @if (errorMessage != null)
     {
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
-            <span>@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-start gap-3" role="alert">
+            <span class="flex-1 text-sm break-words">@errorMessage</span>
+            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700 shrink-0 inline-flex items-center justify-center rounded-lg" style="width:36px;height:36px;" aria-label="关闭">
                 <span class="material-icons text-lg">close</span>
             </button>
         </div>
@@ -27,11 +31,11 @@
 
     @if (candidates == null)
     {
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-400">加载中...</div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-400 empty-state">加载中...</div>
     }
     else if (candidates.Count == 0)
     {
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-400">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-400 empty-state">
             <span class="material-icons text-4xl mb-2 block">check_circle</span>
             暂无待复核的重复候选
         </div>
@@ -42,32 +46,32 @@
             @foreach (var c in candidates)
             {
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                        <div class="flex items-center gap-3">
+                    <div class="px-4 sm:px-6 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-gray-50">
+                        <div class="flex items-center gap-3 flex-wrap">
                             <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-amber-100 text-amber-700">
                                 评分 @c.Score.ToString("0")
                             </span>
-                            <span class="text-sm text-gray-600">@c.MatchReason</span>
+                            <span class="text-sm text-gray-600 break-words">@c.MatchReason</span>
                         </div>
-                        <span class="text-xs text-gray-400">@c.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                        <span class="text-xs text-gray-400 shrink-0">@c.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-                        <div class="px-6 py-4">
+                        <div class="px-4 sm:px-6 py-4">
                             <div class="text-xs text-gray-400 mb-1">已有记录 #@c.LeftRecordId</div>
-                            <div class="font-medium text-gray-800">@c.LeftDescription</div>
+                            <div class="font-medium text-gray-800 break-words">@c.LeftDescription</div>
                             <div class="text-sm text-gray-500">￥@c.LeftAmount.ToString("0.00") · @c.LeftDate.ToString("yyyy-MM-dd HH:mm")</div>
                         </div>
-                        <div class="px-6 py-4">
+                        <div class="px-4 sm:px-6 py-4">
                             <div class="text-xs text-gray-400 mb-1">新导入记录 #@c.RightRecordId</div>
-                            <div class="font-medium text-gray-800">@c.RightDescription</div>
+                            <div class="font-medium text-gray-800 break-words">@c.RightDescription</div>
                             <div class="text-sm text-gray-500">￥@c.RightAmount.ToString("0.00") · @c.RightDate.ToString("yyyy-MM-dd HH:mm")</div>
                         </div>
                     </div>
-                    <div class="px-6 py-3 border-t border-gray-100 flex justify-end gap-3">
-                        <button @onclick="() => Reject(c)" disabled="@isBusy" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                    <div class="px-4 sm:px-6 py-3 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+                        <button @onclick="() => Reject(c)" disabled="@isBusy" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 transition-colors min-h-[44px]">
                             驳回（非重复）
                         </button>
-                        <button @onclick="() => Confirm(c)" disabled="@isBusy" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+                        <button @onclick="() => Confirm(c)" disabled="@isBusy" class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 transition-colors min-h-[44px]">
                             确认重复并删除
                         </button>
                     </div>

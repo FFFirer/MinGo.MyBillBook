@@ -1,77 +1,122 @@
 ﻿@implements IDisposable
 
-<div class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform lg:translate-x-0 -translate-x-full transition-transform duration-300" id="sidebar">
-    <div class="flex items-center h-16 px-6 bg-purple-600">
-        <span class="material-icons text-white text-2xl mr-2">account_balance_wallet</span>
-        <span class="text-white text-lg font-semibold">个人财务分析</span>
+<div class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform lg:translate-x-0 transition-transform duration-300 ease-out
+            @(IsOpen ? "translate-x-0" : "-translate-x-full")
+            flex flex-col"
+     id="sidebar"
+     style="padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);"
+     aria-hidden="@(!IsOpen)">
+
+    <div class="flex items-center justify-between h-16 px-4 sm:px-6 bg-purple-600 shrink-0">
+        <div class="flex items-center min-w-0">
+            <span class="material-icons text-white text-2xl mr-2 shrink-0">account_balance_wallet</span>
+            <span class="text-white text-base sm:text-lg font-semibold truncate">个人财务分析</span>
+        </div>
+        @* 移动端关闭按钮 *@
+        <button type="button"
+                class="lg:hidden inline-flex items-center justify-center rounded-lg text-white/90 hover:bg-white/10 active:bg-white/20 transition-colors shrink-0"
+                style="width:40px;height:40px;"
+                aria-label="关闭导航菜单"
+                @onclick="OnClose">
+            <span class="material-icons">close</span>
+        </button>
     </div>
 
-    <nav class="mt-4 px-3">
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="" Match="NavLinkMatch.All">
-            <span class="material-icons mr-3">dashboard</span>
+    <nav class="flex-1 overflow-y-auto overscroll-contain mt-2 px-3 pb-4 -webkit-overflow-scrolling:touch">
+        <NavLink class="nav-item" href="" Match="NavLinkMatch.All" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">dashboard</span>
             <span>首页</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="import">
-            <span class="material-icons mr-3">upload_file</span>
+        <NavLink class="nav-item" href="import" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">upload_file</span>
             <span>导入对账单</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="bills">
-            <span class="material-icons mr-3">receipt_long</span>
+        <NavLink class="nav-item" href="bills" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">receipt_long</span>
             <span>账单明细</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="analysis">
-            <span class="material-icons mr-3">analytics</span>
+        <NavLink class="nav-item" href="analysis" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">analytics</span>
             <span>消费分析</span>
         </NavLink>
 
-        <div class="border-t border-gray-200 my-3"></div>
+        <div class="border-t border-gray-200 my-2"></div>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="platforms">
-            <span class="material-icons mr-3">payment</span>
+        <NavLink class="nav-item" href="platforms" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">payment</span>
             <span>支付平台</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="accounts">
-            <span class="material-icons mr-3">account_balance</span>
+        <NavLink class="nav-item" href="accounts" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">account_balance</span>
             <span>资金账户</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="categories">
-            <span class="material-icons mr-3">category</span>
+        <NavLink class="nav-item" href="categories" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">category</span>
             <span>消费分类</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="merchants">
-            <span class="material-icons mr-3">storefront</span>
+        <NavLink class="nav-item" href="merchants" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">storefront</span>
             <span>商户归一化</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="duplicates">
-            <span class="material-icons mr-3">difference</span>
+        <NavLink class="nav-item" href="duplicates" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">difference</span>
             <span>去重复核</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="tags">
-            <span class="material-icons mr-3">sell</span>
+        <NavLink class="nav-item" href="tags" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">sell</span>
             <span>标签体系</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="reconciliation">
-            <span class="material-icons mr-3">account_balance_wallet</span>
+        <NavLink class="nav-item" href="reconciliation" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">account_balance_wallet</span>
             <span>对账中心</span>
         </NavLink>
 
-        <NavLink class="flex items-center px-4 py-3 mb-1 text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-colors" href="jobs">
-            <span class="material-icons mr-3">build_circle</span>
+        <NavLink class="nav-item" href="jobs" @onclick="OnNavClick">
+            <span class="material-icons nav-icon">build_circle</span>
             <span>任务与重建</span>
         </NavLink>
     </nav>
 </div>
 
+<style>
+    .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.125rem;
+        color: #374151;
+        border-radius: 0.5rem;
+        transition: background-color 0.15s ease, color 0.15s ease;
+        font-size: 0.9375rem;
+        min-height: 44px;
+    }
+    .nav-item:hover { background-color: #F3E8FF; color: #6750A4; }
+    .nav-item:active { background-color: #E9D5FF; }
+    .nav-icon { margin-right: 0.75rem; font-size: 1.25rem; flex-shrink: 0; }
+</style>
+
 @code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async Task OnNavClick()
+    {
+        // 移动端点击导航后自动收起抽屉；桌面端 (lg) 抽屉常驻，无需处理
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
     protected override void OnInitialized()
     {
     }

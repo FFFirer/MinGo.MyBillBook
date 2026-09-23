@@ -4,53 +4,55 @@
 @implements IDisposable
 
 <PageTitle>任务与重建</PageTitle>
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-800">任务与重建</h1>
-        <button @onclick="LoadAllAsync" class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">
-            <span class="material-icons text-sm mr-1 align-middle">refresh</span>刷新
-        </button>
+<div class="space-y-4 sm:space-y-6">
+    <div class="page-header">
+        <h1>任务与重建</h1>
+        <div class="actions">
+            <button @onclick="LoadAllAsync" class="inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 active:bg-purple-800 transition-colors min-h-[44px]">
+                <span class="material-icons text-base mr-1">refresh</span>刷新
+            </button>
+        </div>
     </div>
 
     @if (toast != null)
     {
-        <div class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white @(toastIsError ? "bg-red-500" : "bg-green-500")">
+        <div class="toast @(toastIsError ? "toast-error" : "toast-success")" role="status" aria-live="polite">
             @toast
         </div>
     }
 
     <!-- 触发局部重建 -->
-    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 class="text-lg font-semibold mb-1">局部重建</h2>
-        <p class="text-sm text-gray-500 mb-4">规则变更后从指定步骤起重算 Canonical 层，无需重导 CSV。请求入队后立即返回，由后台 Worker 异步执行。</p>
-        <div class="flex flex-wrap items-end gap-3">
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">起点步骤</label>
-                <select @bind="fromStep" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+        <h2 class="text-base sm:text-lg font-semibold mb-1">局部重建</h2>
+        <p class="text-xs sm:text-sm text-gray-500 mb-4">规则变更后从指定步骤起重算 Canonical 层，无需重导 CSV。请求入队后立即返回，由后台 Worker 异步执行。</p>
+        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+            <div class="flex-1 sm:flex-none sm:min-w-[16rem]">
+                <label for="fromStepSelect" class="block text-xs text-gray-500 mb-1">起点步骤</label>
+                <select id="fromStepSelect" @bind="fromStep" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[44px]">
                     <option value="Normalize">Normalize（全量重建）</option>
                     <option value="ResolveMerchant">ResolveMerchant（商户重算）</option>
                     <option value="ClassifyCategory">ClassifyCategory（分类/标签重算）</option>
                 </select>
             </div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">批次 Id（留空=全部）</label>
-                <input type="number" @bind="batchId" placeholder="全部批次"
-                       class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-40" />
+            <div class="flex-1 sm:flex-none sm:w-40">
+                <label for="batchIdInput" class="block text-xs text-gray-500 mb-1">批次 Id（留空=全部）</label>
+                <input id="batchIdInput" type="number" @bind="batchId" placeholder="全部批次"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[44px]" />
             </div>
             <button @onclick="TriggerRebuildAsync" disabled="@busy"
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
-                <span class="material-icons text-sm mr-1 align-middle">build</span>
-                @(busy ? "入队中..." : "入队重建")
+                    class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 min-h-[44px] transition-colors shrink-0">
+                <span class="material-icons text-base mr-1">build</span>
+                @(busy ? "入队中…" : "入队重建")
             </button>
         </div>
     </div>
 
     <!-- 任务队列 -->
-    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 class="text-lg font-semibold mb-4">后台任务</h2>
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+        <h2 class="text-base sm:text-lg font-semibold mb-4">后台任务</h2>
         @if (jobs == null)
         {
-            <p class="text-sm text-gray-400">加载中...</p>
+            <p class="text-sm text-gray-400 flex items-center gap-2"><span class="loading-spinner"></span>加载中…</p>
         }
         else if (jobs.Count == 0)
         {
@@ -59,31 +61,31 @@
         else
         {
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="w-full text-sm responsive-cards">
                     <thead>
                         <tr class="border-b border-gray-200 text-gray-500">
-                            <th class="text-left py-2">Id</th>
-                            <th class="text-left py-2">类型</th>
-                            <th class="text-left py-2">参数</th>
-                            <th class="text-left py-2">状态</th>
-                            <th class="text-left py-2">创建</th>
-                            <th class="text-left py-2">完成</th>
-                            <th class="text-left py-2">错误</th>
+                            <th class="text-left py-2 px-2">Id</th>
+                            <th class="text-left py-2 px-2">类型</th>
+                            <th class="text-left py-2 px-2 hide-mobile">参数</th>
+                            <th class="text-left py-2 px-2">状态</th>
+                            <th class="text-left py-2 px-2 hide-mobile">创建</th>
+                            <th class="text-left py-2 px-2 hide-mobile">完成</th>
+                            <th class="text-left py-2 px-2 hide-mobile">错误</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var j in jobs)
                         {
                             <tr class="border-b border-gray-100">
-                                <td class="py-2">@j.Id</td>
-                                <td class="py-2">@j.Type</td>
-                                <td class="py-2 text-gray-500 font-mono text-xs">@j.Payload</td>
-                                <td class="py-2">
+                                <td data-label="Id" class="py-2 px-2 tabular-nums">@j.Id</td>
+                                <td data-label="类型" class="py-2 px-2">@j.Type</td>
+                                <td data-label="参数" class="py-2 px-2 text-gray-500 font-mono text-xs wrap-cell hide-mobile"><span class="break-all">@j.Payload</span></td>
+                                <td data-label="状态" class="py-2 px-2">
                                     <span class="px-2 py-0.5 rounded-full text-xs @StatusClass(j.Status)">@StatusText(j.Status)</span>
                                 </td>
-                                <td class="py-2 text-gray-500">@j.CreatedAt.ToString("MM-dd HH:mm:ss")</td>
-                                <td class="py-2 text-gray-500">@(j.CompletedAt?.ToString("MM-dd HH:mm:ss") ?? "-")</td>
-                                <td class="py-2 text-red-500 text-xs max-w-xs truncate" title="@j.Error">@(j.Error ?? "")</td>
+                                <td data-label="创建" class="py-2 px-2 text-gray-500 hide-mobile">@j.CreatedAt.ToString("MM-dd HH:mm:ss")</td>
+                                <td data-label="完成" class="py-2 px-2 text-gray-500 hide-mobile">@(j.CompletedAt?.ToString("MM-dd HH:mm:ss") ?? "-")</td>
+                                <td data-label="错误" class="py-2 px-2 text-red-500 text-xs max-w-xs wrap-cell hide-mobile"><span class="break-words" title="@j.Error">@(j.Error ?? "")</span></td>
                             </tr>
                         }
                     </tbody>
@@ -93,12 +95,12 @@
     </div>
 
     <!-- 统一清洗规则视图 -->
-    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 class="text-lg font-semibold mb-1">统一清洗规则</h2>
-        <p class="text-sm text-gray-500 mb-4">Category / Merchant / Tag 规则收敛视图（按优先级降序）。</p>
+    <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+        <h2 class="text-base sm:text-lg font-semibold mb-1">统一清洗规则</h2>
+        <p class="text-xs sm:text-sm text-gray-500 mb-4">Category / Merchant / Tag 规则收敛视图（按优先级降序）。</p>
         @if (rules == null)
         {
-            <p class="text-sm text-gray-400">加载中...</p>
+            <p class="text-sm text-gray-400 flex items-center gap-2"><span class="loading-spinner"></span>加载中…</p>
         }
         else if (rules.Count == 0)
         {
@@ -107,34 +109,34 @@
         else
         {
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="w-full text-sm responsive-cards">
                     <thead>
                         <tr class="border-b border-gray-200 text-gray-500">
-                            <th class="text-left py-2">类型</th>
-                            <th class="text-left py-2">条件</th>
-                            <th class="text-left py-2">动作</th>
-                            <th class="text-right py-2">优先级</th>
-                            <th class="text-center py-2">启用</th>
+                            <th class="text-left py-2 px-2">类型</th>
+                            <th class="text-left py-2 px-2">条件</th>
+                            <th class="text-left py-2 px-2">动作</th>
+                            <th class="text-right py-2 px-2 hide-mobile">优先级</th>
+                            <th class="text-center py-2 px-2">启用</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var r in rules)
                         {
                             <tr class="border-b border-gray-100">
-                                <td class="py-2">
+                                <td data-label="类型" class="py-2 px-2">
                                     <span class="px-2 py-0.5 rounded-full text-xs @TypeClass(r.Type)">@r.Type</span>
                                 </td>
-                                <td class="py-2 font-mono text-xs text-gray-600">@r.Condition</td>
-                                <td class="py-2">@r.Action</td>
-                                <td class="py-2 text-right text-gray-500">@r.Priority</td>
-                                <td class="py-2 text-center">
+                                <td data-label="条件" class="py-2 px-2 font-mono text-xs text-gray-600 wrap-cell"><span class="break-all">@r.Condition</span></td>
+                                <td data-label="动作" class="py-2 px-2 wrap-cell"><span class="break-words">@r.Action</span></td>
+                                <td data-label="优先级" class="py-2 px-2 text-right text-gray-500 tabular-nums hide-mobile">@r.Priority</td>
+                                <td data-label="启用" class="py-2 px-2 text-center">
                                     @if (r.IsActive)
                                     {
-                                        <span class="material-icons text-green-500 text-base">check_circle</span>
+                                        <span class="material-icons text-green-500 text-base" title="已启用">check_circle</span>
                                     }
                                     else
                                     {
-                                        <span class="material-icons text-gray-300 text-base">remove_circle</span>
+                                        <span class="material-icons text-gray-300 text-base" title="已停用">remove_circle</span>
                                     }
                                 </td>
                             </tr>

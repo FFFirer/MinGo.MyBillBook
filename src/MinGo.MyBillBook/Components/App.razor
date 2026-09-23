@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <base href="/" />
     <title>个人财务分析</title>
     <meta name="description" content="导入支付宝、微信对账单，自动解析分类，消费分析" />
@@ -11,6 +11,11 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <script src="https://cdn.jsdelivr.net/npm/@@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @@theme {
+            --breakpoint-xs: 30rem;
+        }
+    </style>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
     <link rel="stylesheet" href="@Assets["app.css"]" />

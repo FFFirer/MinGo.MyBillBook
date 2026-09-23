@@ -3,20 +3,22 @@
 @inject HttpClient Http
 
 <PageTitle>对账中心</PageTitle>
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-800">对账中心</h1>
-        <button @onclick="LoadData" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-            <span class="material-icons mr-2">refresh</span>
-            刷新
-        </button>
+<div class="space-y-4 sm:space-y-6">
+    <div class="page-header">
+        <h1>对账中心</h1>
+        <div class="actions">
+            <button @onclick="LoadData" class="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px]">
+                <span class="material-icons mr-1 sm:mr-2 text-base">refresh</span>
+                <span class="hidden xs:inline">刷新</span>
+            </button>
+        </div>
     </div>
 
     @if (errorMessage != null)
     {
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
-            <span>@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex justify-between items-start gap-3" role="alert">
+            <span class="flex-1 text-sm break-words">@errorMessage</span>
+            <button @onclick="() => errorMessage = null" class="text-red-500 hover:text-red-700 shrink-0 inline-flex items-center justify-center rounded-lg" style="width:36px;height:36px;" aria-label="关闭">
                 <span class="material-icons text-lg">close</span>
             </button>
         </div>
@@ -24,9 +26,9 @@
 
     @if (infoMessage != null)
     {
-        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex justify-between items-center">
-            <span>@infoMessage</span>
-            <button @onclick="() => infoMessage = null" class="text-green-500 hover:text-green-700">
+        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex justify-between items-start gap-3" role="status">
+            <span class="flex-1 text-sm break-words">@infoMessage</span>
+            <button @onclick="() => infoMessage = null" class="text-green-500 hover:text-green-700 shrink-0 inline-flex items-center justify-center rounded-lg" style="width:36px;height:36px;" aria-label="关闭">
                 <span class="material-icons text-lg">close</span>
             </button>
         </div>
@@ -34,9 +36,9 @@
 
     <!-- 账户余额对账概览 -->
     <section>
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-semibold text-gray-700">账户余额对账</h2>
-            <button @onclick="OpenSnapshotDialog" class="inline-flex items-center px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h2 class="text-base sm:text-lg font-semibold text-gray-700">账户余额对账</h2>
+            <button @onclick="OpenSnapshotDialog" class="inline-flex items-center justify-center px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors text-sm min-h-[44px] sm:w-auto w-full">
                 <span class="material-icons mr-1 text-base">add</span>
                 录入银行余额
             </button>
@@ -44,96 +46,43 @@
         @if (accounts != null)
         {
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200">
-                            <th class="text-left py-3 px-4 font-medium text-gray-500">账户</th>
-                            <th class="text-right py-3 px-4 font-medium text-gray-500">银行余额</th>
-                            <th class="text-right py-3 px-4 font-medium text-gray-500">计算余额</th>
-                            <th class="text-right py-3 px-4 font-medium text-gray-500">差异</th>
-                            <th class="text-left py-3 px-4 font-medium text-gray-500">快照日期</th>
-                            <th class="text-center py-3 px-4 font-medium text-gray-500">状态</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var a in accounts)
-                        {
-                            var hasSnap = a.SnapshotDate != null;
-                            var diff = a.Difference ?? 0m;
-                            <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                <td class="py-3 px-4 font-medium">@a.Name</td>
-                                <td class="py-3 px-4 text-right text-gray-600">@(hasSnap ? a.BankBalance?.ToString("F2") : "—")</td>
-                                <td class="py-3 px-4 text-right text-gray-600">@(hasSnap ? a.CalculatedBalance?.ToString("F2") : "—")</td>
-                                <td class="py-3 px-4 text-right font-medium @(Math.Abs(diff) > 0.01m ? "text-red-600" : "text-green-600")">
-                                    @(hasSnap ? diff.ToString("F2") : "—")
-                                </td>
-                                <td class="py-3 px-4 text-gray-500">@(a.SnapshotDate?.ToString("yyyy-MM-dd") ?? "—")</td>
-                                <td class="py-3 px-4 text-center">
-                                    @if (!hasSnap)
-                                    {
-                                        <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-500">未对账</span>
-                                    }
-                                    else if (Math.Abs(diff) > 0.01m)
-                                    {
-                                        <span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">有差异</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">已平账</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-    </section>
-
-    <!-- 对账差异清单 -->
-    <section>
-        <h2 class="text-lg font-semibold text-gray-700 mb-3">对账差异清单</h2>
-        @if (issues != null)
-        {
-            @if (issues.Count == 0)
-            {
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center text-gray-400">
-                    暂无未解决的对账差异
-                </div>
-            }
-            else
-            {
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table class="w-full text-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm responsive-cards">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-200">
                                 <th class="text-left py-3 px-4 font-medium text-gray-500">账户</th>
+                                <th class="text-right py-3 px-4 font-medium text-gray-500">银行余额</th>
+                                <th class="text-right py-3 px-4 font-medium text-gray-500">计算余额</th>
                                 <th class="text-right py-3 px-4 font-medium text-gray-500">差异</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-500">说明</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-500">创建时间</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-500 hide-mobile">快照日期</th>
                                 <th class="text-center py-3 px-4 font-medium text-gray-500">状态</th>
-                                <th class="text-right py-3 px-4 font-medium text-gray-500">操作</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var i in issues)
+                            @foreach (var a in accounts)
                             {
+                                var hasSnap = a.SnapshotDate != null;
+                                var diff = a.Difference ?? 0m;
                                 <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                    <td class="py-3 px-4 font-medium">@i.AccountName</td>
-                                    <td class="py-3 px-4 text-right font-medium text-red-600">@i.Difference.ToString("F2")</td>
-                                    <td class="py-3 px-4 text-gray-600">@i.Note</td>
-                                    <td class="py-3 px-4 text-gray-500">@i.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                                    <td class="py-3 px-4 text-center">
-                                        <span class="px-2 py-1 rounded-full text-xs @(i.Status == "Open" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700")">
-                                            @(i.Status == "Open" ? "待处理" : "已解决")
-                                        </span>
+                                    <td data-label="账户" class="py-3 px-4 font-medium wrap-cell"><span class="break-words">@a.Name</span></td>
+                                    <td data-label="银行余额" class="py-3 px-4 text-right text-gray-600 tabular-nums">@(hasSnap ? a.BankBalance?.ToString("F2") : "—")</td>
+                                    <td data-label="计算余额" class="py-3 px-4 text-right text-gray-600 tabular-nums">@(hasSnap ? a.CalculatedBalance?.ToString("F2") : "—")</td>
+                                    <td data-label="差异" class="py-3 px-4 text-right font-medium tabular-nums @(Math.Abs(diff) > 0.01m ? "text-red-600" : "text-green-600")">
+                                        @(hasSnap ? diff.ToString("F2") : "—")
                                     </td>
-                                    <td class="py-3 px-4 text-right">
-                                        @if (i.Status == "Open")
+                                    <td data-label="快照日期" class="py-3 px-4 text-gray-500 hide-mobile">@(a.SnapshotDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                                    <td data-label="状态" class="py-3 px-4 text-center">
+                                        @if (!hasSnap)
                                         {
-                                            <button @onclick="() => ResolveIssue(i)" class="px-3 py-1 text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors text-xs">
-                                                标记已解决
-                                            </button>
+                                            <span class="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-500">未对账</span>
+                                        }
+                                        else if (Math.Abs(diff) > 0.01m)
+                                        {
+                                            <span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">有差异</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">已平账</span>
                                         }
                                     </td>
                                 </tr>
@@ -141,51 +90,112 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        }
+    </section>
+
+    <!-- 对账差异清单 -->
+    <section>
+        <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-3">对账差异清单</h2>
+        @if (issues != null)
+        {
+            @if (issues.Count == 0)
+            {
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center text-gray-400 empty-state">
+                    <span class="material-icons">check_circle</span>
+                    暂无未解决的对账差异
+                </div>
+            }
+            else
+            {
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm responsive-cards">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="text-left py-3 px-4 font-medium text-gray-500">账户</th>
+                                    <th class="text-right py-3 px-4 font-medium text-gray-500">差异</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-500 hide-mobile">说明</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-500 hide-mobile">创建时间</th>
+                                    <th class="text-center py-3 px-4 font-medium text-gray-500">状态</th>
+                                    <th class="text-right py-3 px-4 font-medium text-gray-500">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var i in issues)
+                                {
+                                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                        <td data-label="账户" class="py-3 px-4 font-medium wrap-cell"><span class="break-words">@i.AccountName</span></td>
+                                        <td data-label="差异" class="py-3 px-4 text-right font-medium text-red-600 tabular-nums">@i.Difference.ToString("F2")</td>
+                                        <td data-label="说明" class="py-3 px-4 text-gray-600 wrap-cell hide-mobile"><span class="break-words">@i.Note</span></td>
+                                        <td data-label="创建时间" class="py-3 px-4 text-gray-500 hide-mobile">@i.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td data-label="状态" class="py-3 px-4 text-center">
+                                            <span class="px-2 py-1 rounded-full text-xs @(i.Status == "Open" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700")">
+                                                @(i.Status == "Open" ? "待处理" : "已解决")
+                                            </span>
+                                        </td>
+                                        <td data-label="操作" class="py-3 px-4 text-right">
+                                            @if (i.Status == "Open")
+                                            {
+                                                <button @onclick="() => ResolveIssue(i)" class="px-3 py-2 text-green-700 bg-green-50 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors text-xs font-medium min-h-[40px] inline-flex items-center">
+                                                    标记已解决
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             }
         }
     </section>
 
     <!-- 检测到的转账 -->
     <section>
-        <h2 class="text-lg font-semibold text-gray-700 mb-3">检测到的转账</h2>
+        <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-3">检测到的转账</h2>
         @if (transfers != null)
         {
             @if (transfers.Count == 0)
             {
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center text-gray-400">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center text-gray-400 empty-state">
+                    <span class="material-icons">swap_horiz</span>
                     暂无检测到的转账记录
                 </div>
             }
             else
             {
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="bg-gray-50 border-b border-gray-200">
-                                <th class="text-left py-3 px-4 font-medium text-gray-500">日期</th>
-                                <th class="text-right py-3 px-4 font-medium text-gray-500">金额</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-500">转出账户</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-500">转入账户</th>
-                                <th class="text-left py-3 px-4 font-medium text-gray-500">匹配记录</th>
-                                <th class="text-center py-3 px-4 font-medium text-gray-500">状态</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var t in transfers)
-                            {
-                                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                                    <td class="py-3 px-4 text-gray-600">@t.OccurredAt.ToString("yyyy-MM-dd")</td>
-                                    <td class="py-3 px-4 text-right font-medium">@t.Amount.ToString("F2")</td>
-                                    <td class="py-3 px-4 text-gray-600">@(AccountName(t.FromAccountId))</td>
-                                    <td class="py-3 px-4 text-gray-600">@(AccountName(t.ToAccountId))</td>
-                                    <td class="py-3 px-4 text-gray-500 text-xs">@t.MatchedRecordIds</td>
-                                    <td class="py-3 px-4 text-center">
-                                        <span class="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">@TransferStatusName(t.Status)</span>
-                                    </td>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm responsive-cards">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200">
+                                    <th class="text-left py-3 px-4 font-medium text-gray-500">日期</th>
+                                    <th class="text-right py-3 px-4 font-medium text-gray-500">金额</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-500">转出账户</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-500">转入账户</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-500 hide-mobile">匹配记录</th>
+                                    <th class="text-center py-3 px-4 font-medium text-gray-500 hide-mobile">状态</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in transfers)
+                                {
+                                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                        <td data-label="日期" class="py-3 px-4 text-gray-600">@t.OccurredAt.ToString("yyyy-MM-dd")</td>
+                                        <td data-label="金额" class="py-3 px-4 text-right font-medium tabular-nums">@t.Amount.ToString("F2")</td>
+                                        <td data-label="转出账户" class="py-3 px-4 text-gray-600 wrap-cell"><span class="break-words">@(AccountName(t.FromAccountId))</span></td>
+                                        <td data-label="转入账户" class="py-3 px-4 text-gray-600 wrap-cell"><span class="break-words">@(AccountName(t.ToAccountId))</span></td>
+                                        <td data-label="匹配记录" class="py-3 px-4 text-gray-500 text-xs wrap-cell hide-mobile"><span class="break-all">@t.MatchedRecordIds</span></td>
+                                        <td data-label="状态" class="py-3 px-4 text-center hide-mobile">
+                                            <span class="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">@TransferStatusName(t.Status)</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             }
         }
@@ -195,13 +205,13 @@
 <!-- 录入银行余额弹窗 -->
 @if (showSnapshotDialog)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @onclick="CloseSnapshotDialog">
-        <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" @onclick:stopPropagation>
+    <div class="modal-root" @onclick="CloseSnapshotDialog" role="dialog" aria-modal="true" aria-label="录入银行余额">
+        <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <h2 class="text-lg font-semibold text-gray-800 mb-4">录入银行余额</h2>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">账户</label>
-                    <select @bind="formAccountId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <label for="snapAccountSelect" class="block text-sm font-medium text-gray-700 mb-1">账户</label>
+                    <select id="snapAccountSelect" @bind="formAccountId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]">
                         <option value="0">请选择账户</option>
                         @if (accounts != null)
                         {
@@ -213,18 +223,18 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">快照日期</label>
-                    <input @bind="formDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                    <label for="snapDateInput" class="block text-sm font-medium text-gray-700 mb-1">快照日期</label>
+                    <input id="snapDateInput" @bind="formDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">银行真实余额（元）</label>
-                    <input @bind="formBankBalance" type="number" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="0.00" />
+                    <label for="snapBalanceInput" class="block text-sm font-medium text-gray-700 mb-1">银行真实余额（元）</label>
+                    <input id="snapBalanceInput" @bind="formBankBalance" type="number" step="0.01" inputmode="decimal" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 min-h-[44px]" placeholder="0.00" />
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-6">
-                <button @onclick="CloseSnapshotDialog" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">取消</button>
-                <button @onclick="SaveSnapshot" disabled="@isSaving" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
-                    @(isSaving ? "保存中..." : "保存并对账")
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
+                <button @onclick="CloseSnapshotDialog" class="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]">取消</button>
+                <button @onclick="SaveSnapshot" disabled="@isSaving" class="w-full sm:w-auto px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-colors disabled:opacity-50 min-h-[44px]">
+                    @(isSaving ? "保存中…" : "保存并对账")
                 </button>
             </div>
         </div>

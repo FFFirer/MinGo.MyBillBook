@@ -5,6 +5,10 @@
     --md-surface: #FFFBFE;
     --md-surface-variant: #E7E0EC;
     --md-on-surface: #1C1B1F;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -12,9 +16,15 @@
     scrollbar-color: #d1d5db transparent;
 }
 
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 body {
     font-family: 'Roboto', sans-serif;
     background-color: #F5F3F7;
+    overscroll-behavior-y: none;
 }
 
 /* Active nav link */
@@ -24,28 +34,268 @@ a.active {
     font-weight: 500;
 }
 
-/* Card hover effect */
-.card-hover {
-    transition: all 0.2s ease;
-}
-.card-hover:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
+/* Card hover effect (pointer devices only — avoid sticky hover on touch) */
+@media (hover: hover) and (pointer: fine) {
+    .card-hover {
+        transition: all 0.2s ease;
+    }
+    .card-hover:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+    }
 }
 
-/* Responsive sidebar */
+/* ===== Responsive sidebar drawer ===== */
 @media (max-width: 1023px) {
     #sidebar.show {
         transform: translateX(0) !important;
     }
 }
 
-/* Table improvements */
+/* Backdrop behind the mobile drawer */
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 40;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.sidebar-backdrop.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+@media (min-width: 1024px) {
+    .sidebar-backdrop { display: none; }
+}
+
+/* ===== Mobile top app bar ===== */
+.mobile-appbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: calc(3.5rem + var(--safe-top));
+    padding-top: var(--safe-top);
+    padding-left: max(0.75rem, var(--safe-left));
+    padding-right: max(0.75rem, var(--safe-right));
+    background: #6750A4;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+@media (min-width: 1024px) {
+    .mobile-appbar { display: none; }
+}
+
+/* ===== Touch targets: enforce >=44px on coarse pointers ===== */
+@media (pointer: coarse) {
+    button, a.tap, .touch-target {
+        min-height: 44px;
+    }
+    /* keep tiny inline icon buttons at least tappable */
+    button.p-1, button.p-1\.5 {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    table button {
+        min-width: 40px;
+        min-height: 40px;
+    }
+}
+
+/* ===== Table improvements ===== */
 table {
     border-collapse: collapse;
 }
 
-/* Loading spinner */
+/* Horizontal scroll containers get a subtle affordance */
+.overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* ===== Responsive stacked-card tables =====
+   Add class "responsive-cards" to <table> and data-label="列名" to each <td>.
+   Below 768px the table collapses into one card per row. */
+@media (max-width: 767px) {
+    table.responsive-cards thead {
+        position: absolute;
+        width: 1px; height: 1px;
+        margin: -1px; padding: 0;
+        overflow: hidden;
+        clip: rect(0,0,0,0);
+        white-space: nowrap; border: 0;
+    }
+    table.responsive-cards,
+    table.responsive-cards tbody {
+        display: block;
+        width: 100%;
+    }
+    table.responsive-cards tr {
+        display: block;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    table.responsive-cards tr:last-child { margin-bottom: 0; }
+    table.responsive-cards td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.375rem 0;
+        border: none;
+        text-align: right;
+        font-size: 0.875rem;
+        line-height: 1.35;
+    }
+    table.responsive-cards td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        max-width: 45%;
+        font-weight: 500;
+        color: #6b7280;
+        text-align: left;
+        font-size: 0.75rem;
+        text-transform: none;
+        letter-spacing: 0.01em;
+    }
+    table.responsive-cards td > * {
+        text-align: right;
+    }
+    /* Allow wrapping for long text cells */
+    table.responsive-cards td.wrap-cell {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    table.responsive-cards td.wrap-cell::before {
+        max-width: 100%;
+    }
+    table.responsive-cards td.wrap-cell > * {
+        text-align: left;
+        width: 100%;
+    }
+    /* Hide cells explicitly marked desktop-only */
+    table.responsive-cards td.hide-mobile { display: none; }
+}
+@media (min-width: 768px) {
+    table.responsive-cards td.hide-desktop { display: none; }
+}
+
+/* Sticky first column for wide matrix tables (Analysis multi-dim) */
+@media (max-width: 1023px) {
+    .matrix-scroll table th:first-child,
+    .matrix-scroll table td:first-child {
+        position: sticky;
+        left: 0;
+        background: #fff;
+        z-index: 1;
+        box-shadow: 1px 0 0 #e5e7eb;
+    }
+    .matrix-scroll table thead th:first-child {
+        background: #f9fafb;
+        z-index: 2;
+    }
+}
+
+/* ===== Modal / dialog ===== */
+.modal-root {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.5);
+    padding: 1rem;
+}
+.modal-panel {
+    background: #fff;
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+    width: 100%;
+    max-width: 28rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    padding: 1.5rem;
+    -webkit-overflow-scrolling: touch;
+}
+.modal-panel.modal-sm { max-width: 24rem; }
+.modal-panel.modal-lg { max-width: 32rem; }
+
+/* Bottom-sheet presentation on small screens */
+@media (max-width: 639px) {
+    .modal-root {
+        align-items: flex-end;
+        padding: 0;
+    }
+    .modal-panel {
+        max-width: 100%;
+        width: 100%;
+        border-radius: 1rem 1rem 0 0;
+        max-height: 92vh;
+        padding: 1.25rem 1rem calc(1.25rem + var(--safe-bottom));
+        animation: sheet-up 0.22s ease-out;
+    }
+    .modal-panel::before {
+        content: "";
+        display: block;
+        width: 2.5rem;
+        height: 0.25rem;
+        border-radius: 9999px;
+        background: #d1d5db;
+        margin: -0.5rem auto 0.75rem;
+    }
+}
+@keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+}
+
+/* ===== Toast ===== */
+.toast {
+    position: fixed;
+    z-index: 60;
+    left: max(0.75rem, var(--safe-left));
+    right: max(0.75rem, var(--safe-right));
+    top: calc(0.75rem + var(--safe-top));
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    color: #fff;
+    font-size: 0.875rem;
+    text-align: center;
+    animation: toast-in 0.2s ease-out;
+}
+@media (min-width: 640px) {
+    .toast {
+        left: auto;
+        right: 1rem;
+        top: 1rem;
+        min-width: 16rem;
+        max-width: 24rem;
+        text-align: left;
+    }
+}
+.toast-success { background: #16a34a; }
+.toast-error   { background: #dc2626; }
+.toast-info    { background: #2563eb; }
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Loading spinner ===== */
 .loading-spinner {
     border: 3px solid #E7E0EC;
     border-top: 3px solid #6750A4;
@@ -60,7 +310,56 @@ table {
     100% { transform: rotate(360deg); }
 }
 
-/* Blazor error UI */
+/* ===== Page header pattern ===== */
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.page-header h1 {
+    font-size: 1.375rem;
+    line-height: 1.3;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+@media (min-width: 768px) {
+    .page-header h1 { font-size: 1.5rem; }
+}
+.page-header .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* ===== Filter panel: collapsible on mobile ===== */
+.filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    width: 100%;
+    justify-content: space-between;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.625rem;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+}
+@media (min-width: 768px) {
+    .filter-toggle { display: none; }
+}
+.filter-body { display: block; }
+.filter-body.collapsed { display: none; }
+@media (min-width: 768px) {
+    .filter-body.collapsed { display: block; }
+}
+
+/* ===== Blazor error UI ===== */
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;
@@ -68,6 +367,7 @@ table {
     display: none;
     left: 0;
     padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding-bottom: calc(0.7rem + var(--safe-bottom));
     position: fixed;
     width: 100%;
     z-index: 1000;
@@ -83,4 +383,82 @@ table {
 /* Components auto-detected marker */
 .components-reconnect-overlay {
     z-index: 9999;
+}
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ===== Utility: full-bleed horizontal scroll on mobile ===== */
+@media (max-width: 767px) {
+    .mobile-full-bleed {
+        margin-left: -1rem;
+        margin-right: -1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+
+/* ===== Forms on mobile: prevent iOS zoom on focus ===== */
+@media (max-width: 639px) {
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+    /* keep Tailwind text-sm look via slight padding adjust */
+    input.text-sm, select.text-sm, textarea.text-sm {
+        font-size: 16px !important;
+    }
+}
+
+/* ===== Empty-state / placeholder blocks ===== */
+.empty-state {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: #9ca3af;
+}
+.empty-state .material-icons {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 0.75rem;
+    color: #d1d5db;
+}
+
+/* ===== Metric cards grid tuning ===== */
+@media (max-width: 479px) {
+    .metric-grid { grid-template-columns: 1fr !important; gap: 0.75rem !important; }
+}
+@media (min-width: 480px) and (max-width: 767px) {
+    .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.75rem !important; }
+}
+
+/* ===== Bar chart (Analysis monthly trend) mobile tuning ===== */
+@media (max-width: 639px) {
+    .trend-chart { height: 10rem; }
+    .trend-chart .bar-group { gap: 1px; }
+    .trend-chart .bar-label { font-size: 0.625rem; }
+}
+
+/* ===== Scroll hint shadow for wide tables ===== */
+.scroll-hint {
+    position: relative;
+}
+.scroll-hint::after {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; right: 0;
+    width: 1.5rem;
+    pointer-events: none;
+    background: linear-gradient(to left, rgba(255,255,255,0.95), rgba(255,255,255,0));
+    opacity: 1;
+    transition: opacity 0.2s;
+}
+.scroll-hint.scrolled-end::after { opacity: 0; }
+@media (min-width: 768px) {
+    .scroll-hint::after { display: none; }
 }
