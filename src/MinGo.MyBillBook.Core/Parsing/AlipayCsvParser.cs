@@ -92,6 +92,7 @@ public class AlipayCsvParser : IBillParser
                     Counterparty = GetField(csv, columnMap, "交易对方"),
                     PaymentMethod = GetField(csv, columnMap, "收/付款方式", "支付方式"),
                     Status = GetField(csv, columnMap, "交易状态"),
+                    SourceCategory = GetField(csv, columnMap, "交易分类"),
                 };
 
                 if (!string.IsNullOrEmpty(rawRow.TransactionId))

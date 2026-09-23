@@ -8,13 +8,14 @@ namespace MinGo.MyBillBook.Services.Pipeline.Steps;
 
 /// <summary>
 /// 分类步骤：基于 Normalized 层输入解析交易方向、构建内存中的 Canonical 记录，并按设计第 8 节的
-/// 分类优先级链决定 CategoryId：User → ExplicitRule → MerchantRule → AI → Default。
+/// 分类优先级链决定 CategoryId：User → ExplicitRule → SourceCategory → MerchantRule → AI → Default。
 /// 每次决策生成 <see cref="ClassificationResult"/> 溯源（暂存于上下文，由发布步骤回填 Id 后落库），
 /// 保证无规则命中时落到默认分类而非 null。仅做转换，不落库，符合步骤单一职责。
 /// </summary>
 public class ClassifyCategoryStep(
     ICategoryRuleEngine ruleEngine,
     ICategoryClassifier classifier,
+    ICategoryNormalizer normalizer,
     AppDbContext db) : IPipelineStep<BillImportContext>
 {
     public string Name => "ClassifyCategory";
@@ -40,7 +41,7 @@ public class ClassifyCategoryStep(
             var transactionType = ParseTransactionType(tx.Direction);
             context.MerchantResolutions.TryGetValue(tx.Id, out var merchant);
 
-            // 分类优先级链：User → ExplicitRule → MerchantRule → AI → Default
+            // 分类优先级链：User → ExplicitRule → SourceCategory → MerchantRule → AI → Default
             var decision = await ResolveCategoryAsync(tx, merchant, merchantDefaults, defaultCategoryId, ct);
 
             var record = new BillRecord
@@ -110,16 +111,24 @@ public class ClassifyCategoryStep(
         if (match is not null)
             return new CategoryDecision(match.CategoryId, ClassificationSource.ExplicitRule, match.RuleId, 0.9);
 
-        // 2) Merchant Rule：商户预设的默认分类。
+        // 2) SourceCategory：平台原始分类归一化（如支付宝"交易分类"列）。
+        if (!string.IsNullOrWhiteSpace(tx.SourceCategory))
+        {
+            var normalized = await normalizer.NormalizeAsync(tx.SourceCategory, ct);
+            if (normalized is not null)
+                return new CategoryDecision(normalized.CategoryId, ClassificationSource.SourceCategory, null, normalized.Confidence);
+        }
+
+        // 3) Merchant Rule：商户预设的默认分类。
         if (merchant is not null && merchantDefaults.TryGetValue(merchant.MerchantId, out var merchantCategoryId))
             return new CategoryDecision(merchantCategoryId, ClassificationSource.MerchantRule, null, 0.75);
 
-        // 3) AI/ML：可插拔分类器（当前空实现返回 null）。
+        // 4) AI/ML：可插拔分类器（当前空实现返回 null）。
         var ai = await classifier.ClassifyAsync(tx.Counterparty, tx.ProductName, ct);
         if (ai is not null)
             return new CategoryDecision(ai.CategoryId, ClassificationSource.AI, null, ai.Confidence);
 
-        // 4) Default：兜底分类，确保 CategoryId 非 null。
+        // 5) Default：兜底分类，确保 CategoryId 非 null。
         return new CategoryDecision(defaultCategoryId, ClassificationSource.Default, null, 0.1);
     }
 

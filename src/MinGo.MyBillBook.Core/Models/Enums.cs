@@ -25,9 +25,10 @@ public enum ClassificationSource
 {
     User = 0,
     ExplicitRule = 1,
-    MerchantRule = 2,
-    AI = 3,
-    Default = 4
+    SourceCategory = 2,
+    MerchantRule = 3,
+    AI = 4,
+    Default = 5
 }
 
 public enum AccountType

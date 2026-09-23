@@ -55,6 +55,7 @@ builder.Services.AddScoped<IBillProcessingService, BillProcessingService>();
 builder.Services.AddScoped<IBillQueryService, BillQueryService>();
 builder.Services.AddScoped<ICategoryRuleEngine, CategoryRuleEngine>();
 builder.Services.AddScoped<ICategoryClassifier, NullCategoryClassifier>();
+builder.Services.AddScoped<ICategoryNormalizer, CategoryNormalizer>();
 builder.Services.AddScoped<IMerchantResolver, MerchantResolver>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 builder.Services.AddScoped<DuckDbSyncService>();

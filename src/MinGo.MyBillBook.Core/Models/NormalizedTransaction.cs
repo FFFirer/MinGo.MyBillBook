@@ -40,6 +40,9 @@ public class NormalizedTransaction
     /// <summary>来源交易号，用于去重评分。</summary>
     public string SourceTransactionId { get; set; } = string.Empty;
 
+    /// <summary>原始交易分类文本（如支付宝"交易分类"列），用于归一化映射。</summary>
+    public string SourceCategory { get; set; } = string.Empty;
+
     /// <summary>去重评分结果状态（DeduplicateStep 写入）。</summary>
     public DuplicateStatus DuplicateStatus { get; set; } = DuplicateStatus.Unique;
 

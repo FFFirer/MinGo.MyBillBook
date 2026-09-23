@@ -58,7 +58,8 @@ public class NormalizeStep(AppDbContext db) : IPipelineStep<BillImportContext>
                     Direction = row.Direction,
                     PaymentMethod = row.PaymentMethod,
                     Status = row.Status,
-                    SourceTransactionId = row.TransactionId
+                    SourceTransactionId = row.TransactionId,
+                    SourceCategory = row.SourceCategory
                 });
             }
             catch (Exception ex)

@@ -50,6 +50,19 @@ public record CategoryMatch(int CategoryId, int RuleId);
 public record CategoryClassification(int CategoryId, double Confidence);
 
 /// <summary>
+/// 原始分类归一化结果：匹配到的分类 Id 与匹配方式。
+/// </summary>
+public record CategoryNormalizationResult(int CategoryId, double Confidence);
+
+/// <summary>
+/// 将平台原始分类文本（如支付宝"交易分类"列的"餐饮美食"）归一化到系统 BillCategory。
+/// </summary>
+public interface ICategoryNormalizer
+{
+    Task<CategoryNormalizationResult?> NormalizeAsync(string sourceCategory, CancellationToken ct = default);
+}
+
+/// <summary>
 /// AI/ML 分类器扩展点（设计第 8 节）。当前提供空实现，未来接入模型时仅需替换实现，
 /// 分类优先级链无需改动（"以后增加 AI 只是往规则层加能力"）。
 /// </summary>
