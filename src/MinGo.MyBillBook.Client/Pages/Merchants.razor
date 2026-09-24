@@ -28,27 +28,56 @@
 
     <!-- 商户列表 -->
     <div class="md-card-elevated overflow-hidden">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant font-semibold text-on-surface text-body-medium">商户</div>
-        <div class="overflow-x-auto -mx-4 sm:-mx-6">
-            <table class="md-table responsive-cards">
-                <thead>
-                    <tr>
-                        <th class="text-left">规范名称</th>
-                        <th class="text-left">默认分类</th>
-                        <th class="text-left hide-mobile">别名数</th>
-                        <th class="text-left">关联账单</th>
-                        <th class="text-right">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (merchants != null)
-                    {
+        <div class="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant">
+            <span class="material-symbols-outlined text-on-surface-variant text-[1.25rem]">storefront</span>
+            <h2 class="text-title-medium text-on-surface">商户</h2>
+            <span class="md-chip md-chip-assist-primary text-body-small">@(merchants?.Count ?? 0)</span>
+        </div>
+
+        @if (merchants == null)
+        {
+            <div class="empty-state">
+                <span class="material-symbols-outlined">loading_spinner</span>
+                <p>加载中...</p>
+            </div>
+        }
+        else if (merchants.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="material-symbols-outlined">storefront</span>
+                <p class="text-body-medium">暂无商户</p>
+                <p class="text-body-small mt-1">点击上方「新增商户」创建第一个商户</p>
+            </div>
+        }
+        else
+        {
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
+                    <thead>
+                        <tr>
+                            <th class="text-left">规范名称</th>
+                            <th class="text-left">默认分类</th>
+                            <th class="text-left hide-mobile">别名数</th>
+                            <th class="text-left">关联账单</th>
+                            <th class="text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         @foreach (var m in merchants)
                         {
                             <tr>
                                 <td data-label="规范名称" class="font-medium text-on-surface wrap-cell"><span class="break-words">@m.CanonicalName</span></td>
                                 <td data-label="默认分类" class="text-on-surface-variant">@(m.DefaultCategoryName ?? "—")</td>
-                                <td data-label="别名数" class="text-on-surface-variant tabular-nums hide-mobile">@m.AliasCount</td>
+                                <td data-label="别名数" class="tabular-nums hide-mobile">
+                                    @if (m.AliasCount > 0)
+                                    {
+                                        <span class="md-chip md-chip-assist-info">@m.AliasCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-on-surface-variant">0</span>
+                                    }
+                                </td>
                                 <td data-label="关联账单">
                                     @if (m.BillCount > 0)
                                     {
@@ -65,83 +94,144 @@
                                 <td data-label="操作" class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button @onclick="() => OpenEditMerchantDialog(m)" class="md-icon-btn" title="编辑" aria-label="编辑 @m.CanonicalName"><span class="material-symbols-outlined">edit</span></button>
-                                        <button @onclick="() => DeleteMerchant(m)" class="md-icon-btn" title="删除" aria-label="删除 @m.CanonicalName"><span class="material-symbols-outlined text-error">delete</span></button>
+                                        <button @onclick="() => ConfirmDeleteMerchant(m)" class="md-icon-btn" title="删除" aria-label="删除 @m.CanonicalName"><span class="material-symbols-outlined text-error">delete</span></button>
                                     </div>
                                 </td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 
     <!-- 别名规则列表 -->
     <div class="md-card-elevated overflow-hidden">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant font-semibold text-on-surface text-body-medium">别名规则（按优先级降序匹配）</div>
-        <div class="overflow-x-auto -mx-4 sm:-mx-6">
-            <table class="md-table responsive-cards">
-                <thead>
-                    <tr>
-                        <th class="text-left">模式</th>
-                        <th class="text-left">匹配方式</th>
-                        <th class="text-left">归一到</th>
-                        <th class="text-left hide-mobile">优先级</th>
-                        <th class="text-left hide-mobile">启用</th>
-                        <th class="text-right">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (aliases != null)
-                    {
+        <div class="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant">
+            <span class="material-symbols-outlined text-on-surface-variant text-[1.25rem]">rule</span>
+            <h2 class="text-title-medium text-on-surface">别名规则</h2>
+            <span class="text-body-small text-on-surface-variant hidden sm:inline">（按优先级降序匹配）</span>
+            <span class="md-chip md-chip-assist-primary text-body-small">@(aliases?.Count ?? 0)</span>
+        </div>
+
+        @if (aliases == null)
+        {
+            <div class="empty-state">
+                <span class="material-symbols-outlined">loading_spinner</span>
+                <p>加载中...</p>
+            </div>
+        }
+        else if (aliases.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="material-symbols-outlined">rule</span>
+                <p class="text-body-medium">暂无别名规则</p>
+                <p class="text-body-small mt-1">点击上方「新增别名」创建别名匹配规则</p>
+            </div>
+        }
+        else
+        {
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
+                    <thead>
+                        <tr>
+                            <th class="text-left">模式</th>
+                            <th class="text-left">匹配方式</th>
+                            <th class="text-left">归一到</th>
+                            <th class="text-left hide-mobile">优先级</th>
+                            <th class="text-left hide-mobile">启用</th>
+                            <th class="text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         @foreach (var a in aliases)
                         {
                             <tr>
-                                <td data-label="模式" class="font-mono text-on-surface wrap-cell"><span class="break-all text-body-small">@a.Pattern</span></td>
+                                <td data-label="模式" class="font-mono wrap-cell"><span class="break-all text-body-small text-on-surface">@a.Pattern</span></td>
                                 <td data-label="匹配方式">
                                     <span title="@MatchTypeHint(a.MatchType)" class="md-chip @MatchTypeBadgeClass(a.MatchType)">
                                         <span class="material-symbols-outlined" style="font-size:16px;">@MatchTypeIcon(a.MatchType)</span>@MatchTypeLabel(a.MatchType)
                                     </span>
                                 </td>
                                 <td data-label="归一到" class="text-on-surface wrap-cell"><span class="break-words">@a.MerchantName</span></td>
-                                <td data-label="优先级" class="text-on-surface-variant tabular-nums hide-mobile">@a.Priority</td>
+                                <td data-label="优先级" class="tabular-nums text-on-surface-variant hide-mobile">@a.Priority</td>
                                 <td data-label="启用" class="hide-mobile">
-                                    <span class="@(a.IsActive ? "text-success" : "text-on-surface-variant")">@(a.IsActive ? "是" : "否")</span>
+                                    @if (a.IsActive)
+                                    {
+                                        <span class="md-chip md-chip-assist-success">启用</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="md-chip md-chip-assist-error">停用</span>
+                                    }
                                 </td>
                                 <td data-label="操作" class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button @onclick="() => OpenEditAliasDialog(a)" class="md-icon-btn" title="编辑" aria-label="编辑别名 @a.Pattern"><span class="material-symbols-outlined">edit</span></button>
-                                        <button @onclick="() => DeleteAlias(a)" class="md-icon-btn" title="删除" aria-label="删除别名 @a.Pattern"><span class="material-symbols-outlined text-error">delete</span></button>
+                                        <button @onclick="() => ConfirmDeleteAlias(a)" class="md-icon-btn" title="删除" aria-label="删除别名 @a.Pattern"><span class="material-symbols-outlined text-error">delete</span></button>
                                     </div>
                                 </td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>
+
+<!-- 删除确认弹窗 -->
+@if (confirmDeleteItem != null)
+{
+    <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
+        <div class="modal-panel modal-sm" @onclick:stopPropagation>
+            <div class="flex items-center mb-4">
+                <div class="p-2 rounded-md bg-error-container mr-3 shrink-0">
+                    <span class="material-symbols-outlined text-error">warning</span>
+                </div>
+                <h2 class="text-title-large text-on-surface">确认删除</h2>
+            </div>
+            <p class="text-body-medium text-on-surface-variant mb-6">
+                确定要删除@(confirmDeleteItem.IsAlias ? "别名规则" : "商户")「<strong class="text-on-surface">@confirmDeleteItem.Name</strong>」吗？此操作不可撤销。
+            </p>
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+                <button @onclick="CancelDelete" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                <button @onclick="ExecuteDelete" class="md-btn-danger state-layer w-full sm:w-auto">确认删除</button>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- 商户新增/编辑弹窗 -->
 @if (showMerchantDialog)
 {
     <div class="modal-root" @onclick="CloseMerchantDialog" role="dialog" aria-modal="true" aria-label="@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-4">@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")</h2>
-            <label for="merchantNameInput" class="block text-body-small text-on-surface-variant mb-1">规范名称</label>
-            <input id="merchantNameInput" @bind="merchantName" class="md-text-field-outlined w-full" placeholder="如：星巴克" />
-            <label for="merchantCatSelect" class="block text-body-small text-on-surface-variant mb-1 mt-4">默认分类（MerchantRule 层）</label>
-            <select id="merchantCatSelect" @bind="merchantDefaultCategoryId" class="md-text-field-outlined w-full">
-                <option value="0">— 无（走兜底分类）—</option>
-                @if (categories != null)
-                {
-                    @foreach (var c in categories)
-                    {
-                        <option value="@c.Id">@c.Name</option>
-                    }
-                }
-            </select>
+            <div class="flex items-center mb-4">
+                <div class="p-2 rounded-md bg-primary-container mr-3 shrink-0">
+                    <span class="material-symbols-outlined text-on-primary-container">storefront</span>
+                </div>
+                <h2 class="text-title-large text-on-surface">@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")</h2>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="merchantNameInput" class="block text-body-small text-on-surface-variant mb-1">规范名称</label>
+                    <input id="merchantNameInput" @bind="merchantName" class="md-text-field-outlined w-full" placeholder="如：星巴克" />
+                </div>
+                <div>
+                    <label for="merchantCatSelect" class="block text-body-small text-on-surface-variant mb-1">默认分类（MerchantRule 层）</label>
+                    <select id="merchantCatSelect" @bind="merchantDefaultCategoryId" class="md-text-field-outlined w-full">
+                        <option value="0">— 无（走兜底分类）—</option>
+                        @if (categories != null)
+                        {
+                            @foreach (var c in categories)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
             <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
                 <button @onclick="CloseMerchantDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
                 <button @onclick="SaveMerchant" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">@(isSaving ? "保存中…" : "保存")</button>
@@ -155,7 +245,12 @@
 {
     <div class="modal-root" @onclick="CloseAliasDialog" role="dialog" aria-modal="true" aria-label="@(editingAliasId.HasValue ? "编辑别名" : "新增别名")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-4">@(editingAliasId.HasValue ? "编辑别名" : "新增别名")</h2>
+            <div class="flex items-center mb-4">
+                <div class="p-2 rounded-md bg-secondary-container mr-3 shrink-0">
+                    <span class="material-symbols-outlined text-on-secondary-container">rule</span>
+                </div>
+                <h2 class="text-title-large text-on-surface">@(editingAliasId.HasValue ? "编辑别名" : "新增别名")</h2>
+            </div>
             <div class="space-y-4">
                 <div>
                     <label for="aliasPatternInput" class="block text-body-small text-on-surface-variant mb-1">模式</label>
@@ -185,6 +280,7 @@
                 <div>
                     <label for="aliasPriorityInput" class="block text-body-small text-on-surface-variant mb-1">优先级</label>
                     <input id="aliasPriorityInput" type="number" @bind="aliasPriority" class="md-text-field-outlined w-full" />
+                    <p class="text-body-small text-on-surface-variant mt-1">数值越大优先级越高</p>
                 </div>
                 <label class="flex items-center gap-2 text-body-medium text-on-surface min-h-[44px] cursor-pointer">
                     <input type="checkbox" @bind="aliasIsActive" class="w-5 h-5 rounded border-outline text-primary focus:ring-primary/40" /> 启用
@@ -215,6 +311,8 @@
     private int aliasMerchantId;
     private int aliasPriority;
     private bool aliasIsActive = true;
+
+    private ConfirmDeleteItem? confirmDeleteItem;
 
     protected override async Task OnInitializedAsync() => await LoadAll();
 
@@ -247,11 +345,9 @@
         finally { isSaving = false; }
     }
 
-    private async Task DeleteMerchant(MerchantDto m)
+    private void ConfirmDeleteMerchant(MerchantDto m)
     {
-        var resp = await Http.DeleteAsync($"api/merchants/{m.Id}");
-        if (resp.IsSuccessStatusCode) await LoadAll();
-        else errorMessage = $"删除「{m.CanonicalName}」失败";
+        confirmDeleteItem = new ConfirmDeleteItem(m.Id, m.CanonicalName, false);
     }
 
     // === 别名 ===
@@ -284,11 +380,28 @@
         finally { isSaving = false; }
     }
 
-    private async Task DeleteAlias(AliasDto a)
+    private void ConfirmDeleteAlias(AliasDto a)
     {
-        var resp = await Http.DeleteAsync($"api/merchant-aliases/{a.Id}");
-        if (resp.IsSuccessStatusCode) await LoadAll();
-        else errorMessage = "删除别名失败";
+        confirmDeleteItem = new ConfirmDeleteItem(a.Id, $"{a.Pattern} → {a.MerchantName}", true);
+    }
+
+    // === 删除确认 ===
+    private void CancelDelete() { confirmDeleteItem = null; }
+
+    private async Task ExecuteDelete()
+    {
+        if (confirmDeleteItem == null) return;
+        var url = confirmDeleteItem.IsAlias ? $"api/merchant-aliases/{confirmDeleteItem.Id}" : $"api/merchants/{confirmDeleteItem.Id}";
+        var resp = await Http.DeleteAsync(url);
+        if (resp.IsSuccessStatusCode)
+        {
+            await LoadAll();
+        }
+        else
+        {
+            errorMessage = confirmDeleteItem.IsAlias ? "删除别名失败" : $"删除「{confirmDeleteItem.Name}」失败";
+        }
+        CancelDelete();
     }
 
     // === 匹配方式展示 ===
@@ -327,4 +440,5 @@
     private record MerchantDto(int Id, string CanonicalName, DateTime CreatedAt, int? DefaultCategoryId, string? DefaultCategoryName, int AliasCount, int BillCount);
     private record AliasDto(int Id, string Pattern, int MatchType, int MerchantId, string MerchantName, int Priority, bool IsActive);
     private record CategoryOption(int Id, string Name);
+    private record ConfirmDeleteItem(int Id, string Name, bool IsAlias);
 }

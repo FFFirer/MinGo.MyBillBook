@@ -31,95 +31,185 @@
 
     <!-- 标签列表 -->
     <div class="md-card-elevated overflow-hidden">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant font-semibold text-on-surface text-body-medium">标签</div>
-        <div class="overflow-x-auto -mx-4 sm:-mx-6">
-            <table class="md-table responsive-cards">
-                <thead>
-                    <tr>
-                        <th class="text-left">名称</th>
-                        <th class="text-left">类型</th>
-                        <th class="text-left hide-mobile">作用域</th>
-                        <th class="text-left">已打标</th>
-                        <th class="text-left hide-mobile">排序</th>
-                        <th class="text-right">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (tags != null)
-                    {
+        <div class="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant">
+            <span class="material-symbols-outlined text-on-surface-variant text-[1.25rem]">sell</span>
+            <h2 class="text-title-medium text-on-surface">标签</h2>
+            <span class="md-chip md-chip-assist-primary text-body-small">@(tags?.Count ?? 0)</span>
+        </div>
+
+        @if (tags == null)
+        {
+            <div class="empty-state">
+                <span class="material-symbols-outlined">loading_spinner</span>
+                <p>加载中...</p>
+            </div>
+        }
+        else if (tags.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="material-symbols-outlined">sell</span>
+                <p class="text-body-medium">暂无标签</p>
+                <p class="text-body-small mt-1">点击上方「新增标签」创建第一个标签</p>
+            </div>
+        }
+        else
+        {
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
+                    <thead>
+                        <tr>
+                            <th class="text-left">名称</th>
+                            <th class="text-left">类型</th>
+                            <th class="text-left hide-mobile">作用域</th>
+                            <th class="text-left">已打标</th>
+                            <th class="text-left hide-mobile">排序</th>
+                            <th class="text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         @foreach (var t in tags)
                         {
                             <tr>
                                 <td data-label="名称">
                                     <span class="md-chip md-chip-assist-primary">@t.Name</span>
                                 </td>
-                                <td data-label="类型" class="text-on-surface-variant">@t.TagType</td>
-                                <td data-label="作用域" class="text-on-surface-variant hide-mobile">@t.Scope</td>
-                                <td data-label="已打标" class="text-on-surface-variant tabular-nums">@t.TaggedCount</td>
+                                <td data-label="类型">
+                                    <span class="@GetTagTypeChipClass(t.TagType)">@GetTagTypeDisplayName(t.TagType)</span>
+                                </td>
+                                <td data-label="作用域" class="text-on-surface-variant hide-mobile">@GetScopeDisplayName(t.Scope)</td>
+                                <td data-label="已打标" class="tabular-nums">
+                                    @if (t.TaggedCount > 0)
+                                    {
+                                        <span class="md-chip md-chip-assist-info">@t.TaggedCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-on-surface-variant">0</span>
+                                    }
+                                </td>
                                 <td data-label="排序" class="text-on-surface-variant tabular-nums hide-mobile">@t.SortOrder</td>
                                 <td data-label="操作" class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button @onclick="() => OpenEditTagDialog(t)" class="md-icon-btn" title="编辑" aria-label="编辑标签 @t.Name"><span class="material-symbols-outlined">edit</span></button>
-                                        <button @onclick="() => DeleteTag(t)" class="md-icon-btn" title="删除" aria-label="删除标签 @t.Name"><span class="material-symbols-outlined text-error">delete</span></button>
+                                        <button @onclick="() => ConfirmDeleteTag(t)" class="md-icon-btn" title="删除" aria-label="删除标签 @t.Name"><span class="material-symbols-outlined text-error">delete</span></button>
                                     </div>
                                 </td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 
     <!-- 标签规则列表 -->
     <div class="md-card-elevated overflow-hidden">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant font-semibold text-on-surface text-body-medium">标签规则（按优先级降序匹配，自动打标 Source=Rule）</div>
-        <div class="overflow-x-auto -mx-4 sm:-mx-6">
-            <table class="md-table responsive-cards">
-                <thead>
-                    <tr>
-                        <th class="text-left">条件</th>
-                        <th class="text-left">条件值</th>
-                        <th class="text-left">打标</th>
-                        <th class="text-left hide-mobile">优先级</th>
-                        <th class="text-left hide-mobile">启用</th>
-                        <th class="text-right">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (rules != null)
-                    {
+        <div class="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant">
+            <span class="material-symbols-outlined text-on-surface-variant text-[1.25rem]">rule</span>
+            <h2 class="text-title-medium text-on-surface">标签规则</h2>
+            <span class="text-body-small text-on-surface-variant hidden sm:inline">（按优先级降序匹配，自动打标 Source=Rule）</span>
+            <span class="md-chip md-chip-assist-primary text-body-small">@(rules?.Count ?? 0)</span>
+        </div>
+
+        @if (rules == null)
+        {
+            <div class="empty-state">
+                <span class="material-symbols-outlined">loading_spinner</span>
+                <p>加载中...</p>
+            </div>
+        }
+        else if (rules.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="material-symbols-outlined">rule</span>
+                <p class="text-body-medium">暂无规则</p>
+                <p class="text-body-small mt-1">点击上方「新增规则」创建自动打标规则</p>
+            </div>
+        }
+        else
+        {
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
+                    <thead>
+                        <tr>
+                            <th class="text-left">条件</th>
+                            <th class="text-left">条件值</th>
+                            <th class="text-left">打标</th>
+                            <th class="text-left hide-mobile">优先级</th>
+                            <th class="text-left hide-mobile">启用</th>
+                            <th class="text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         @foreach (var r in rules)
                         {
                             <tr>
-                                <td data-label="条件" class="text-on-surface">@r.Condition</td>
-                                <td data-label="条件值" class="font-mono text-on-surface wrap-cell"><span class="break-all text-body-small">@r.ConditionValue</span></td>
-                                <td data-label="打标" class="text-on-surface">@r.TagName</td>
-                                <td data-label="优先级" class="text-on-surface-variant tabular-nums hide-mobile">@r.Priority</td>
+                                <td data-label="条件">
+                                    <span class="@GetConditionChipClass(r.Condition)">@GetConditionDisplayName(r.Condition)</span>
+                                </td>
+                                <td data-label="条件值" class="font-mono wrap-cell"><span class="break-all text-body-small text-on-surface">@r.ConditionValue</span></td>
+                                <td data-label="打标">
+                                    <span class="md-chip md-chip-assist-primary">@r.TagName</span>
+                                </td>
+                                <td data-label="优先级" class="tabular-nums text-on-surface-variant hide-mobile">@r.Priority</td>
                                 <td data-label="启用" class="hide-mobile">
-                                    <span class="@(r.IsActive ? "text-success" : "text-on-surface-variant")">@(r.IsActive ? "是" : "否")</span>
+                                    @if (r.IsActive)
+                                    {
+                                        <span class="md-chip md-chip-assist-success">启用</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="md-chip md-chip-assist-error">停用</span>
+                                    }
                                 </td>
                                 <td data-label="操作" class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button @onclick="() => OpenEditRuleDialog(r)" class="md-icon-btn" title="编辑" aria-label="编辑规则"><span class="material-symbols-outlined">edit</span></button>
-                                        <button @onclick="() => DeleteRule(r)" class="md-icon-btn" title="删除" aria-label="删除规则"><span class="material-symbols-outlined text-error">delete</span></button>
+                                        <button @onclick="() => ConfirmDeleteRule(r)" class="md-icon-btn" title="删除" aria-label="删除规则"><span class="material-symbols-outlined text-error">delete</span></button>
                                     </div>
                                 </td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>
+
+<!-- 删除确认弹窗 -->
+@if (confirmDeleteItem != null)
+{
+    <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
+        <div class="modal-panel modal-sm" @onclick:stopPropagation>
+            <div class="flex items-center mb-4">
+                <div class="p-2 rounded-md bg-error-container mr-3 shrink-0">
+                    <span class="material-symbols-outlined text-error">warning</span>
+                </div>
+                <h2 class="text-title-large text-on-surface">确认删除</h2>
+            </div>
+            <p class="text-body-medium text-on-surface-variant mb-6">
+                确定要删除@(confirmDeleteItem.IsRule ? "规则" : "标签")「<strong class="text-on-surface">@confirmDeleteItem.Name</strong>」吗？此操作不可撤销。
+            </p>
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+                <button @onclick="CancelDelete" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                <button @onclick="ExecuteDelete" class="md-btn-danger state-layer w-full sm:w-auto">确认删除</button>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- 标签新增/编辑弹窗 -->
 @if (showTagDialog)
 {
     <div class="modal-root" @onclick="CloseTagDialog" role="dialog" aria-modal="true" aria-label="@(editingTagId.HasValue ? "编辑标签" : "新增标签")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-4">@(editingTagId.HasValue ? "编辑标签" : "新增标签")</h2>
+            <div class="flex items-center mb-4">
+                <div class="p-2 rounded-md bg-primary-container mr-3 shrink-0">
+                    <span class="material-symbols-outlined text-on-primary-container">sell</span>
+                </div>
+                <h2 class="text-title-large text-on-surface">@(editingTagId.HasValue ? "编辑标签" : "新增标签")</h2>
+            </div>
             <div class="space-y-4">
                 <div>
                     <label for="tagNameInput" class="block text-body-small text-on-surface-variant mb-1">名称</label>
@@ -161,7 +251,12 @@
 {
     <div class="modal-root" @onclick="CloseRuleDialog" role="dialog" aria-modal="true" aria-label="@(editingRuleId.HasValue ? "编辑规则" : "新增规则")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-4">@(editingRuleId.HasValue ? "编辑规则" : "新增规则")</h2>
+            <div class="flex items-center mb-4">
+                <div class="p-2 rounded-md bg-secondary-container mr-3 shrink-0">
+                    <span class="material-symbols-outlined text-on-secondary-container">rule</span>
+                </div>
+                <h2 class="text-title-large text-on-surface">@(editingRuleId.HasValue ? "编辑规则" : "新增规则")</h2>
+            </div>
             <div class="space-y-4">
                 <div>
                     <label for="ruleCondSelect" class="block text-body-small text-on-surface-variant mb-1">条件</label>
@@ -194,6 +289,7 @@
                 <div>
                     <label for="rulePriorityInput" class="block text-body-small text-on-surface-variant mb-1">优先级</label>
                     <input id="rulePriorityInput" type="number" @bind="rulePriority" class="md-text-field-outlined w-full" />
+                    <p class="text-body-small text-on-surface-variant mt-1">数值越大优先级越高</p>
                 </div>
                 <label class="flex items-center gap-2 text-body-medium text-on-surface min-h-[44px] cursor-pointer">
                     <input type="checkbox" @bind="ruleIsActive" class="w-5 h-5 rounded border-outline text-primary focus:ring-primary/40" /> 启用
@@ -225,6 +321,8 @@
     private int ruleTagId;
     private int rulePriority;
     private bool ruleIsActive = true;
+
+    private ConfirmDeleteItem? confirmDeleteItem;
 
     private string ConditionHint => ruleCondition switch
     {
@@ -273,11 +371,9 @@
         finally { isSaving = false; }
     }
 
-    private async Task DeleteTag(TagDto t)
+    private void ConfirmDeleteTag(TagDto t)
     {
-        var resp = await Http.DeleteAsync($"api/tags/{t.Id}");
-        if (resp.IsSuccessStatusCode) await LoadAll();
-        else errorMessage = $"删除「{t.Name}」失败";
+        confirmDeleteItem = new ConfirmDeleteItem(t.Id, t.Name, false);
     }
 
     // === 规则 ===
@@ -310,12 +406,78 @@
         finally { isSaving = false; }
     }
 
-    private async Task DeleteRule(TagRuleDto r)
+    private void ConfirmDeleteRule(TagRuleDto r)
     {
-        var resp = await Http.DeleteAsync($"api/tag-rules/{r.Id}");
-        if (resp.IsSuccessStatusCode) await LoadAll();
-        else errorMessage = "删除规则失败";
+        confirmDeleteItem = new ConfirmDeleteItem(r.Id, $"{r.Condition}={r.ConditionValue} → {r.TagName}", true);
     }
+
+    // === 删除确认 ===
+    private void CancelDelete() { confirmDeleteItem = null; }
+
+    private async Task ExecuteDelete()
+    {
+        if (confirmDeleteItem == null) return;
+        var url = confirmDeleteItem.IsRule ? $"api/tag-rules/{confirmDeleteItem.Id}" : $"api/tags/{confirmDeleteItem.Id}";
+        var resp = await Http.DeleteAsync(url);
+        if (resp.IsSuccessStatusCode)
+        {
+            await LoadAll();
+        }
+        else
+        {
+            errorMessage = confirmDeleteItem.IsRule ? "删除规则失败" : $"删除「{confirmDeleteItem.Name}」失败";
+        }
+        CancelDelete();
+    }
+
+    // === 显示辅助 ===
+    private static string GetTagTypeChipClass(string tagType) => tagType switch
+    {
+        "Scenario" => "md-chip md-chip-assist-primary",
+        "Purpose" => "md-chip md-chip-assist-info",
+        "Nature" => "md-chip md-chip-assist-warning",
+        "Project" => "md-chip md-chip-assist-success",
+        "Status" => "md-chip md-chip-assist-error",
+        _ => "md-chip md-chip-assist-primary",
+    };
+
+    private static string GetTagTypeDisplayName(string tagType) => tagType switch
+    {
+        "Scenario" => "场景",
+        "Purpose" => "用途",
+        "Nature" => "性质",
+        "Project" => "项目",
+        "Status" => "状态",
+        _ => tagType,
+    };
+
+    private static string GetScopeDisplayName(string scope) => scope switch
+    {
+        "Global" => "全局",
+        "Category" => "限定分类",
+        "Account" => "限定账户",
+        _ => scope,
+    };
+
+    private static string GetConditionChipClass(string condition) => condition switch
+    {
+        "Category" => "md-chip md-chip-assist-primary",
+        "Merchant" => "md-chip md-chip-assist-info",
+        "DayOfWeek" => "md-chip md-chip-assist-warning",
+        "AmountRange" => "md-chip md-chip-assist-success",
+        "Keyword" => "md-chip md-chip-assist-error",
+        _ => "md-chip md-chip-assist-primary",
+    };
+
+    private static string GetConditionDisplayName(string condition) => condition switch
+    {
+        "Category" => "分类",
+        "Merchant" => "商户",
+        "DayOfWeek" => "星期",
+        "AmountRange" => "金额区间",
+        "Keyword" => "关键词",
+        _ => condition,
+    };
 
     private static readonly string[] TagTypes = ["Scenario", "Purpose", "Nature", "Project", "Status"];
     private static readonly string[] TagScopes = ["Global", "Category", "Account"];
@@ -329,4 +491,5 @@
 
     private record TagDto(int Id, string Name, string TagType, string Scope, int? ScopeId, int SortOrder, int TaggedCount);
     private record TagRuleDto(int Id, string Condition, string ConditionValue, int TagId, string TagName, int Priority, bool IsActive);
+    private record ConfirmDeleteItem(int Id, string Name, bool IsRule);
 }
