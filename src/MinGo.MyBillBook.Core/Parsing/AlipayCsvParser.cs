@@ -84,7 +84,8 @@ public class AlipayCsvParser : IBillParser
             {
                 var rawRow = new RawBillRow
                 {
-                    TransactionId = GetField(csv, columnMap, "交易订单号", "交易号"),
+                    TransactionId = GetField(csv, columnMap, "交易订单号", "商户订单号"),
+                    PaymentTransactionId = GetField(csv, columnMap, "交易号"),
                     TransactionDate = ParseDate(GetField(csv, columnMap, "交易时间", "交易创建时间")),
                     ProductName = GetField(csv, columnMap, "商品说明", "商品名称"),
                     AmountMinor = ParseAmountMinor(GetField(csv, columnMap, "金额")),
@@ -95,7 +96,7 @@ public class AlipayCsvParser : IBillParser
                     SourceCategory = GetField(csv, columnMap, "交易分类"),
                 };
 
-                if (!string.IsNullOrEmpty(rawRow.TransactionId))
+                if (!string.IsNullOrEmpty(rawRow.TransactionId) || !string.IsNullOrEmpty(rawRow.PaymentTransactionId))
                     result.Rows.Add(rawRow);
             }
             catch (Exception ex)

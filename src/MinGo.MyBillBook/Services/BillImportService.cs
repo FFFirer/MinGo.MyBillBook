@@ -34,8 +34,18 @@ public class BillImportService(AppDbContext db, IBillParserFactory parserFactory
         foreach (var row in result.Rows)
         {
             rowNumber++;
-            if (!string.IsNullOrEmpty(row.TransactionId) &&
-                await db.BillRawRecords.AnyAsync(r => r.SourceTransactionId == row.TransactionId, ct))
+
+            var hasOrderNo = !string.IsNullOrEmpty(row.TransactionId);
+            var hasPaymentTxId = !string.IsNullOrEmpty(row.PaymentTransactionId);
+
+            if (hasOrderNo && await db.BillRawRecords.AnyAsync(
+                    r => r.SourceTransactionId == row.TransactionId, ct))
+            {
+                duplicate++;
+                continue;
+            }
+            if (hasPaymentTxId && await db.BillRawRecords.AnyAsync(
+                    r => r.SourcePaymentTransactionId == row.PaymentTransactionId, ct))
             {
                 duplicate++;
                 continue;
@@ -48,6 +58,7 @@ public class BillImportService(AppDbContext db, IBillParserFactory parserFactory
                 RowNumber = rowNumber,
                 RawPayload = JsonSerializer.Serialize(row),
                 SourceTransactionId = row.TransactionId,
+                SourcePaymentTransactionId = row.PaymentTransactionId,
                 IsProcessed = false
             };
             db.BillRawRecords.Add(raw);

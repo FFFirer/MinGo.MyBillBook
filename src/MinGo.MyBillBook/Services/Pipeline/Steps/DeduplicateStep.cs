@@ -46,8 +46,21 @@ public class DeduplicateStep(AppDbContext db) : IPipelineStep<BillImportContext>
                 .Select(r => r.SourceTransactionId)
                 .ToListAsync(ct)).ToHashSet();
 
+        // 已处理过的支付流水号（辅助精确去重）。
+        var paymentTxIds = context.NormalizedTransactions
+            .Select(t => t.SourcePaymentTransactionId)
+            .Where(s => !string.IsNullOrEmpty(s))
+            .Distinct().ToList();
+        var existingPaymentTxIds = paymentTxIds.Count == 0
+            ? new HashSet<string>()
+            : (await db.BillRawRecords.AsNoTracking()
+                .Where(r => r.IsProcessed && paymentTxIds.Contains(r.SourcePaymentTransactionId))
+                .Select(r => r.SourcePaymentTransactionId)
+                .ToListAsync(ct)).ToHashSet();
+
         var rawById = context.RawRecords.ToDictionary(r => r.Id);
         var seenSourceIds = new HashSet<string>();
+        var seenPaymentTxIds = new HashSet<string>();
         var duplicates = new List<NormalizedTransaction>();
         int duplicateCount = 0, potentialCount = 0;
 
@@ -58,7 +71,7 @@ public class DeduplicateStep(AppDbContext db) : IPipelineStep<BillImportContext>
             var reason = string.Empty;
             var leftId = 0;
 
-            // 规则 1：Exact SourceTransactionId（同批次内或已处理过的历史记录）。
+            // 规则 1：Exact SourceTransactionId 或 SourcePaymentTransactionId（同批次内或已处理过的历史记录）。
             if (!string.IsNullOrEmpty(tx.SourceTransactionId))
             {
                 if (existingSourceIds.Contains(tx.SourceTransactionId) || seenSourceIds.Contains(tx.SourceTransactionId))
@@ -67,6 +80,15 @@ public class DeduplicateStep(AppDbContext db) : IPipelineStep<BillImportContext>
                     reason = "SourceTransactionId 完全匹配";
                 }
                 seenSourceIds.Add(tx.SourceTransactionId);
+            }
+            if (score < 100 && !string.IsNullOrEmpty(tx.SourcePaymentTransactionId))
+            {
+                if (existingPaymentTxIds.Contains(tx.SourcePaymentTransactionId) || seenPaymentTxIds.Contains(tx.SourcePaymentTransactionId))
+                {
+                    score = 100;
+                    reason = "SourcePaymentTransactionId 完全匹配";
+                }
+                seenPaymentTxIds.Add(tx.SourcePaymentTransactionId);
             }
 
             // 规则 2/3：账户+金额+日期=90；账户+金额+商户=80（与已存在 Canonical 比对）。

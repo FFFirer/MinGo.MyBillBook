@@ -36,6 +36,7 @@ public class DuckDbContext : IDisposable
                 status VARCHAR,
                 source_file VARCHAR,
                 is_manual_adjusted BOOLEAN,
+                source_transaction_id VARCHAR,
                 synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS merchants (
@@ -62,7 +63,10 @@ public class DuckDbContext : IDisposable
 
         // 对既有分析库补充新增列（允许破坏性重建，但兼容旧库）。
         using var alter = _connection.CreateCommand();
-        alter.CommandText = "ALTER TABLE bill_records ADD COLUMN IF NOT EXISTS merchant_id INTEGER;";
+        alter.CommandText = """
+            ALTER TABLE bill_records ADD COLUMN IF NOT EXISTS merchant_id INTEGER;
+            ALTER TABLE bill_records ADD COLUMN IF NOT EXISTS source_transaction_id VARCHAR;
+            """;
         alter.ExecuteNonQuery();
     }
 

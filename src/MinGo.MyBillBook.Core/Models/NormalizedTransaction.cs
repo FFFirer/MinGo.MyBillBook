@@ -37,8 +37,11 @@ public class NormalizedTransaction
     /// <summary>原始交易状态文本。</summary>
     public string Status { get; set; } = string.Empty;
 
-    /// <summary>来源交易号，用于去重评分。</summary>
+    /// <summary>来源交易号（商户订单号），用于去重评分。</summary>
     public string SourceTransactionId { get; set; } = string.Empty;
+
+    /// <summary>来源支付流水号（平台交易号），辅助去重与溯源。</summary>
+    public string SourcePaymentTransactionId { get; set; } = string.Empty;
 
     /// <summary>原始交易分类文本（如支付宝"交易分类"列），用于归一化映射。</summary>
     public string SourceCategory { get; set; } = string.Empty;

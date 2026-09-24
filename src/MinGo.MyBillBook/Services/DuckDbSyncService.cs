@@ -55,6 +55,7 @@ public class DuckDbSyncService(AppDbContext efDb, DuckDbContext duckDb)
             transaction_type = (int)r.TransactionType,
             status = r.Status ?? "",
             source_file = r.SourceFile ?? "",
+            source_transaction_id = r.SourceTransactionId ?? "",
             is_manual_adjusted = r.IsManualAdjusted
         }).ToList();
 
@@ -65,7 +66,7 @@ public class DuckDbSyncService(AppDbContext efDb, DuckDbContext duckDb)
                    CAST(transaction_date AS DATE) AS transaction_date,
                    counterparty, merchant, category_id, category_name, category_icon,
                    product_name, amount_minor, transaction_type, status, source_file,
-                   is_manual_adjusted, CURRENT_TIMESTAMP AS synced_at
+                   is_manual_adjusted, source_transaction_id, CURRENT_TIMESTAMP AS synced_at
             FROM read_parquet('{path}')
             """);
 
@@ -147,6 +148,7 @@ public class DuckDbSyncService(AppDbContext efDb, DuckDbContext duckDb)
         public int transaction_type { get; set; }
         public string status { get; set; } = "";
         public string source_file { get; set; } = "";
+        public string source_transaction_id { get; set; } = "";
         public bool is_manual_adjusted { get; set; }
     }
 

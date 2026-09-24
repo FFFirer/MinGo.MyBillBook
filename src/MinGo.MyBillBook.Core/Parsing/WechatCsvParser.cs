@@ -92,7 +92,8 @@ public class WechatCsvParser : IBillParser
             {
                 var rawRow = new RawBillRow
                 {
-                    TransactionId = GetField(csv, columnMap, "交易号", "交易单号"),
+                    TransactionId = GetField(csv, columnMap, "商户单号", "交易单号"),
+                    PaymentTransactionId = GetField(csv, columnMap, "交易号"),
                     TransactionDate = ParseDate(GetField(csv, columnMap, "交易时间")),
                     ProductName = GetField(csv, columnMap, "商品", "商品名称"),
                     AmountMinor = ParseAmountMinor(GetField(csv, columnMap, "金额", "金额(元)")),
@@ -102,7 +103,7 @@ public class WechatCsvParser : IBillParser
                     Status = GetField(csv, columnMap, "当前状态", "交易状态"),
                 };
 
-                if (string.IsNullOrEmpty(rawRow.TransactionId))
+                if (string.IsNullOrEmpty(rawRow.TransactionId) && string.IsNullOrEmpty(rawRow.PaymentTransactionId))
                     continue;
 
                 // 微信的 "交易类型" 存入 ExtraFields
@@ -171,13 +172,15 @@ public class WechatCsvParser : IBillParser
                 if (allRows[i] is not IDictionary<string, object> row) continue;
                 var values = row.Values.Select(v => v?.ToString() ?? string.Empty).ToList();
 
-                var transactionId = GetField(values, columnMap, "交易号", "交易单号");
-                if (string.IsNullOrEmpty(transactionId))
+                var transactionId = GetField(values, columnMap, "商户单号", "交易单号");
+                var paymentTxId = GetField(values, columnMap, "交易号");
+                if (string.IsNullOrEmpty(transactionId) && string.IsNullOrEmpty(paymentTxId))
                     continue;
 
                 var rawRow = new RawBillRow
                 {
                     TransactionId = transactionId,
+                    PaymentTransactionId = paymentTxId,
                     TransactionDate = ParseDate(GetField(values, columnMap, "交易时间")),
                     ProductName = GetField(values, columnMap, "商品", "商品名称"),
                     AmountMinor = ParseAmountMinor(GetField(values, columnMap, "金额", "金额(元)")),

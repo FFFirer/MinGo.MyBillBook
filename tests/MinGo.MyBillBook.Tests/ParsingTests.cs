@@ -20,7 +20,7 @@ public class AlipayCsvParserTests
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         var gbk = Encoding.GetEncoding("GBK");
 
-        var csvContent = "#\u652f\u4ed8\u5b9d\n#\n#\u4ea4\u6613\u521b\u5efa\u65f6\u95f4,\u4ea4\u6613\u53f7,\u4ea4\u6613\u5bf9\u65b9,\u5546\u54c1\u540d\u79f0,\u6536/\u652f,\u91d1\u989d,\u652f\u4ed8\u65b9\u5f0f,\u4ea4\u6613\u72b6\u6001,\u4ea4\u6613\u5206\u7c7b\n2024-01-15 10:30:00,2024011500001,\u7f8e\u56e2\u5916\u5356,\u5348\u9910,\u652f\u51fa,35.50,\u652f\u4ed8\u5b9d\u4f59\u989d,\u4ea4\u6613\u6210\u529f,\u9910\u996e\u7f8e\u98df\n2024-01-15 12:00:00,2024011500002,\u6ef4\u6ef4\u51fa\u884c,\u6253\u8f66\u5230\u516c\u53f8,\u652f\u51fa,18.00,\u82b1\u5457,\u4ea4\u6613\u6210\u529f,\u4ea4\u901a\u51fa\u884c\n2024-01-16 09:00:00,2024011600001,\u67d0\u516c\u53f8,\u5de5\u8d44\u6536\u5165,\u6536\u5165,8000.00,\u94f6\u884c\u5361,\u4ea4\u6613\u6210\u529f,\u5de5\u8d44";
+        var csvContent = "#\u652f\u4ed8\u5b9d\n#\n#\u4ea4\u6613\u521b\u5efa\u65f6\u95f4,\u4ea4\u6613\u8ba2\u5355\u53f7,\u4ea4\u6613\u53f7,\u4ea4\u6613\u5bf9\u65b9,\u5546\u54c1\u540d\u79f0,\u6536/\u652f,\u91d1\u989d,\u652f\u4ed8\u65b9\u5f0f,\u4ea4\u6613\u72b6\u6001,\u4ea4\u6613\u5206\u7c7b\n2024-01-15 10:30:00,ORDER001,2024011500001,\u7f8e\u56e2\u5916\u5356,\u5348\u9910,\u652f\u51fa,35.50,\u652f\u4ed8\u5b9d\u4f59\u989d,\u4ea4\u6613\u6210\u529f,\u9910\u996e\u7f8e\u98df\n2024-01-15 12:00:00,ORDER002,2024011500002,\u6ef4\u6ef4\u51fa\u884c,\u6253\u8f66\u5230\u516c\u53f8,\u652f\u51fa,18.00,\u82b1\u5457,\u4ea4\u6613\u6210\u529f,\u4ea4\u901a\u51fa\u884c\n2024-01-16 09:00:00,ORDER003,2024011600001,\u67d0\u516c\u53f8,\u5de5\u8d44\u6536\u5165,\u6536\u5165,8000.00,\u94f6\u884c\u5361,\u4ea4\u6613\u6210\u529f,\u5de5\u8d44";
 
         var bytes = gbk.GetBytes(csvContent);
         using var stream = new MemoryStream(bytes);
@@ -31,17 +31,18 @@ public class AlipayCsvParserTests
         Assert.True(result.Rows.Count >= 3, $"Expected at least 3 rows, got {result.Rows.Count}");
 
         // Find rows by TransactionId (first row might be header parsed as data)
-        var row1 = result.Rows.First(r => r.TransactionId == "2024011500001");
+        var row1 = result.Rows.First(r => r.TransactionId == "ORDER001");
         Assert.Equal(3550L, row1.AmountMinor);
         Assert.Equal("支出", row1.Direction);
         Assert.Equal("美团外卖", row1.Counterparty);
         Assert.Equal("午餐", row1.ProductName);
         Assert.Equal("餐饮美食", row1.SourceCategory);
+        Assert.Equal("2024011500001", row1.PaymentTransactionId);
 
-        var row2 = result.Rows.First(r => r.TransactionId == "2024011500002");
+        var row2 = result.Rows.First(r => r.TransactionId == "ORDER002");
         Assert.Equal("交通出行", row2.SourceCategory);
 
-        var row3 = result.Rows.First(r => r.TransactionId == "2024011600001");
+        var row3 = result.Rows.First(r => r.TransactionId == "ORDER003");
         Assert.Equal(800000L, row3.AmountMinor);
         Assert.Equal("收入", row3.Direction);
         Assert.Equal("工资", row3.SourceCategory);
@@ -86,9 +87,9 @@ public class WechatCsvParserTests
         // 微信 CSV 使用 UTF-8 BOM
         var csvContent = "\uFEFF" + """
             微信支付账单明细
-            #交易时间,交易类型,交易对方,商品,收/支,金额,支付方式,当前状态,交易号
-            2024-01-15 10:30:00,商户消费,美团外卖,午餐,支出,35.50,零钱,支付成功,4200001234001
-            2024-01-15 18:00:00,转账,张三,转账,支出,200.00,零钱,支付成功,4200001234002
+            #交易时间,交易类型,交易对方,商品,收/支,金额,支付方式,当前状态,商户单号,交易号
+            2024-01-15 10:30:00,商户消费,美团外卖,午餐,支出,35.50,零钱,支付成功,MCH001,4200001234001
+            2024-01-15 18:00:00,转账,张三,转账,支出,200.00,零钱,支付成功,MCH002,4200001234002
             """;
 
         var bytes = Encoding.UTF8.GetBytes(csvContent);
@@ -99,14 +100,16 @@ public class WechatCsvParserTests
         Assert.True(result.Success, string.Join("; ", result.Errors));
         Assert.True(result.Rows.Count >= 2, $"Expected at least 2 rows, got {result.Rows.Count}");
 
-        var row1 = result.Rows.First(r => r.TransactionId == "4200001234001");
+        var row1 = result.Rows.First(r => r.TransactionId == "MCH001");
         Assert.Equal(3550L, row1.AmountMinor);
         Assert.Equal("美团外卖", row1.Counterparty);
         Assert.Empty(row1.SourceCategory);
+        Assert.Equal("4200001234001", row1.PaymentTransactionId);
 
-        var row2 = result.Rows.First(r => r.TransactionId == "4200001234002");
+        var row2 = result.Rows.First(r => r.TransactionId == "MCH002");
         Assert.Equal(20000L, row2.AmountMinor);
         Assert.Empty(row2.SourceCategory);
+        Assert.Equal("4200001234002", row2.PaymentTransactionId);
     }
 
     [Fact]

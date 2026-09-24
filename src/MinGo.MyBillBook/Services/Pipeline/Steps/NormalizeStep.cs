@@ -59,6 +59,7 @@ public class NormalizeStep(AppDbContext db) : IPipelineStep<BillImportContext>
                     PaymentMethod = row.PaymentMethod,
                     Status = row.Status,
                     SourceTransactionId = row.TransactionId,
+                    SourcePaymentTransactionId = row.PaymentTransactionId,
                     SourceCategory = row.SourceCategory
                 });
             }

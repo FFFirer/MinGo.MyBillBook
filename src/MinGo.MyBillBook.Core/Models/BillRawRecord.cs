@@ -18,6 +18,9 @@ public class BillRawRecord
     /// <summary>来源系统的交易号，用于跨批次去重（对应设计 SourceTransactionId）。</summary>
     public string SourceTransactionId { get; set; } = string.Empty;
 
+    /// <summary>来源系统的支付流水号（如支付宝/微信的"交易号"），辅助去重与溯源。</summary>
+    public string SourcePaymentTransactionId { get; set; } = string.Empty;
+
     public bool IsProcessed { get; set; }
 
     /// <summary>去重评分结果状态（DeduplicateStep 回写，供追溯）。</summary>
