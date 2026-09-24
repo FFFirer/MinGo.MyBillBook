@@ -83,38 +83,38 @@
     <div class="md-card-elevated overflow-hidden">
         @if (result?.Items.Count > 0)
         {
-            <div class="overflow-x-auto">
-                <table class="w-full text-body-medium responsive-cards">
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
                     <thead>
-                        <tr class="bg-surface-container border-b border-outline-variant">
-                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">日期</th>
-                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">商户/对方</th>
-                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">商品</th>
-                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">分类</th>
-                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">标签</th>
-                            <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">金额</th>
-                            <th class="text-center py-3 px-4 text-label-large text-on-surface-variant hide-mobile">平台</th>
+                        <tr>
+                            <th class="text-left">日期</th>
+                            <th class="text-left">商户/对方</th>
+                            <th class="text-left hide-mobile">商品</th>
+                            <th class="text-left">分类</th>
+                            <th class="text-left hide-mobile">标签</th>
+                            <th class="text-right">金额</th>
+                            <th class="text-center hide-mobile">平台</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var bill in result.Items)
                         {
-                            <tr class="border-b border-outline-variant hover:bg-surface-container cursor-pointer" @onclick="() => OpenDetail(bill)">
-                                <td data-label="日期" class="py-3 px-4 text-on-surface-variant whitespace-nowrap">@bill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
-                                <td data-label="商户" class="py-3 px-4 wrap-cell">
+                            <tr class="cursor-pointer" @onclick="() => OpenDetail(bill)">
+                                <td data-label="日期" class="text-on-surface-variant whitespace-nowrap">@bill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</td>
+                                <td data-label="商户" class="wrap-cell">
                                     <div class="font-medium text-on-surface truncate max-w-48">@bill.Merchant</div>
                                     @if (bill.IsManualAdjusted)
                                     {
                                         <span class="text-body-small text-primary">已修正</span>
                                     }
                                 </td>
-                                <td data-label="商品" class="py-3 px-4 text-on-surface-variant truncate max-w-48 wrap-cell hide-mobile">@bill.ProductName</td>
-                                <td data-label="分类" class="py-3 px-4">
+                                <td data-label="商品" class="text-on-surface-variant truncate max-w-48 wrap-cell hide-mobile">@bill.ProductName</td>
+                                <td data-label="分类">
                                     <span class="md-chip md-chip-assist-info">
                                         @(bill.CategoryName ?? "未分类")
                                     </span>
                                 </td>
-                                <td data-label="标签" class="py-3 px-4 wrap-cell hide-mobile">
+                                <td data-label="标签" class="wrap-cell hide-mobile">
                                     <div class="flex flex-wrap gap-1">
                                         @foreach (var tag in bill.Tags)
                                         {
@@ -122,10 +122,10 @@
                                         }
                                     </div>
                                 </td>
-                                <td data-label="金额" class="py-3 px-4 text-right font-medium whitespace-nowrap @(bill.TransactionType == "Income" ? "text-success" : "text-error")">
+                                <td data-label="金额" class="text-right font-medium whitespace-nowrap @(bill.TransactionType == "Income" ? "text-success" : "text-error")">
                                     @(bill.TransactionType == "Income" ? "+" : "-")@bill.Amount.ToString("F2")
                                 </td>
-                                <td data-label="平台" class="py-3 px-4 text-center text-on-surface-variant hide-mobile">@bill.PlatformName</td>
+                                <td data-label="平台" class="text-center text-on-surface-variant hide-mobile">@bill.PlatformName</td>
                             </tr>
                         }
                     </tbody>

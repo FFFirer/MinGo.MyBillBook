@@ -31,13 +31,13 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
             @foreach (var c in categories)
             {
-                <div class="md-card-elevated card-hover relative group">
+                <div class="md-card-elevated card-hover relative group" style="padding-bottom:0.75rem;">
                     @* 桌面端 hover 显示；移动端常驻显示（避免触屏无法触发 hover） *@
                     <div class="absolute top-1.5 right-1.5 flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity">
-                        <button @onclick="() => OpenEditCategoryDialog(c)" class="md-icon-btn bg-surface-container-low/90" style="width:32px;height:32px;" title="编辑" aria-label="编辑 @c.Name">
+                        <button @onclick="() => OpenEditCategoryDialog(c)" class="md-icon-btn bg-surface-container-high/90" style="width:32px;height:32px;" title="编辑" aria-label="编辑 @c.Name">
                             <span class="material-symbols-outlined" style="font-size:18px;">edit</span>
                         </button>
-                        <button @onclick="() => DeleteCategory(c)" class="md-icon-btn bg-surface-container-low/90" style="width:32px;height:32px;" title="删除" aria-label="删除 @c.Name">
+                        <button @onclick="() => DeleteCategory(c)" class="md-icon-btn bg-surface-container-high/90" style="width:32px;height:32px;" title="删除" aria-label="删除 @c.Name">
                             <span class="material-symbols-outlined text-error" style="font-size:18px;">delete</span>
                         </button>
                     </div>
@@ -59,26 +59,26 @@
                     新增规则
                 </button>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-body-medium responsive-cards">
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
                     <thead>
-                        <tr class="border-b border-outline-variant">
-                            <th class="text-left py-2 px-3 text-label-large text-on-surface-variant">分类</th>
-                            <th class="text-left py-2 px-3 text-label-large text-on-surface-variant">匹配字段</th>
-                            <th class="text-left py-2 px-3 text-label-large text-on-surface-variant">匹配模式</th>
-                            <th class="text-right py-2 px-3 text-label-large text-on-surface-variant hide-mobile">优先级</th>
-                            <th class="text-right py-2 px-3 text-label-large text-on-surface-variant">操作</th>
+                        <tr>
+                            <th>分类</th>
+                            <th>匹配字段</th>
+                            <th>匹配模式</th>
+                            <th class="text-right hide-mobile">优先级</th>
+                            <th class="text-right">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var r in rules)
                         {
-                            <tr class="border-b border-outline-variant hover:bg-surface-container">
-                                <td data-label="分类" class="py-2 px-3 text-on-surface">@r.CategoryName</td>
-                                <td data-label="匹配字段" class="py-2 px-3 text-on-surface-variant">@GetMatchFieldName(r.MatchField)</td>
-                                <td data-label="匹配模式" class="py-2 px-3 font-mono text-body-small text-on-surface-variant wrap-cell"><span class="break-all">@r.MatchPattern</span></td>
-                                <td data-label="优先级" class="py-2 px-3 text-right tabular-nums text-on-surface-variant hide-mobile">@r.Priority</td>
-                                <td data-label="操作" class="py-2 px-3 text-right">
+                            <tr>
+                                <td data-label="分类" class="text-on-surface">@r.CategoryName</td>
+                                <td data-label="匹配字段" class="text-on-surface-variant">@GetMatchFieldName(r.MatchField)</td>
+                                <td data-label="匹配模式" class="font-mono text-body-small text-on-surface-variant wrap-cell"><span class="break-all">@r.MatchPattern</span></td>
+                                <td data-label="优先级" class="text-right tabular-nums text-on-surface-variant hide-mobile">@r.Priority</td>
+                                <td data-label="操作" class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button @onclick="() => OpenEditRuleDialog(r)" class="md-icon-btn" title="编辑" aria-label="编辑规则">
                                             <span class="material-symbols-outlined">edit</span>

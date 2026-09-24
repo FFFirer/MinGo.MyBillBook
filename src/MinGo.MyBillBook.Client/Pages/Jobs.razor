@@ -60,32 +60,32 @@
         }
         else
         {
-            <div class="overflow-x-auto">
-                <table class="w-full text-body-medium responsive-cards">
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
                     <thead>
-                        <tr class="border-b border-outline-variant">
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant">Id</th>
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant">类型</th>
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant hide-mobile">参数</th>
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant">状态</th>
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant hide-mobile">创建</th>
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant hide-mobile">完成</th>
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant hide-mobile">错误</th>
+                        <tr>
+                            <th class="text-left">Id</th>
+                            <th class="text-left">类型</th>
+                            <th class="text-left hide-mobile">参数</th>
+                            <th class="text-left">状态</th>
+                            <th class="text-left hide-mobile">创建</th>
+                            <th class="text-left hide-mobile">完成</th>
+                            <th class="text-left hide-mobile">错误</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var j in jobs)
                         {
-                            <tr class="border-b border-outline-variant hover:bg-surface-container">
-                                <td data-label="Id" class="py-2 px-2 tabular-nums text-on-surface">@j.Id</td>
-                                <td data-label="类型" class="py-2 px-2 text-on-surface">@j.Type</td>
-                                <td data-label="参数" class="py-2 px-2 text-on-surface-variant font-mono text-body-small wrap-cell hide-mobile"><span class="break-all">@j.Payload</span></td>
-                                <td data-label="状态" class="py-2 px-2">
+                            <tr>
+                                <td data-label="Id" class="tabular-nums text-on-surface">@j.Id</td>
+                                <td data-label="类型" class="text-on-surface">@j.Type</td>
+                                <td data-label="参数" class="text-on-surface-variant font-mono text-body-small wrap-cell hide-mobile"><span class="break-all">@j.Payload</span></td>
+                                <td data-label="状态">
                                     <span class="md-chip @StatusClass(j.Status)">@StatusText(j.Status)</span>
                                 </td>
-                                <td data-label="创建" class="py-2 px-2 text-on-surface-variant hide-mobile">@j.CreatedAt.ToString("MM-dd HH:mm:ss")</td>
-                                <td data-label="完成" class="py-2 px-2 text-on-surface-variant hide-mobile">@(j.CompletedAt?.ToString("MM-dd HH:mm:ss") ?? "-")</td>
-                                <td data-label="错误" class="py-2 px-2 text-error text-body-small max-w-xs wrap-cell hide-mobile"><span class="break-words" title="@j.Error">@(j.Error ?? "")</span></td>
+                                <td data-label="创建" class="text-on-surface-variant hide-mobile">@j.CreatedAt.ToString("MM-dd HH:mm:ss")</td>
+                                <td data-label="完成" class="text-on-surface-variant hide-mobile">@(j.CompletedAt?.ToString("MM-dd HH:mm:ss") ?? "-")</td>
+                                <td data-label="错误" class="text-error text-body-small max-w-xs wrap-cell hide-mobile"><span class="break-words" title="@j.Error">@(j.Error ?? "")</span></td>
                             </tr>
                         }
                     </tbody>
@@ -108,28 +108,28 @@
         }
         else
         {
-            <div class="overflow-x-auto">
-                <table class="w-full text-body-medium responsive-cards">
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
                     <thead>
-                        <tr class="border-b border-outline-variant">
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant">类型</th>
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant">条件</th>
-                            <th class="text-left py-2 px-2 text-label-large text-on-surface-variant">动作</th>
-                            <th class="text-right py-2 px-2 text-label-large text-on-surface-variant hide-mobile">优先级</th>
-                            <th class="text-center py-2 px-2 text-label-large text-on-surface-variant">启用</th>
+                        <tr>
+                            <th class="text-left">类型</th>
+                            <th class="text-left">条件</th>
+                            <th class="text-left">动作</th>
+                            <th class="text-right hide-mobile">优先级</th>
+                            <th class="text-center">启用</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var r in rules)
                         {
-                            <tr class="border-b border-outline-variant hover:bg-surface-container">
-                                <td data-label="类型" class="py-2 px-2">
+                            <tr>
+                                <td data-label="类型">
                                     <span class="md-chip @TypeClass(r.Type)">@r.Type</span>
                                 </td>
-                                <td data-label="条件" class="py-2 px-2 font-mono text-body-small text-on-surface-variant wrap-cell"><span class="break-all">@r.Condition</span></td>
-                                <td data-label="动作" class="py-2 px-2 text-on-surface wrap-cell"><span class="break-words">@r.Action</span></td>
-                                <td data-label="优先级" class="py-2 px-2 text-right text-on-surface-variant tabular-nums hide-mobile">@r.Priority</td>
-                                <td data-label="启用" class="py-2 px-2 text-center">
+                                <td data-label="条件" class="font-mono text-body-small text-on-surface-variant wrap-cell"><span class="break-all">@r.Condition</span></td>
+                                <td data-label="动作" class="text-on-surface wrap-cell"><span class="break-words">@r.Action</span></td>
+                                <td data-label="优先级" class="text-right text-on-surface-variant tabular-nums hide-mobile">@r.Priority</td>
+                                <td data-label="启用" class="text-center">
                                     @if (r.IsActive)
                                     {
                                         <span class="material-symbols-outlined text-success text-base" title="已启用">check_circle</span>

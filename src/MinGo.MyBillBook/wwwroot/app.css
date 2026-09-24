@@ -371,21 +371,33 @@ body {
    MD3 Cards
    ============================================================ */
 .md-card-elevated {
-    background-color: var(--color-surface-container-low);
+    background-color: var(--color-surface-container);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-elevation-1);
     color: var(--color-on-surface);
+    padding: 1rem;
+}
+@media (min-width: 640px) {
+    .md-card-elevated { padding: 1.5rem; }
 }
 .md-card-filled {
     background-color: var(--color-surface-container-highest);
     border-radius: var(--radius-md);
     color: var(--color-on-surface);
+    padding: 1rem;
+}
+@media (min-width: 640px) {
+    .md-card-filled { padding: 1.5rem; }
 }
 .md-card-outlined {
     background-color: var(--color-surface);
     border-radius: var(--radius-md);
     border: 1px solid var(--color-outline-variant);
     color: var(--color-on-surface);
+    padding: 1rem;
+}
+@media (min-width: 640px) {
+    .md-card-outlined { padding: 1.5rem; }
 }
 
 /* ============================================================
@@ -619,7 +631,7 @@ a.active:not(.md-nav-item) {
     width: 100%;
     height: 4px;
     background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     overflow: hidden;
 }
 .md-linear-progress::before {
@@ -680,7 +692,7 @@ a.active:not(.md-nav-item) {
         max-height: 92vh;
         padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
         animation: sheet-up 0.22s cubic-bezier(0.2, 0, 0, 1);
-        background: var(--color-surface-container-low);
+        background: var(--color-surface-container);
     }
     .modal-panel::before {
         content: "";
@@ -925,7 +937,7 @@ table {
     }
     table.responsive-cards tr {
         display: block;
-        background: var(--color-surface-container-low);
+        background: var(--color-surface-container);
         border: 1px solid var(--color-outline-variant);
         border-radius: var(--radius-md);
         padding: 0.5rem 0.75rem;
@@ -977,19 +989,17 @@ table {
 }
 
 /* Sticky first column for wide matrix tables */
-@media (max-width: 1023px) {
-    .matrix-scroll table th:first-child,
-    .matrix-scroll table td:first-child {
-        position: sticky;
-        left: 0;
-        background: var(--color-surface-container-low);
-        z-index: 1;
-        box-shadow: 1px 0 0 var(--color-outline-variant);
-    }
-    .matrix-scroll table thead th:first-child {
-        background: var(--color-surface-container);
-        z-index: 2;
-    }
+.matrix-scroll table th:first-child,
+.matrix-scroll table td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--color-surface-container);
+    z-index: 1;
+    box-shadow: 1px 0 0 var(--color-outline-variant);
+}
+.matrix-scroll table thead th:first-child {
+    background: var(--color-surface-container-high);
+    z-index: 2;
 }
 
 /* Scroll hint shadow for wide tables */
@@ -1001,8 +1011,8 @@ table {
     width: 1.5rem;
     pointer-events: none;
     background: linear-gradient(to left,
-                color-mix(in srgb, var(--color-surface-container-low) 95%, transparent),
-                color-mix(in srgb, var(--color-surface-container-low) 0%, transparent));
+                color-mix(in srgb, var(--color-surface-container) 95%, transparent),
+                color-mix(in srgb, var(--color-surface-container) 0%, transparent));
     opacity: 1;
     transition: opacity 0.2s;
 }
@@ -1047,16 +1057,69 @@ table {
 }
 
 /* ============================================================
+   MD3 Table rows
+   Hover state uses surface-container per spec.
+   Dividers use outline-variant (1px).
+   ============================================================ */
+.md-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-body-medium);
+    line-height: var(--text-body-medium--line-height);
+}
+.md-table thead th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: var(--text-label-large);
+    line-height: var(--text-label-large--line-height);
+    font-weight: var(--text-label-large--font-weight);
+    letter-spacing: var(--text-label-large--letter-spacing);
+    color: var(--color-on-surface-variant);
+    border-bottom: 1px solid var(--color-outline-variant);
+    white-space: nowrap;
+}
+.md-table tbody td {
+    padding: 0.75rem 1rem;
+    color: var(--color-on-surface);
+    border-bottom: 1px solid var(--color-outline-variant);
+}
+.md-table tbody tr:last-child td {
+    border-bottom: none;
+}
+@media (hover: hover) {
+    .md-table tbody tr:hover {
+        background-color: var(--color-surface-container-high);
+    }
+}
+
+/* ============================================================
+   MD3 Progress bar (determinate)
+   4px track, rounded, uses primary color.
+   ============================================================ */
+.md-progress-bar {
+    width: 100%;
+    height: 4px;
+    background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    border-radius: var(--radius-xs);
+    overflow: hidden;
+}
+.md-progress-bar-fill {
+    height: 100%;
+    background-color: var(--color-primary);
+    border-radius: var(--radius-xs);
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ============================================================
    Card hover affordance (pointer devices only)
+   MD3 spec: elevation bump only, no translate.
    ============================================================ */
 @media (hover: hover) and (pointer: fine) {
     .card-hover {
-        transition: box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1),
-                    transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+        transition: box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1);
     }
     .card-hover:hover {
         box-shadow: var(--shadow-elevation-2);
-        transform: translateY(-1px);
     }
 }
 

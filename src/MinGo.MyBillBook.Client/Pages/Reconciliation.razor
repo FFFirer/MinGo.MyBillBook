@@ -46,16 +46,16 @@
         @if (accounts != null)
         {
             <div class="md-card-elevated overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-body-medium responsive-cards">
+                <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                    <table class="md-table responsive-cards">
                         <thead>
-                            <tr class="bg-surface-container border-b border-outline-variant">
-                                <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">账户</th>
-                                <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">银行余额</th>
-                                <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">计算余额</th>
-                                <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">差异</th>
-                                <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">快照日期</th>
-                                <th class="text-center py-3 px-4 text-label-large text-on-surface-variant">状态</th>
+                            <tr>
+                                <th class="text-left">账户</th>
+                                <th class="text-right">银行余额</th>
+                                <th class="text-right">计算余额</th>
+                                <th class="text-right">差异</th>
+                                <th class="text-left hide-mobile">快照日期</th>
+                                <th class="text-center">状态</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -63,15 +63,15 @@
                             {
                                 var hasSnap = a.SnapshotDate != null;
                                 var diff = a.Difference ?? 0m;
-                                <tr class="border-b border-outline-variant hover:bg-surface-container">
-                                    <td data-label="账户" class="py-3 px-4 font-medium text-on-surface wrap-cell"><span class="break-words">@a.Name</span></td>
-                                    <td data-label="银行余额" class="py-3 px-4 text-right text-on-surface-variant tabular-nums">@(hasSnap ? a.BankBalance?.ToString("F2") : "—")</td>
-                                    <td data-label="计算余额" class="py-3 px-4 text-right text-on-surface-variant tabular-nums">@(hasSnap ? a.CalculatedBalance?.ToString("F2") : "—")</td>
-                                    <td data-label="差异" class="py-3 px-4 text-right font-medium tabular-nums @(Math.Abs(diff) > 0.01m ? "text-error" : "text-success")">
+                                <tr>
+                                    <td data-label="账户" class="font-medium text-on-surface wrap-cell"><span class="break-words">@a.Name</span></td>
+                                    <td data-label="银行余额" class="text-right text-on-surface-variant tabular-nums">@(hasSnap ? a.BankBalance?.ToString("F2") : "—")</td>
+                                    <td data-label="计算余额" class="text-right text-on-surface-variant tabular-nums">@(hasSnap ? a.CalculatedBalance?.ToString("F2") : "—")</td>
+                                    <td data-label="差异" class="text-right font-medium tabular-nums @(Math.Abs(diff) > 0.01m ? "text-error" : "text-success")">
                                         @(hasSnap ? diff.ToString("F2") : "—")
                                     </td>
-                                    <td data-label="快照日期" class="py-3 px-4 text-on-surface-variant hide-mobile">@(a.SnapshotDate?.ToString("yyyy-MM-dd") ?? "—")</td>
-                                    <td data-label="状态" class="py-3 px-4 text-center">
+                                    <td data-label="快照日期" class="text-on-surface-variant hide-mobile">@(a.SnapshotDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                                    <td data-label="状态" class="text-center">
                                         @if (!hasSnap)
                                         {
                                             <span class="md-chip md-chip-assist-info">未对账</span>
@@ -109,32 +109,32 @@
             else
             {
                 <div class="md-card-elevated overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-body-medium responsive-cards">
+                    <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                        <table class="md-table responsive-cards">
                             <thead>
-                                <tr class="bg-surface-container border-b border-outline-variant">
-                                    <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">账户</th>
-                                    <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">差异</th>
-                                    <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">说明</th>
-                                    <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">创建时间</th>
-                                    <th class="text-center py-3 px-4 text-label-large text-on-surface-variant">状态</th>
-                                    <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">操作</th>
+                                <tr>
+                                    <th class="text-left">账户</th>
+                                    <th class="text-right">差异</th>
+                                    <th class="text-left hide-mobile">说明</th>
+                                    <th class="text-left hide-mobile">创建时间</th>
+                                    <th class="text-center">状态</th>
+                                    <th class="text-right">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var i in issues)
                                 {
-                                    <tr class="border-b border-outline-variant hover:bg-surface-container">
-                                        <td data-label="账户" class="py-3 px-4 font-medium text-on-surface wrap-cell"><span class="break-words">@i.AccountName</span></td>
-                                        <td data-label="差异" class="py-3 px-4 text-right font-medium text-error tabular-nums">@i.Difference.ToString("F2")</td>
-                                        <td data-label="说明" class="py-3 px-4 text-on-surface-variant wrap-cell hide-mobile"><span class="break-words">@i.Note</span></td>
-                                        <td data-label="创建时间" class="py-3 px-4 text-on-surface-variant hide-mobile">@i.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                                        <td data-label="状态" class="py-3 px-4 text-center">
+                                    <tr>
+                                        <td data-label="账户" class="font-medium text-on-surface wrap-cell"><span class="break-words">@i.AccountName</span></td>
+                                        <td data-label="差异" class="text-right font-medium text-error tabular-nums">@i.Difference.ToString("F2")</td>
+                                        <td data-label="说明" class="text-on-surface-variant wrap-cell hide-mobile"><span class="break-words">@i.Note</span></td>
+                                        <td data-label="创建时间" class="text-on-surface-variant hide-mobile">@i.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td data-label="状态" class="text-center">
                                             <span class="md-chip @(i.Status == "Open" ? "md-chip-assist-warning" : "md-chip-assist-success")">
                                                 @(i.Status == "Open" ? "待处理" : "已解决")
                                             </span>
                                         </td>
-                                        <td data-label="操作" class="py-3 px-4 text-right">
+                                        <td data-label="操作" class="text-right">
                                             @if (i.Status == "Open")
                                             {
                                                 <button @onclick="() => ResolveIssue(i)" class="md-btn-text state-layer">
@@ -167,28 +167,28 @@
             else
             {
                 <div class="md-card-elevated overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-body-medium responsive-cards">
+                    <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                        <table class="md-table responsive-cards">
                             <thead>
-                                <tr class="bg-surface-container border-b border-outline-variant">
-                                    <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">日期</th>
-                                    <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">金额</th>
-                                    <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">转出账户</th>
-                                    <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">转入账户</th>
-                                    <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">匹配记录</th>
-                                    <th class="text-center py-3 px-4 text-label-large text-on-surface-variant hide-mobile">状态</th>
+                                <tr>
+                                    <th class="text-left">日期</th>
+                                    <th class="text-right">金额</th>
+                                    <th class="text-left">转出账户</th>
+                                    <th class="text-left">转入账户</th>
+                                    <th class="text-left hide-mobile">匹配记录</th>
+                                    <th class="text-center hide-mobile">状态</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var t in transfers)
                                 {
-                                    <tr class="border-b border-outline-variant hover:bg-surface-container">
-                                        <td data-label="日期" class="py-3 px-4 text-on-surface-variant">@t.OccurredAt.ToString("yyyy-MM-dd")</td>
-                                        <td data-label="金额" class="py-3 px-4 text-right font-medium tabular-nums text-on-surface">@t.Amount.ToString("F2")</td>
-                                        <td data-label="转出账户" class="py-3 px-4 text-on-surface-variant wrap-cell"><span class="break-words">@(AccountName(t.FromAccountId))</span></td>
-                                        <td data-label="转入账户" class="py-3 px-4 text-on-surface-variant wrap-cell"><span class="break-words">@(AccountName(t.ToAccountId))</span></td>
-                                        <td data-label="匹配记录" class="py-3 px-4 text-on-surface-variant text-body-small wrap-cell hide-mobile"><span class="break-all">@t.MatchedRecordIds</span></td>
-                                        <td data-label="状态" class="py-3 px-4 text-center hide-mobile">
+                                    <tr>
+                                        <td data-label="日期" class="text-on-surface-variant">@t.OccurredAt.ToString("yyyy-MM-dd")</td>
+                                        <td data-label="金额" class="text-right font-medium tabular-nums text-on-surface">@t.Amount.ToString("F2")</td>
+                                        <td data-label="转出账户" class="text-on-surface-variant wrap-cell"><span class="break-words">@(AccountName(t.FromAccountId))</span></td>
+                                        <td data-label="转入账户" class="text-on-surface-variant wrap-cell"><span class="break-words">@(AccountName(t.ToAccountId))</span></td>
+                                        <td data-label="匹配记录" class="text-on-surface-variant text-body-small wrap-cell hide-mobile"><span class="break-all">@t.MatchedRecordIds</span></td>
+                                        <td data-label="状态" class="text-center hide-mobile">
                                             <span class="md-chip md-chip-assist-info">@TransferStatusName(t.Status)</span>
                                         </td>
                                     </tr>

@@ -72,16 +72,16 @@
                         var expenseH = maxVal > 0 ? (int)(m.Expense / maxVal * 100) : 0;
                         <div class="bar-group flex-1 flex flex-col items-center min-w-0">
                             <div class="flex items-end gap-px sm:gap-0.5 w-full h-32 sm:h-40">
-                                <div class="flex-1 bg-success rounded-t transition-all" style="height:@(incomeH)%" title="收入: @m.Income.ToString("F2")" aria-label="@m.Month 收入 @m.Income.ToString("F2")"></div>
-                                <div class="flex-1 bg-error rounded-t transition-all" style="height:@(expenseH)%" title="支出: @m.Expense.ToString("F2")" aria-label="@m.Month 支出 @m.Expense.ToString("F2")"></div>
+                                <div class="flex-1 bg-primary-container rounded-t transition-all" style="height:@(incomeH)%" title="收入: @m.Income.ToString("F2")" aria-label="@m.Month 收入 @m.Income.ToString("F2")"></div>
+                                <div class="flex-1 bg-error-container rounded-t transition-all" style="height:@(expenseH)%" title="支出: @m.Expense.ToString("F2")" aria-label="@m.Month 支出 @m.Expense.ToString("F2")"></div>
                             </div>
                             <span class="bar-label text-[10px] sm:text-xs text-on-surface-variant mt-1 truncate w-full text-center">@m.Month.Substring(5)</span>
                         </div>
                     }
                 </div>
                 <div class="flex gap-4 mt-3 justify-center">
-                    <span class="text-body-small text-on-surface-variant inline-flex items-center"><span class="inline-block w-3 h-3 bg-success rounded mr-1"></span>收入</span>
-                    <span class="text-body-small text-on-surface-variant inline-flex items-center"><span class="inline-block w-3 h-3 bg-error rounded mr-1"></span>支出</span>
+                    <span class="text-body-small text-on-surface-variant inline-flex items-center"><span class="inline-block w-3 h-3 bg-primary-container rounded mr-1"></span>收入</span>
+                    <span class="text-body-small text-on-surface-variant inline-flex items-center"><span class="inline-block w-3 h-3 bg-error-container rounded mr-1"></span>支出</span>
                 </div>
             </div>
         }
@@ -103,8 +103,8 @@
                                     </span>
                                     <span class="text-on-surface-variant">@c.Amount.ToString("F2") (@c.Percentage.ToString("F1")%)</span>
                                 </div>
-                                <div class="w-full bg-surface-container-high rounded-full h-2">
-                                    <div class="bg-primary h-2 rounded-full transition-all" style="width:@(c.Percentage)%"></div>
+                                <div class="md-progress-bar">
+                                    <div class="md-progress-bar-fill" style="width:@(c.Percentage)%"></div>
                                 </div>
                             </div>
                         }
@@ -117,27 +117,27 @@
             {
                 <div class="md-card-elevated">
                     <h2 class="text-title-large mb-4">商户排行 TOP 10</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-body-medium">
+                    <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                        <table class="md-table">
                             <thead>
-                                <tr class="border-b border-outline-variant">
-                                    <th class="text-left py-2 text-label-large text-on-surface-variant">#</th>
-                                    <th class="text-left py-2 text-label-large text-on-surface-variant">商户</th>
-                                    <th class="text-right py-2 text-label-large text-on-surface-variant">金额</th>
-                                    <th class="text-right py-2 text-label-large text-on-surface-variant">笔数</th>
+                                <tr>
+                                    <th class="w-10">#</th>
+                                    <th>商户</th>
+                                    <th class="text-right">金额</th>
+                                    <th class="text-right">笔数</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @for (int i = 0; i < topMerchants.Count; i++)
                                 {
                                     var m = topMerchants[i];
-                                    <tr class="border-b border-outline-variant">
-                                        <td class="py-2">
+                                    <tr>
+                                        <td>
                                             <span class="w-6 h-6 rounded-full bg-primary-container text-on-primary-container text-xs inline-flex items-center justify-center font-bold">@(i + 1)</span>
                                         </td>
-                                        <td class="py-2 font-medium text-on-surface">@m.Merchant</td>
-                                        <td class="py-2 text-right text-error font-medium">@m.Amount.ToString("F2")</td>
-                                        <td class="py-2 text-right text-on-surface-variant">@m.Count</td>
+                                        <td class="font-medium text-on-surface">@m.Merchant</td>
+                                        <td class="text-right text-error font-medium">@m.Amount.ToString("F2")</td>
+                                        <td class="text-right text-on-surface-variant">@m.Count</td>
                                     </tr>
                                 }
                             </tbody>
@@ -169,24 +169,24 @@
                 <h2 class="text-title-large mb-4">现金流 (@selectedYear 年、Transfer 不计)</h2>
                 @if (cashFlow != null)
                 {
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-body-medium">
+                    <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                        <table class="md-table">
                             <thead>
-                                <tr class="border-b border-outline-variant">
-                                    <th class="text-left py-2 text-label-large text-on-surface-variant">月份</th>
-                                    <th class="text-right py-2 text-label-large text-on-surface-variant">流入</th>
-                                    <th class="text-right py-2 text-label-large text-on-surface-variant">流出</th>
-                                    <th class="text-right py-2 text-label-large text-on-surface-variant">净额</th>
+                                <tr>
+                                    <th>月份</th>
+                                    <th class="text-right">流入</th>
+                                    <th class="text-right">流出</th>
+                                    <th class="text-right">净额</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var cf in cashFlow.Where(c => c.Inflow != 0 || c.Outflow != 0))
                                 {
-                                    <tr class="border-b border-outline-variant">
-                                        <td class="py-1.5 text-on-surface">@cf.Month</td>
-                                        <td class="py-1.5 text-right text-success">@cf.Inflow.ToString("F2")</td>
-                                        <td class="py-1.5 text-right text-error">@cf.Outflow.ToString("F2")</td>
-                                        <td class="py-1.5 text-right font-medium @(cf.Net >= 0 ? "text-info" : "text-error")">@cf.Net.ToString("F2")</td>
+                                    <tr>
+                                        <td class="text-on-surface">@cf.Month</td>
+                                        <td class="text-right text-success">@cf.Inflow.ToString("F2")</td>
+                                        <td class="text-right text-error">@cf.Outflow.ToString("F2")</td>
+                                        <td class="text-right font-medium @(cf.Net >= 0 ? "text-info" : "text-error")">@cf.Net.ToString("F2")</td>
                                     </tr>
                                 }
                             </tbody>
@@ -219,7 +219,7 @@
                     <table class="text-body-medium border-collapse min-w-max">
                         <thead>
                             <tr>
-                                <th class="text-left py-2 px-2 sticky left-0 bg-surface-container-low z-10 text-on-surface">@DimensionLabel()</th>
+                                <th class="text-left py-2 px-2 sticky left-0 z-10 text-on-surface">@DimensionLabel()</th>
                                 @foreach (var mo in months)
                                 {
                                     <th class="py-2 px-2 text-right text-on-surface-variant font-normal whitespace-nowrap">@mo.Substring(5)</th>
@@ -230,7 +230,7 @@
                             @foreach (var n in names)
                             {
                                 <tr class="border-t border-outline-variant">
-                                    <td class="py-1.5 px-2 font-medium text-on-surface sticky left-0 bg-surface-container-low z-10 whitespace-nowrap max-w-[8rem] truncate" title="@n">@n</td>
+                                    <td class="py-1.5 px-2 font-medium text-on-surface sticky left-0 z-10 whitespace-nowrap max-w-[8rem] truncate" title="@n">@n</td>
                                     @foreach (var mo in months)
                                     {
                                         var amt = lookup.GetValueOrDefault((n, mo), 0m);
@@ -263,7 +263,7 @@
                     <table class="text-body-medium border-collapse min-w-max">
                         <thead>
                             <tr>
-                                <th class="text-left py-2 px-2 sticky left-0 bg-surface-container-low z-10 text-on-surface">分类＼标签</th>
+                                <th class="text-left py-2 px-2 sticky left-0 z-10 text-on-surface">分类＼标签</th>
                                 @foreach (var t in tags)
                                 {
                                     <th class="py-2 px-2 text-right text-on-surface-variant font-normal whitespace-nowrap">@t</th>
@@ -274,7 +274,7 @@
                             @foreach (var cat in cats)
                             {
                                 <tr class="border-t border-outline-variant">
-                                    <td class="py-1.5 px-2 font-medium text-on-surface sticky left-0 bg-surface-container-low z-10 whitespace-nowrap max-w-[8rem] truncate" title="@cat">@cat</td>
+                                    <td class="py-1.5 px-2 font-medium text-on-surface sticky left-0 z-10 whitespace-nowrap max-w-[8rem] truncate" title="@cat">@cat</td>
                                     @foreach (var t in tags)
                                     {
                                         var amt = lookup.GetValueOrDefault((cat, t), 0m);

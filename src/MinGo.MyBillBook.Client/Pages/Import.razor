@@ -102,36 +102,36 @@
     {
         <div class="md-card-elevated p-4 sm:p-6">
             <h2 class="text-title-large mb-4 text-on-surface">导入历史</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-body-medium responsive-cards">
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
                     <thead>
-                        <tr class="border-b border-outline-variant">
-                            <th class="text-left py-2 px-3 text-label-large text-on-surface-variant">平台</th>
-                            <th class="text-left py-2 px-3 text-label-large text-on-surface-variant">文件名</th>
-                            <th class="text-left py-2 px-3 text-label-large text-on-surface-variant hide-mobile">导入时间</th>
-                            <th class="text-right py-2 px-3 text-label-large text-on-surface-variant">总数</th>
-                            <th class="text-right py-2 px-3 text-label-large text-on-surface-variant hide-mobile">成功</th>
-                            <th class="text-right py-2 px-3 text-label-large text-on-surface-variant hide-mobile">重复</th>
-                            <th class="text-center py-2 px-3 text-label-large text-on-surface-variant">状态</th>
-                            <th class="text-center py-2 px-3 text-label-large text-on-surface-variant">操作</th>
+                        <tr>
+                            <th class="text-left">平台</th>
+                            <th class="text-left">文件名</th>
+                            <th class="text-left hide-mobile">导入时间</th>
+                            <th class="text-right">总数</th>
+                            <th class="text-right hide-mobile">成功</th>
+                            <th class="text-right hide-mobile">重复</th>
+                            <th class="text-center">状态</th>
+                            <th class="text-center">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var batch in batches)
                         {
-                            <tr class="border-b border-outline-variant hover:bg-surface-container">
-                                <td data-label="平台" class="py-2 px-3">@batch.PlatformName</td>
-                                <td data-label="文件名" class="py-2 px-3 text-on-surface-variant wrap-cell"><span class="break-all">@batch.FileName</span></td>
-                                <td data-label="导入时间" class="py-2 px-3 text-on-surface-variant hide-mobile">@batch.ImportDate.ToString("yyyy-MM-dd HH:mm")</td>
-                                <td data-label="总数" class="py-2 px-3 text-right tabular-nums">@batch.TotalCount</td>
-                                <td data-label="成功" class="py-2 px-3 text-right text-success tabular-nums hide-mobile">@batch.SuccessCount</td>
-                                <td data-label="重复" class="py-2 px-3 text-right text-warning tabular-nums hide-mobile">@batch.DuplicateCount</td>
-                                <td data-label="状态" class="py-2 px-3 text-center">
+                            <tr>
+                                <td data-label="平台">@batch.PlatformName</td>
+                                <td data-label="文件名" class="text-on-surface-variant wrap-cell"><span class="break-all">@batch.FileName</span></td>
+                                <td data-label="导入时间" class="text-on-surface-variant hide-mobile">@batch.ImportDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td data-label="总数" class="text-right tabular-nums">@batch.TotalCount</td>
+                                <td data-label="成功" class="text-right text-success tabular-nums hide-mobile">@batch.SuccessCount</td>
+                                <td data-label="重复" class="text-right text-warning tabular-nums hide-mobile">@batch.DuplicateCount</td>
+                                <td data-label="状态" class="text-center">
                                     <span class="md-chip-assist @(batch.Status == "Completed" ? "md-chip-assist-success" : "md-chip-assist-warning")">
                                         @batch.Status
                                     </span>
                                 </td>
-                                <td data-label="操作" class="py-2 px-3 text-center">
+                                <td data-label="操作" class="text-center">
                                     <div class="inline-flex items-center justify-center gap-2">
                                         @if (batch.Status == "Imported")
                                         {

@@ -29,15 +29,15 @@
     <!-- 商户列表 -->
     <div class="md-card-elevated overflow-hidden">
         <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant font-semibold text-on-surface text-body-medium">商户</div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-body-medium responsive-cards">
-                <thead class="bg-surface-container">
+        <div class="overflow-x-auto -mx-4 sm:-mx-6">
+            <table class="md-table responsive-cards">
+                <thead>
                     <tr>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">规范名称</th>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">默认分类</th>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant hide-mobile">别名数</th>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">关联账单</th>
-                        <th class="text-right px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">操作</th>
+                        <th class="text-left">规范名称</th>
+                        <th class="text-left">默认分类</th>
+                        <th class="text-left hide-mobile">别名数</th>
+                        <th class="text-left">关联账单</th>
+                        <th class="text-right">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,11 +45,11 @@
                     {
                         @foreach (var m in merchants)
                         {
-                            <tr class="border-t border-outline-variant hover:bg-surface-container">
-                                <td data-label="规范名称" class="px-4 sm:px-6 py-3 font-medium text-on-surface wrap-cell"><span class="break-words">@m.CanonicalName</span></td>
-                                <td data-label="默认分类" class="px-4 sm:px-6 py-3 text-on-surface-variant">@(m.DefaultCategoryName ?? "—")</td>
-                                <td data-label="别名数" class="px-4 sm:px-6 py-3 text-on-surface-variant tabular-nums hide-mobile">@m.AliasCount</td>
-                                <td data-label="关联账单" class="px-4 sm:px-6 py-3">
+                            <tr>
+                                <td data-label="规范名称" class="font-medium text-on-surface wrap-cell"><span class="break-words">@m.CanonicalName</span></td>
+                                <td data-label="默认分类" class="text-on-surface-variant">@(m.DefaultCategoryName ?? "—")</td>
+                                <td data-label="别名数" class="text-on-surface-variant tabular-nums hide-mobile">@m.AliasCount</td>
+                                <td data-label="关联账单">
                                     @if (m.BillCount > 0)
                                     {
                                         <a href="@($"bills?keyword={Uri.EscapeDataString(m.CanonicalName)}")" title="查看该商户的关联账单"
@@ -62,7 +62,7 @@
                                         <span class="text-outline-variant">—</span>
                                     }
                                 </td>
-                                <td data-label="操作" class="px-4 sm:px-6 py-3 text-right">
+                                <td data-label="操作" class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button @onclick="() => OpenEditMerchantDialog(m)" class="md-icon-btn" title="编辑" aria-label="编辑 @m.CanonicalName"><span class="material-symbols-outlined">edit</span></button>
                                         <button @onclick="() => DeleteMerchant(m)" class="md-icon-btn" title="删除" aria-label="删除 @m.CanonicalName"><span class="material-symbols-outlined text-error">delete</span></button>
@@ -79,16 +79,16 @@
     <!-- 别名规则列表 -->
     <div class="md-card-elevated overflow-hidden">
         <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant font-semibold text-on-surface text-body-medium">别名规则（按优先级降序匹配）</div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-body-medium responsive-cards">
-                <thead class="bg-surface-container">
+        <div class="overflow-x-auto -mx-4 sm:-mx-6">
+            <table class="md-table responsive-cards">
+                <thead>
                     <tr>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">模式</th>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">匹配方式</th>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">归一到</th>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant hide-mobile">优先级</th>
-                        <th class="text-left px-4 sm:px-6 py-3 text-label-large text-on-surface-variant hide-mobile">启用</th>
-                        <th class="text-right px-4 sm:px-6 py-3 text-label-large text-on-surface-variant">操作</th>
+                        <th class="text-left">模式</th>
+                        <th class="text-left">匹配方式</th>
+                        <th class="text-left">归一到</th>
+                        <th class="text-left hide-mobile">优先级</th>
+                        <th class="text-left hide-mobile">启用</th>
+                        <th class="text-right">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -96,19 +96,19 @@
                     {
                         @foreach (var a in aliases)
                         {
-                            <tr class="border-t border-outline-variant hover:bg-surface-container">
-                                <td data-label="模式" class="px-4 sm:px-6 py-3 font-mono text-on-surface wrap-cell"><span class="break-all text-body-small">@a.Pattern</span></td>
-                                <td data-label="匹配方式" class="px-4 sm:px-6 py-3">
+                            <tr>
+                                <td data-label="模式" class="font-mono text-on-surface wrap-cell"><span class="break-all text-body-small">@a.Pattern</span></td>
+                                <td data-label="匹配方式">
                                     <span title="@MatchTypeHint(a.MatchType)" class="md-chip @MatchTypeBadgeClass(a.MatchType)">
                                         <span class="material-symbols-outlined" style="font-size:16px;">@MatchTypeIcon(a.MatchType)</span>@MatchTypeLabel(a.MatchType)
                                     </span>
                                 </td>
-                                <td data-label="归一到" class="px-4 sm:px-6 py-3 text-on-surface wrap-cell"><span class="break-words">@a.MerchantName</span></td>
-                                <td data-label="优先级" class="px-4 sm:px-6 py-3 text-on-surface-variant tabular-nums hide-mobile">@a.Priority</td>
-                                <td data-label="启用" class="px-4 sm:px-6 py-3 hide-mobile">
+                                <td data-label="归一到" class="text-on-surface wrap-cell"><span class="break-words">@a.MerchantName</span></td>
+                                <td data-label="优先级" class="text-on-surface-variant tabular-nums hide-mobile">@a.Priority</td>
+                                <td data-label="启用" class="hide-mobile">
                                     <span class="@(a.IsActive ? "text-success" : "text-on-surface-variant")">@(a.IsActive ? "是" : "否")</span>
                                 </td>
-                                <td data-label="操作" class="px-4 sm:px-6 py-3 text-right">
+                                <td data-label="操作" class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button @onclick="() => OpenEditAliasDialog(a)" class="md-icon-btn" title="编辑" aria-label="编辑别名 @a.Pattern"><span class="material-symbols-outlined">edit</span></button>
                                         <button @onclick="() => DeleteAlias(a)" class="md-icon-btn" title="删除" aria-label="删除别名 @a.Pattern"><span class="material-symbols-outlined text-error">delete</span></button>

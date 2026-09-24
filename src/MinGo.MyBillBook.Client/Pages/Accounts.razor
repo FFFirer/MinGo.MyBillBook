@@ -28,28 +28,28 @@
     @if (accounts != null)
     {
         <div class="md-card-elevated overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-body-medium responsive-cards">
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
                     <thead>
-                        <tr class="bg-surface-container border-b border-outline-variant">
-                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">账户名</th>
-                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant">平台</th>
-                            <th class="text-left py-3 px-4 text-label-large text-on-surface-variant hide-mobile">类型</th>
-                            <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">余额</th>
-                            <th class="text-right py-3 px-4 text-label-large text-on-surface-variant hide-mobile">银行/计算</th>
-                            <th class="text-center py-3 px-4 text-label-large text-on-surface-variant hide-mobile">状态</th>
-                            <th class="text-right py-3 px-4 text-label-large text-on-surface-variant">操作</th>
+                        <tr>
+                            <th class="text-left">账户名</th>
+                            <th class="text-left">平台</th>
+                            <th class="text-left hide-mobile">类型</th>
+                            <th class="text-right">余额</th>
+                            <th class="text-right hide-mobile">银行/计算</th>
+                            <th class="text-center hide-mobile">状态</th>
+                            <th class="text-right">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var a in accounts)
                         {
-                            <tr class="border-b border-outline-variant hover:bg-surface-container">
-                                <td data-label="账户名" class="py-3 px-4 font-medium text-on-surface wrap-cell"><span class="break-words">@a.Name</span></td>
-                                <td data-label="平台" class="py-3 px-4 text-on-surface-variant">@a.PlatformName</td>
-                                <td data-label="类型" class="py-3 px-4 text-on-surface-variant hide-mobile">@GetAccountTypeName(a.AccountType)</td>
-                                <td data-label="余额" class="py-3 px-4 text-right font-medium tabular-nums text-on-surface">@a.Balance.ToString("F2")</td>
-                                <td data-label="银行/计算" class="py-3 px-4 text-right text-body-small hide-mobile wrap-cell">
+                            <tr>
+                                <td data-label="账户名" class="font-medium text-on-surface wrap-cell"><span class="break-words">@a.Name</span></td>
+                                <td data-label="平台" class="text-on-surface-variant">@a.PlatformName</td>
+                                <td data-label="类型" class="text-on-surface-variant hide-mobile">@GetAccountTypeName(a.AccountType)</td>
+                                <td data-label="余额" class="text-right font-medium tabular-nums text-on-surface">@a.Balance.ToString("F2")</td>
+                                <td data-label="银行/计算" class="text-right text-body-small hide-mobile wrap-cell">
                                     @{ var rc = ReconFor(a.Id); }
                                     @if (rc == null)
                                     {
@@ -66,12 +66,12 @@
                                         }
                                     }
                                 </td>
-                                <td data-label="状态" class="py-3 px-4 text-center hide-mobile">
+                                <td data-label="状态" class="text-center hide-mobile">
                                     <span class="md-chip @(a.IsActive ? "md-chip-assist-success" : "md-chip-assist-info")">
                                         @(a.IsActive ? "活跃" : "停用")
                                     </span>
                                 </td>
-                                <td data-label="操作" class="py-3 px-4 text-right">
+                                <td data-label="操作" class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button @onclick="() => OpenEditDialog(a)" class="md-icon-btn" title="编辑" aria-label="编辑 @a.Name">
                                             <span class="material-symbols-outlined">edit</span>
