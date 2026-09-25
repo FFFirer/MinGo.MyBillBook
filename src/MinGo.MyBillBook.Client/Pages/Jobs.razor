@@ -74,7 +74,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var j in jobs)
+                        @foreach (var j in PagedJobs)
                         {
                             <tr>
                                 <td data-label="Id" class="tabular-nums text-on-surface">@j.Id</td>
@@ -91,6 +91,7 @@
                     </tbody>
                 </table>
             </div>
+            <Paginator TotalCount="jobs.Count" PageSize="PageSize" @bind-Page="jobsPage" />
         }
     </div>
 
@@ -120,7 +121,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var r in rules)
+                        @foreach (var r in PagedRules)
                         {
                             <tr>
                                 <td data-label="类型">
@@ -144,6 +145,7 @@
                     </tbody>
                 </table>
             </div>
+            <Paginator TotalCount="rules.Count" PageSize="PageSize" @bind-Page="rulesPage" />
         }
     </div>
 </div>
@@ -158,6 +160,11 @@
     private bool toastIsError;
     private CancellationTokenSource? cts;
     private Task? pollTask;
+    private int jobsPage = 1;
+    private int rulesPage = 1;
+    private const int PageSize = 20;
+    private IEnumerable<JobDto> PagedJobs => jobs?.Skip((jobsPage - 1) * PageSize).Take(PageSize) ?? [];
+    private IEnumerable<RuleDto> PagedRules => rules?.Skip((rulesPage - 1) * PageSize).Take(PageSize) ?? [];
 
     protected override void OnInitialized()
     {

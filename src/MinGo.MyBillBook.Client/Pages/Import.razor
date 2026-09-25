@@ -117,7 +117,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var batch in batches)
+                        @foreach (var batch in PagedBatches)
                         {
                             <tr>
                                 <td data-label="平台">@batch.PlatformName</td>
@@ -145,6 +145,7 @@
                     </tbody>
                 </table>
             </div>
+            <Paginator TotalCount="batches.Count" PageSize="PageSize" @bind-Page="batchesPage" />
 
             @if (pipelineBatchId.HasValue && pipelineRuns.Count > 0)
             {
@@ -195,6 +196,9 @@
     private List<BatchInfo> batches = [];
     private int? pipelineBatchId;
     private List<PipelineRunInfo> pipelineRuns = [];
+    private int batchesPage = 1;
+    private const int PageSize = 20;
+    private IEnumerable<BatchInfo> PagedBatches => batches.Skip((batchesPage - 1) * PageSize).Take(PageSize);
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {

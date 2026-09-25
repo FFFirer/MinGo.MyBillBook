@@ -71,7 +71,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var r in rules)
+                        @foreach (var r in PagedRules)
                         {
                             <tr>
                                 <td data-label="分类" class="text-on-surface">@r.CategoryName</td>
@@ -93,6 +93,7 @@
                     </tbody>
                 </table>
             </div>
+            <Paginator TotalCount="@(rules?.Count ?? 0)" PageSize="PageSize" @bind-Page="rulesPage" />
         </div>
     }
 </div>
@@ -228,6 +229,9 @@
     private bool confirmDeleteIsRule;
     private bool isSaving;
     private string? errorMessage;
+    private int rulesPage = 1;
+    private const int PageSize = 20;
+    private IEnumerable<RuleDto> PagedRules => rules?.Skip((rulesPage - 1) * PageSize).Take(PageSize) ?? [];
 
     // 分类表单字段
     private string catFormName = string.Empty;

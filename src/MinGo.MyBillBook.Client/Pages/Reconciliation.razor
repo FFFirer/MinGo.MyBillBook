@@ -59,7 +59,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var a in accounts)
+                            @foreach (var a in PagedAccounts)
                             {
                                 var hasSnap = a.SnapshotDate != null;
                                 var diff = a.Difference ?? 0m;
@@ -90,6 +90,7 @@
                         </tbody>
                     </table>
                 </div>
+                <Paginator TotalCount="@(accounts?.Count ?? 0)" PageSize="PageSize" @bind-Page="accountsPage" />
             </div>
         }
     </section>
@@ -122,7 +123,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var i in issues)
+                                @foreach (var i in PagedIssues)
                                 {
                                     <tr>
                                         <td data-label="账户" class="font-medium text-on-surface wrap-cell"><span class="break-words">@i.AccountName</span></td>
@@ -147,6 +148,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <Paginator TotalCount="@(issues?.Count ?? 0)" PageSize="PageSize" @bind-Page="issuesPage" />
                 </div>
             }
         }
@@ -180,7 +182,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var t in transfers)
+                                @foreach (var t in PagedTransfers)
                                 {
                                     <tr>
                                         <td data-label="日期" class="text-on-surface-variant">@t.OccurredAt.ToString("yyyy-MM-dd")</td>
@@ -196,6 +198,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <Paginator TotalCount="@(transfers?.Count ?? 0)" PageSize="PageSize" @bind-Page="transfersPage" />
                 </div>
             }
         }
@@ -245,6 +248,13 @@
     private List<AccountReconDto>? accounts;
     private List<IssueDto>? issues;
     private List<TransferDto>? transfers;
+    private int accountsPage = 1;
+    private int issuesPage = 1;
+    private int transfersPage = 1;
+    private const int PageSize = 20;
+    private IEnumerable<AccountReconDto> PagedAccounts => accounts?.Skip((accountsPage - 1) * PageSize).Take(PageSize) ?? [];
+    private IEnumerable<IssueDto> PagedIssues => issues?.Skip((issuesPage - 1) * PageSize).Take(PageSize) ?? [];
+    private IEnumerable<TransferDto> PagedTransfers => transfers?.Skip((transfersPage - 1) * PageSize).Take(PageSize) ?? [];
     private bool showSnapshotDialog;
     private int formAccountId;
     private DateTime formDate = DateTime.Today;

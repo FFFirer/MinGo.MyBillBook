@@ -210,7 +210,8 @@
             </div>
             @if (dimensionStats != null && dimensionStats.Any())
             {
-                var names = dimensionStats.Select(s => s.Name).Distinct().ToList();
+                var names = PagedDimensionNames;
+                var allNames = dimensionStats.Select(s => s.Name).Distinct().ToList();
                 var months = Enumerable.Range(1, 12).Select(m => $"{selectedYear}-{m:D2}").ToList();
                 var lookup = dimensionStats.GroupBy(s => (s.Name, s.Month)).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
                 var maxAmt = dimensionStats.Max(s => Math.Abs(s.Amount));
@@ -242,6 +243,7 @@
                         </tbody>
                     </table>
                 </div>
+                <Paginator TotalCount="@allNames.Count" PageSize="PageSize" @bind-Page="dimensionPage" />
             }
             else
             {
@@ -254,7 +256,8 @@
             <h2 class="text-title-medium md:text-title-large mb-4">Category × Tag 交叉矩阵</h2>
             @if (categoryTagMatrix != null && categoryTagMatrix.Any())
             {
-                var cats = categoryTagMatrix.Select(c => c.CategoryName).Distinct().ToList();
+                var allCats = categoryTagMatrix.Select(c => c.CategoryName).Distinct().ToList();
+                var cats = PagedCategoryNames;
                 var tags = categoryTagMatrix.Select(c => c.TagName).Distinct().ToList();
                 var lookup = categoryTagMatrix.GroupBy(c => (c.CategoryName, c.TagName)).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
                 var maxAmt = categoryTagMatrix.Max(c => c.Amount);
@@ -286,6 +289,7 @@
                         </tbody>
                     </table>
                 </div>
+                <Paginator TotalCount="@allCats.Count" PageSize="PageSize" @bind-Page="catTagPage" />
             }
             else
             {
@@ -319,8 +323,21 @@
     private bool isSyncing;
     private string? toastMessage;
     private bool toastIsError;
+    private int dimensionPage = 1;
+    private int catTagPage = 1;
+    private const int PageSize = 20;
     private DateTime startDate => new(selectedYear, 1, 1);
     private DateTime endDate => new(selectedYear, 12, 31);
+
+    private List<string> PagedDimensionNames =>
+        dimensionStats?.Select(s => s.Name).Distinct().ToList() is { } all
+            ? all.Skip((dimensionPage - 1) * PageSize).Take(PageSize).ToList()
+            : [];
+
+    private List<string> PagedCategoryNames =>
+        categoryTagMatrix?.Select(c => c.CategoryName).Distinct().ToList() is { } all
+            ? all.Skip((catTagPage - 1) * PageSize).Take(PageSize).ToList()
+            : [];
 
     private HubConnection? hubConnection;
     private ElementReference matrixScrollRef;
@@ -358,6 +375,8 @@
     {
         var startStr = startDate.ToString("yyyy-MM-dd");
         var endStr = endDate.ToString("yyyy-MM-dd");
+        dimensionPage = 1;
+        catTagPage = 1;
         summary = await Http.GetFromJsonAsync<AnalysisSummary>($"api/analysis/summary?start={startStr}&end={endStr}");
         categoryStats = await Http.GetFromJsonAsync<List<CategoryStatDto>>($"api/analysis/category?start={startStr}&end={endStr}");
         monthlyTrends = await Http.GetFromJsonAsync<List<MonthlyTrendDto>>($"api/analysis/trend?year={selectedYear}");
@@ -382,6 +401,7 @@
     private async Task SwitchDimension(string d)
     {
         selectedDimension = d;
+        dimensionPage = 1;
         await LoadDimensionAsync();
     }
 

@@ -1,0 +1,50 @@
+@if (TotalPages > 1)
+{
+    <div class="card-pagination">
+        <button @onclick="PrevPage" disabled="@(_page <= 1)"
+                class="md-btn-outlined state-layer">
+            <span class="material-symbols-outlined mr-1 sm:hidden">chevron_left</span><span class="hidden sm:inline">上一页</span>
+        </button>
+        <span class="text-body-medium text-on-surface-variant tabular-nums">@_page / @TotalPages</span>
+        <button @onclick="NextPage" disabled="@(_page >= TotalPages)"
+                class="md-btn-outlined state-layer">
+            <span class="hidden sm:inline">下一页</span><span class="material-symbols-outlined ml-1 sm:hidden">chevron_right</span>
+        </button>
+    </div>
+}
+
+@code {
+    private int _page;
+
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int PageSize { get; set; } = 20;
+
+    [Parameter]
+    public int Page
+    {
+        get => _page;
+        set => _page = value;
+    }
+
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+
+    private int TotalPages => TotalCount > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 1;
+
+    private async Task PrevPage()
+    {
+        if (_page > 1)
+        {
+            _page--;
+            await PageChanged.InvokeAsync(_page);
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (_page < TotalPages)
+        {
+            _page++;
+            await PageChanged.InvokeAsync(_page);
+        }
+    }
+}

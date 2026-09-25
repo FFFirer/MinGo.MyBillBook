@@ -42,7 +42,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var a in accounts)
+                        @foreach (var a in PagedAccounts)
                         {
                             <tr>
                                 <td data-label="账户名" class="font-medium text-on-surface wrap-cell"><span class="break-words">@a.Name</span></td>
@@ -86,6 +86,7 @@
                     </tbody>
                 </table>
             </div>
+            <Paginator TotalCount="@(accounts?.Count ?? 0)" PageSize="PageSize" @bind-Page="accountsPage" />
         </div>
     }
 </div>
@@ -162,6 +163,9 @@
     private List<AccountDto>? accounts;
     private List<PlatformDto>? platforms;
     private List<AccountReconDto>? recon;
+    private int accountsPage = 1;
+    private const int PageSize = 20;
+    private IEnumerable<AccountDto> PagedAccounts => accounts?.Skip((accountsPage - 1) * PageSize).Take(PageSize) ?? [];
     private bool showDialog;
     private int? editingId;
     private int? confirmDeleteId;

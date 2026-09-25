@@ -147,20 +147,7 @@
         </div>
 
         <!-- 分页 -->
-        @if (result.Items.Count > 0)
-        {
-            <div class="card-pagination">
-                <button @onclick="PrevPage" disabled="@(result.Page <= 1)"
-                        class="md-btn-outlined state-layer">
-                    <span class="material-symbols-outlined mr-1 sm:hidden">chevron_left</span><span class="hidden sm:inline">上一页</span>
-                </button>
-                <span class="text-body-medium text-on-surface-variant tabular-nums">@result.Page / @((int)Math.Ceiling((double)result.TotalCount / result.PageSize))</span>
-                <button @onclick="NextPage" disabled="@(result.Page * result.PageSize >= result.TotalCount)"
-                        class="md-btn-outlined state-layer">
-                    <span class="hidden sm:inline">下一页</span><span class="material-symbols-outlined ml-1 sm:hidden">chevron_right</span>
-                </button>
-            </div>
-        }
+        <Paginator TotalCount="result.TotalCount" PageSize="result.PageSize" @bind-Page="filter.Page" @bind-Page:after="OnPageChanged" />
     }
 </div>
 
@@ -217,8 +204,7 @@
         }
     }
 
-    private async Task PrevPage() { if (filter.Page > 1) { filter.Page--; await Load(); } }
-    private async Task NextPage() { filter.Page++; await Load(); }
+    private async Task OnPageChanged() => await Load();
 
     private async Task Confirm(DuplicateCandidateDto c)
     {
