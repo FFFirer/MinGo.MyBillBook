@@ -29,27 +29,88 @@
         </div>
     }
 
-    @if (candidates == null)
+    <!-- 筛选面板 -->
+    <div class="md-card-elevated overflow-hidden">
+        <button type="button" class="filter-toggle" @onclick="ToggleFilters" aria-expanded="@(!filtersCollapsed)">
+            <span class="inline-flex items-center gap-2">
+                <span class="material-symbols-outlined">tune</span>
+                筛选条件
+                @if (ActiveFilterCount > 0)
+                {
+                    <span class="md-badge">@ActiveFilterCount</span>
+                }
+            </span>
+            <span class="material-symbols-outlined transition-transform @(filtersCollapsed ? "" : "rotate-180")">expand_more</span>
+        </button>
+        <div class="filter-body @(filtersCollapsed ? "collapsed" : "") p-3 sm:p-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <label class="block">
+                    <span class="block text-body-small text-on-surface-variant mb-1">最低评分</span>
+                    <input type="number" min="0" max="100" @bind="filter.MinScore" class="md-text-field-outlined w-full" placeholder="0" />
+                </label>
+                <label class="block">
+                    <span class="block text-body-small text-on-surface-variant mb-1">最高评分</span>
+                    <input type="number" min="0" max="100" @bind="filter.MaxScore" class="md-text-field-outlined w-full" placeholder="100" />
+                </label>
+                <select @bind="filter.Status" class="md-text-field-outlined w-full" aria-label="状态">
+                    <option value="">全部状态</option>
+                    <option value="Pending">待复核</option>
+                    <option value="Confirmed">已确认</option>
+                    <option value="Rejected">已驳回</option>
+                </select>
+                <label class="block">
+                    <span class="block text-body-small text-on-surface-variant mb-1">开始日期</span>
+                    <input type="date" @bind="filter.StartDate" class="md-text-field-outlined w-full" placeholder="开始日期" />
+                </label>
+                <label class="block">
+                    <span class="block text-body-small text-on-surface-variant mb-1">结束日期</span>
+                    <input type="date" @bind="filter.EndDate" class="md-text-field-outlined w-full" placeholder="结束日期" />
+                </label>
+                <div class="flex gap-2 sm:col-span-2 lg:col-span-5">
+                    <input type="search" @bind="filter.Keyword" @bind:event="oninput" placeholder="搜索商户/商品…"
+                           class="md-text-field-outlined flex-1 min-w-0" />
+                    <button @onclick="ApplyFilters" class="md-btn-filled state-layer shrink-0" aria-label="搜索">
+                        <span class="material-symbols-outlined">search</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计摘要 -->
+    @if (result != null)
+    {
+        <div class="text-body-small text-on-surface-variant">
+            共 @result.TotalCount 条记录，第 @result.Page / @((int)Math.Ceiling((double)result.TotalCount / result.PageSize)) 页
+        </div>
+    }
+
+    @if (result == null)
     {
         <div class="md-card-elevated p-8 text-center text-on-surface-variant empty-state">加载中...</div>
     }
-    else if (candidates.Count == 0)
+    else if (result.Items.Count == 0)
     {
         <div class="md-card-elevated p-8 text-center text-on-surface-variant empty-state">
-            <span class="material-symbols-outlined text-4xl mb-2 block text-success">check_circle</span>
-            暂无待复核的重复候选
+            <span class="material-symbols-outlined text-4xl mb-2 block @(ActiveFilterCount > 0 ? "text-on-surface-variant" : "text-success")">
+                @(ActiveFilterCount > 0 ? "search_off" : "check_circle")
+            </span>
+            @(ActiveFilterCount > 0 ? "没有匹配的记录" : "暂无待复核的重复候选")
         </div>
     }
     else
     {
         <div class="space-y-4">
-            @foreach (var c in candidates)
+            @foreach (var c in result.Items)
             {
                 <div class="md-card-elevated overflow-hidden">
                     <div class="px-4 sm:px-6 py-3 border-b border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-surface-container">
                         <div class="flex items-center gap-3 flex-wrap">
                             <span class="md-chip md-chip-assist-warning">
                                 评分 @c.Score.ToString("0")
+                            </span>
+                            <span class="md-chip md-chip-assist-@GetStatusColor(c.Status)">
+                                @GetStatusText(c.Status)
                             </span>
                             <span class="text-body-medium text-on-surface-variant break-words">@c.MatchReason</span>
                         </div>
@@ -67,39 +128,94 @@
                             <div class="text-body-medium text-on-surface-variant">￥@c.RightAmount.ToString("0.00") · @c.RightDate.ToString("yyyy-MM-dd HH:mm")</div>
                         </div>
                     </div>
-                    <div class="px-4 sm:px-6 py-3 border-t border-outline-variant flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-                        <button @onclick="() => Reject(c)" disabled="@isBusy" class="md-btn-outlined state-layer w-full sm:w-auto">
-                            驳回（非重复）
-                        </button>
-                        <button @onclick="() => Confirm(c)" disabled="@isBusy" class="md-btn-danger state-layer w-full sm:w-auto">
-                            确认重复并删除
-                        </button>
-                    </div>
+                    @if (c.Status == "Pending")
+                    {
+                        <div class="px-4 sm:px-6 py-3 border-t border-outline-variant flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+                            <button @onclick="() => Reject(c)" disabled="@isBusy" class="md-btn-outlined state-layer w-full sm:w-auto">
+                                驳回（非重复）
+                            </button>
+                            <button @onclick="() => Confirm(c)" disabled="@isBusy" class="md-btn-danger state-layer w-full sm:w-auto">
+                                确认重复并删除
+                            </button>
+                        </div>
+                    }
                 </div>
             }
         </div>
+
+        <!-- 分页 -->
+        @if (result.Items.Count > 0)
+        {
+            <div class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-outline-variant md-card-elevated">
+                <button @onclick="PrevPage" disabled="@(result.Page <= 1)"
+                        class="md-btn-outlined state-layer">
+                    <span class="material-symbols-outlined mr-1 sm:hidden">chevron_left</span><span class="hidden sm:inline">上一页</span>
+                </button>
+                <span class="text-body-medium text-on-surface-variant tabular-nums">@result.Page / @((int)Math.Ceiling((double)result.TotalCount / result.PageSize))</span>
+                <button @onclick="NextPage" disabled="@(result.Page * result.PageSize >= result.TotalCount)"
+                        class="md-btn-outlined state-layer">
+                    <span class="hidden sm:inline">下一页</span><span class="material-symbols-outlined ml-1 sm:hidden">chevron_right</span>
+                </button>
+            </div>
+        }
     }
 </div>
 
 @code {
-    private List<DuplicateCandidateDto>? candidates;
+    private PagedResult? result;
     private string? errorMessage;
     private bool isBusy;
+    private FilterParams filter = new();
+    private bool filtersCollapsed = true;
+
+    private int ActiveFilterCount
+    {
+        get
+        {
+            var n = 0;
+            if (filter.MinScore.HasValue) n++;
+            if (filter.MaxScore.HasValue) n++;
+            if (!string.IsNullOrWhiteSpace(filter.Status)) n++;
+            if (filter.StartDate.HasValue) n++;
+            if (filter.EndDate.HasValue) n++;
+            if (!string.IsNullOrWhiteSpace(filter.Keyword)) n++;
+            return n;
+        }
+    }
+
+    private void ToggleFilters() => filtersCollapsed = !filtersCollapsed;
 
     protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task ApplyFilters()
+    {
+        filter.Page = 1;
+        await Load();
+    }
 
     private async Task Load()
     {
         errorMessage = null;
         try
         {
-            candidates = await Http.GetFromJsonAsync<List<DuplicateCandidateDto>>("api/bill/duplicates");
+            var url = $"api/bill/duplicates?page={filter.Page}&pageSize=20";
+            if (filter.MinScore.HasValue) url += $"&minScore={filter.MinScore.Value}";
+            if (filter.MaxScore.HasValue) url += $"&maxScore={filter.MaxScore.Value}";
+            if (!string.IsNullOrWhiteSpace(filter.Status)) url += $"&status={filter.Status}";
+            if (filter.StartDate.HasValue) url += $"&startDate={filter.StartDate:yyyy-MM-dd}";
+            if (filter.EndDate.HasValue) url += $"&endDate={filter.EndDate:yyyy-MM-dd}";
+            if (!string.IsNullOrWhiteSpace(filter.Keyword)) url += $"&keyword={Uri.EscapeDataString(filter.Keyword)}";
+
+            result = await Http.GetFromJsonAsync<PagedResult>(url);
         }
         catch (Exception ex)
         {
             errorMessage = $"加载失败：{ex.Message}";
         }
     }
+
+    private async Task PrevPage() { if (filter.Page > 1) { filter.Page--; await Load(); } }
+    private async Task NextPage() { filter.Page++; await Load(); }
 
     private async Task Confirm(DuplicateCandidateDto c)
     {
@@ -124,6 +240,35 @@
         }
         finally { isBusy = false; }
     }
+
+    private static string GetStatusColor(string status) => status switch
+    {
+        "Pending" => "warning",
+        "Confirmed" => "error",
+        "Rejected" => "info",
+        _ => "primary"
+    };
+
+    private static string GetStatusText(string status) => status switch
+    {
+        "Pending" => "待复核",
+        "Confirmed" => "已确认",
+        "Rejected" => "已驳回",
+        _ => status
+    };
+
+    private class FilterParams
+    {
+        public int Page { get; set; } = 1;
+        public int? MinScore { get; set; }
+        public int? MaxScore { get; set; }
+        public string? Status { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string? Keyword { get; set; }
+    }
+
+    private record PagedResult(List<DuplicateCandidateDto> Items, int TotalCount, int Page, int PageSize);
 
     private record DuplicateCandidateDto(
         int Id, double Score, string MatchReason, string Status, DateTime CreatedAt,

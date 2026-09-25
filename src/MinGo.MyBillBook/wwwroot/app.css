@@ -18,8 +18,14 @@
 html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    color-scheme: light dark;
+    color-scheme: light;
 }
+
+/* Dark mode: switch native controls (select, input, etc.) to dark scheme */
+@media (prefers-color-scheme: dark) {
+    :root:not(.light) { color-scheme: dark; }
+}
+.dark { color-scheme: dark; }
 
 body {
     font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -505,14 +511,15 @@ body {
 }
 .md-text-field-outlined {
     border-radius: var(--radius-xs);
-    box-shadow: inset 0 0 0 1px var(--color-outline);
+    border: 1px solid var(--color-outline);
 }
 .md-text-field-outlined:hover {
-    box-shadow: inset 0 0 0 1px var(--color-on-surface);
+    border-color: var(--color-on-surface);
 }
 .md-text-field-outlined:focus,
 .md-text-field-outlined:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--color-primary);
+    border-color: var(--color-primary);
+    outline: none;
 }
 .md-text-field-filled {
     background-color: var(--color-surface-container-highest);

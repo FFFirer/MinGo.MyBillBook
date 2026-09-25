@@ -71,14 +71,46 @@ public class BillImportController(IBillImportService importService, IBillProcess
         return Ok(runs);
     }
 
-    /// <summary>待复核的疑似重复候选列表（按评分降序）。</summary>
+    /// <summary>待复核的疑似重复候选列表（支持分页与筛选）。</summary>
     [HttpGet("duplicates")]
-    public async Task<ActionResult<List<DuplicateCandidateDto>>> GetDuplicates(CancellationToken ct = default)
+    public async Task<ActionResult<PagedResult<DuplicateCandidateDto>>> GetDuplicates(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] int? minScore = null,
+        [FromQuery] int? maxScore = null,
+        [FromQuery] string? status = null,
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string? keyword = null,
+        CancellationToken ct = default)
     {
-        var rows = await db.DuplicateCandidates
-            .AsNoTracking()
-            .Where(c => c.Status == DuplicateCandidateStatus.Pending)
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize is < 1 or > 100 ? 20 : pageSize;
+
+        var query = db.DuplicateCandidates.AsNoTracking().AsQueryable();
+
+        if (minScore.HasValue)
+            query = query.Where(c => c.Score >= minScore.Value);
+        if (maxScore.HasValue)
+            query = query.Where(c => c.Score <= maxScore.Value);
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<DuplicateCandidateStatus>(status, true, out var st))
+            query = query.Where(c => c.Status == st);
+        if (startDate.HasValue)
+            query = query.Where(c => c.CreatedAt >= startDate.Value);
+        if (endDate.HasValue)
+            query = query.Where(c => c.CreatedAt <= endDate.Value);
+        if (!string.IsNullOrWhiteSpace(keyword))
+            query = query.Where(c =>
+                c.LeftRecord!.Merchant.Contains(keyword) ||
+                c.LeftRecord.ProductName.Contains(keyword) ||
+                c.RightRecord!.Merchant.Contains(keyword) ||
+                c.RightRecord.ProductName.Contains(keyword));
+
+        var totalCount = await query.CountAsync(ct);
+
+        var rows = await query
             .OrderByDescending(c => c.Score).ThenByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(c => new
             {
                 c.Id,
@@ -99,11 +131,12 @@ public class BillImportController(IBillImportService importService, IBillProcess
             })
             .ToListAsync(ct);
 
-        var dtos = rows.Select(r => new DuplicateCandidateDto(
+        var items = rows.Select(r => new DuplicateCandidateDto(
             r.Id, r.Score, r.MatchReason, r.Status, r.CreatedAt,
             r.LeftRecordId, $"{r.LeftMerchant} / {r.LeftProduct}", r.LeftAmountMinor / 100m, r.LeftDate,
             r.RightRecordId, $"{r.RightMerchant} / {r.RightProduct}", r.RightAmountMinor / 100m, r.RightDate)).ToList();
-        return Ok(dtos);
+
+        return Ok(new PagedResult<DuplicateCandidateDto>(items, totalCount, page, pageSize));
     }
 
     /// <summary>确认重复：删除多余的 Canonical 记录（保留 Raw），候选一并移除。</summary>

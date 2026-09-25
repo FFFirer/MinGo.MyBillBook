@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mybillbook-v3';
+const CACHE_NAME = 'mybillbook-v4';
 const OFFLINE_URL = '/';
 
 const STATIC_ASSETS = [
@@ -46,8 +46,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // API requests: network-first
+    // API requests: network-first (skip caching for export/download endpoints)
     if (url.pathname.startsWith('/api/')) {
+        if (url.pathname.startsWith('/api/export/')) {
+            event.respondWith(fetch(event.request));
+            return;
+        }
         event.respondWith(
             fetch(event.request)
                 .then((response) => {

@@ -10,8 +10,31 @@ public class DuckDbContext : IDisposable
     public DuckDbContext(string dbPath = "analysis.duckdb")
     {
         _connection = new DuckDBConnection($"DataSource={dbPath}");
-        _connection.Open();
+        OpenWithRecovery(dbPath);
         InitializeSchema();
+    }
+
+    private void OpenWithRecovery(string dbPath)
+    {
+        try
+        {
+            _connection.Open();
+        }
+        catch (DuckDBException ex) when (ex.Message.Contains("WAL", StringComparison.OrdinalIgnoreCase))
+        {
+            // WAL 文件损坏，尝试删除 WAL 后重试
+            var walPath = dbPath + ".wal";
+            if (File.Exists(walPath))
+            {
+                File.Delete(walPath);
+                _connection.Open();
+                return;
+            }
+            // WAL 不存在或仍失败，尝试删除整个数据库重建
+            if (File.Exists(dbPath))
+                File.Delete(dbPath);
+            _connection.Open();
+        }
     }
 
     private void InitializeSchema()
