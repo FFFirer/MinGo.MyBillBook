@@ -52,12 +52,15 @@
                     <span class="block text-body-small text-on-surface-variant mb-1">最高评分</span>
                     <input type="number" min="0" max="100" @bind="filter.MaxScore" class="md-text-field-outlined w-full" placeholder="100" />
                 </label>
-                <select @bind="filter.Status" class="md-text-field-outlined w-full" aria-label="状态">
-                    <option value="">全部状态</option>
-                    <option value="Pending">待复核</option>
-                    <option value="Confirmed">已确认</option>
-                    <option value="Rejected">已驳回</option>
-                </select>
+                <label class="block">
+                    <span class="block text-body-small text-on-surface-variant mb-1">状态</span>
+                    <select @bind="filter.Status" class="md-text-field-outlined w-full">
+                        <option value="">全部状态</option>
+                        <option value="Pending">待复核</option>
+                        <option value="Confirmed">已确认</option>
+                        <option value="Rejected">已驳回</option>
+                    </select>
+                </label>
                 <label class="block">
                     <span class="block text-body-small text-on-surface-variant mb-1">开始日期</span>
                     <input type="date" @bind="filter.StartDate" class="md-text-field-outlined w-full" placeholder="开始日期" />
