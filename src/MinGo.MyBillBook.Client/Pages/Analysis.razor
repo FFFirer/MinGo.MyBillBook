@@ -236,7 +236,8 @@
                                     {
                                         var amt = lookup.GetValueOrDefault((n, mo), 0m);
                                         var intensity = maxAmt > 0 ? Math.Abs(amt) / maxAmt * 0.5m : 0m;
-                                        <td class="py-1.5 px-2 text-right tabular-nums whitespace-nowrap text-on-surface" style="background-color:color-mix(in srgb, var(--color-primary) @(intensity.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%, transparent)" title="@n @mo: @amt.ToString("F2")">@((amt != 0) ? amt.ToString("F0") : "")</td>
+                                        var amtColor = amt > 0 ? "text-success" : amt < 0 ? "text-error" : "";
+                                        <td class="py-1.5 px-2 text-right tabular-nums whitespace-nowrap font-medium @amtColor" style="background-color:color-mix(in srgb, var(--color-primary) @(intensity.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%, transparent)" title="@n @mo: @amt.ToString("F2")">@((amt != 0) ? amt.ToString("F0") : "")</td>
                                     }
                                 </tr>
                             }
@@ -282,7 +283,8 @@
                                     {
                                         var amt = lookup.GetValueOrDefault((cat, t), 0m);
                                         var intensity = maxAmt > 0 ? amt / maxAmt * 0.5m : 0m;
-                                        <td class="py-1.5 px-2 text-right tabular-nums whitespace-nowrap text-on-surface" style="background-color:color-mix(in srgb, var(--color-primary) @(intensity.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%, transparent)" title="@cat × @t: @amt.ToString("F2")">@((amt != 0) ? amt.ToString("F0") : "")</td>
+                                        var amtColor = amt > 0 ? "text-success" : amt < 0 ? "text-error" : "";
+                                        <td class="py-1.5 px-2 text-right tabular-nums whitespace-nowrap font-medium @amtColor" style="background-color:color-mix(in srgb, var(--color-primary) @(intensity.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%, transparent)" title="@cat × @t: @amt.ToString("F2")">@((amt != 0) ? amt.ToString("F0") : "")</td>
                                     }
                                 </tr>
                             }
