@@ -39,27 +39,36 @@
                     <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">结束日期</span>
                     <input type="date" @bind="filter.EndDate" class="md-text-field-outlined w-full" placeholder="结束日期" />
                 </label>
-                <select @bind="filter.PlatformId" class="md-text-field-outlined w-full" aria-label="支付平台">
-                    <option value="">全部平台</option>
-                    <option value="1">支付宝</option>
-                    <option value="2">微信支付</option>
-                </select>
-                <select @bind="filter.TransactionType" class="md-text-field-outlined w-full" aria-label="交易类型">
-                    <option value="">全部类型</option>
-                    <option value="Income">收入</option>
-                    <option value="Expense">支出</option>
-                    <option value="Transfer">转账</option>
-                </select>
-                <select @bind="filter.TagId" class="md-text-field-outlined w-full" aria-label="标签">
-                    <option value="">全部标签</option>
-                    @if (allTags != null)
-                    {
-                        @foreach (var t in allTags)
+                <label class="block">
+                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">支付平台</span>
+                    <select @bind="filter.PlatformId" class="md-text-field-outlined w-full">
+                        <option value="">全部平台</option>
+                        <option value="1">支付宝</option>
+                        <option value="2">微信支付</option>
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">交易类型</span>
+                    <select @bind="filter.TransactionType" class="md-text-field-outlined w-full">
+                        <option value="">全部类型</option>
+                        <option value="Income">收入</option>
+                        <option value="Expense">支出</option>
+                        <option value="Transfer">转账</option>
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">标签</span>
+                    <select @bind="filter.TagId" class="md-text-field-outlined w-full">
+                        <option value="">全部标签</option>
+                        @if (allTags != null)
                         {
-                            <option value="@t.Id">@t.Name</option>
+                            @foreach (var t in allTags)
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
                         }
-                    }
-                </select>
+                    </select>
+                </label>
                 <div class="flex gap-2 sm:col-span-2 lg:col-span-5">
                     <input type="search" @bind="filter.Keyword" @bind:event="oninput" placeholder="搜索关键词…"
                            class="md-text-field-outlined flex-1 min-w-0" />
