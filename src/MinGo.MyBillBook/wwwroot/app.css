@@ -18,14 +18,17 @@
 html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    color-scheme: light dark;
+}
+
+/* Manual theme override: force color-scheme to match app theme */
+html.light {
     color-scheme: light;
 }
 
-/* Dark mode: switch native controls (select, input, etc.) to dark scheme */
-@media (prefers-color-scheme: dark) {
-    :root:not(.light) { color-scheme: dark; }
+html.dark {
+    color-scheme: dark;
 }
-.dark { color-scheme: dark; }
 
 body {
     font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -509,6 +512,7 @@ body {
     -webkit-appearance: none;
     appearance: none;
 }
+/* Outlined variant: border + radius */
 .md-text-field-outlined {
     border-radius: var(--radius-xs);
     border: 1px solid var(--color-outline);
@@ -521,6 +525,7 @@ body {
     border-color: var(--color-primary);
     outline: none;
 }
+/* Filled variant: background + bottom shadow */
 .md-text-field-filled {
     background-color: var(--color-surface-container-highest);
     border-radius: var(--radius-xs) var(--radius-xs) 0 0;
@@ -542,8 +547,16 @@ body {
     color: color-mix(in srgb, var(--color-on-surface) 38%, transparent);
     cursor: not-allowed;
 }
+/* Native select popup dark-mode fix: use system colors so
+   text/background stays in sync with the OS-drawn popup.
+   color-scheme on html.dark tells the browser to draw a dark
+   popup, but the explicit color: var(--color-on-surface) above
+   overrides CanvasText, causing light text on a light popup
+   (Chromium/Windows). System colors auto-adapt to color-scheme. */
 select.md-text-field-outlined,
 select.md-text-field-filled {
+    color: CanvasText;
+    background-color: Canvas;
     padding-right: 2rem;
     background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
                       linear-gradient(135deg, currentColor 50%, transparent 50%);
