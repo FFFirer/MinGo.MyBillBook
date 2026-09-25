@@ -32,15 +32,15 @@
         <div class="filter-body @(filtersCollapsed ? "collapsed" : "") p-3 sm:p-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <label class="block">
-                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">开始日期</span>
+                    <span class="block text-body-small text-on-surface-variant mb-1">开始日期</span>
                     <input type="date" @bind="filter.StartDate" class="md-text-field-outlined w-full" placeholder="开始日期" />
                 </label>
                 <label class="block">
-                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">结束日期</span>
+                    <span class="block text-body-small text-on-surface-variant mb-1">结束日期</span>
                     <input type="date" @bind="filter.EndDate" class="md-text-field-outlined w-full" placeholder="结束日期" />
                 </label>
                 <label class="block">
-                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">支付平台</span>
+                    <span class="block text-body-small text-on-surface-variant mb-1">支付平台</span>
                     <select @bind="filter.PlatformId" class="md-text-field-outlined w-full">
                         <option value="">全部平台</option>
                         <option value="1">支付宝</option>
@@ -48,7 +48,7 @@
                     </select>
                 </label>
                 <label class="block">
-                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">交易类型</span>
+                    <span class="block text-body-small text-on-surface-variant mb-1">交易类型</span>
                     <select @bind="filter.TransactionType" class="md-text-field-outlined w-full">
                         <option value="">全部类型</option>
                         <option value="Income">收入</option>
@@ -57,7 +57,7 @@
                     </select>
                 </label>
                 <label class="block">
-                    <span class="block text-body-small text-on-surface-variant mb-1 sm:hidden">标签</span>
+                    <span class="block text-body-small text-on-surface-variant mb-1">标签</span>
                     <select @bind="filter.TagId" class="md-text-field-outlined w-full">
                         <option value="">全部标签</option>
                         @if (allTags != null)
