@@ -7,10 +7,10 @@
     <div class="page-header">
         <h1>商户归一化</h1>
         <div class="actions w-full sm:w-auto">
-            <button @onclick="OpenAliasDialog" class="flex-1 sm:flex-none md-btn-tonal state-layer">
+            <button @onclick="OpenAliasDialog" class="flex-none md-btn-tonal state-layer">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">rule</span><span class="hidden xs:inline">新增别名</span><span class="xs:hidden">别名</span>
             </button>
-            <button @onclick="OpenMerchantDialog" class="flex-1 sm:flex-none md-btn-filled state-layer">
+            <button @onclick="OpenMerchantDialog" class="flex-none md-btn-filled state-layer">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">add</span><span class="hidden xs:inline">新增商户</span><span class="xs:hidden">商户</span>
             </button>
         </div>
@@ -188,7 +188,7 @@
     <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-md bg-error-container mr-3 shrink-0">
+                <div class="p-2 rounded-full bg-error-container mr-3 shrink-0">
                     <span class="material-symbols-outlined text-error">warning</span>
                 </div>
                 <h2 class="text-title-large text-on-surface">确认删除</h2>
@@ -210,7 +210,7 @@
     <div class="modal-root" @onclick="CloseMerchantDialog" role="dialog" aria-modal="true" aria-label="@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-md bg-primary-container mr-3 shrink-0">
+                <div class="p-2 rounded-full bg-primary-container mr-3 shrink-0">
                     <span class="material-symbols-outlined text-on-primary-container">storefront</span>
                 </div>
                 <h2 class="text-title-large text-on-surface">@(editingMerchantId.HasValue ? "编辑商户" : "新增商户")</h2>
@@ -248,7 +248,7 @@
     <div class="modal-root" @onclick="CloseAliasDialog" role="dialog" aria-modal="true" aria-label="@(editingAliasId.HasValue ? "编辑别名" : "新增别名")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-md bg-secondary-container mr-3 shrink-0">
+                <div class="p-2 rounded-full bg-secondary-container mr-3 shrink-0">
                     <span class="material-symbols-outlined text-on-secondary-container">rule</span>
                 </div>
                 <h2 class="text-title-large text-on-surface">@(editingAliasId.HasValue ? "编辑别名" : "新增别名")</h2>

@@ -10,10 +10,10 @@
             <p class="text-body-small text-on-surface-variant mt-1">Tag 是与 Category 正交的横向维度：一笔账单可携带多个标签，规则自动打标不覆盖手工标签。</p>
         </div>
         <div class="actions w-full sm:w-auto">
-            <button @onclick="OpenRuleDialog" class="flex-1 sm:flex-none md-btn-tonal state-layer">
+            <button @onclick="OpenRuleDialog" class="flex-none md-btn-tonal state-layer">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">rule</span><span class="hidden xs:inline">新增规则</span><span class="xs:hidden">规则</span>
             </button>
-            <button @onclick="OpenTagDialog" class="flex-1 sm:flex-none md-btn-filled state-layer">
+            <button @onclick="OpenTagDialog" class="flex-none md-btn-filled state-layer">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">add</span><span class="hidden xs:inline">新增标签</span><span class="xs:hidden">标签</span>
             </button>
         </div>
@@ -185,7 +185,7 @@
     <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-md bg-error-container mr-3 shrink-0">
+                <div class="p-2 rounded-full bg-error-container mr-3 shrink-0">
                     <span class="material-symbols-outlined text-error">warning</span>
                 </div>
                 <h2 class="text-title-large text-on-surface">确认删除</h2>
@@ -207,7 +207,7 @@
     <div class="modal-root" @onclick="CloseTagDialog" role="dialog" aria-modal="true" aria-label="@(editingTagId.HasValue ? "编辑标签" : "新增标签")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-md bg-primary-container mr-3 shrink-0">
+                <div class="p-2 rounded-full bg-primary-container mr-3 shrink-0">
                     <span class="material-symbols-outlined text-on-primary-container">sell</span>
                 </div>
                 <h2 class="text-title-large text-on-surface">@(editingTagId.HasValue ? "编辑标签" : "新增标签")</h2>
@@ -254,7 +254,7 @@
     <div class="modal-root" @onclick="CloseRuleDialog" role="dialog" aria-modal="true" aria-label="@(editingRuleId.HasValue ? "编辑规则" : "新增规则")">
         <div class="modal-panel modal-sm" @onclick:stopPropagation>
             <div class="flex items-center mb-4">
-                <div class="p-2 rounded-md bg-secondary-container mr-3 shrink-0">
+                <div class="p-2 rounded-full bg-secondary-container mr-3 shrink-0">
                     <span class="material-symbols-outlined text-on-secondary-container">rule</span>
                 </div>
                 <h2 class="text-title-large text-on-surface">@(editingRuleId.HasValue ? "编辑规则" : "新增规则")</h2>

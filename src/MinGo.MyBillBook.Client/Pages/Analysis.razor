@@ -10,19 +10,19 @@
     <div class="page-header">
         <h1>消费分析</h1>
         <div class="actions w-full sm:w-auto">
-            <select @bind="selectedYear" @bind:after="LoadData" class="md-text-field-outlined flex-1 sm:flex-none" aria-label="选择年份">
+            <select @bind="selectedYear" @bind:after="LoadData" class="md-text-field-outlined flex-none" aria-label="选择年份">
                 @foreach (var y in years)
                 {
                     <option value="@y">@y 年</option>
                 }
             </select>
             <button @onclick="SyncData" disabled="@isSyncing"
-                    class="md-btn-filled state-layer flex-1 sm:flex-none">
+                    class="md-btn-filled state-layer flex-none">
                 <span class="material-symbols-outlined mr-1">sync</span>
                 @(isSyncing ? "同步中…" : "同步数据")
             </button>
             <a href="/api/export/analysis?start=@startDate.ToString("yyyy-MM-dd")&end=@endDate.ToString("yyyy-MM-dd")"
-               download class="md-btn-filled state-layer !bg-success !text-on-success flex-1 sm:flex-none">
+               download class="md-btn-filled state-layer !bg-success !text-on-success flex-none">
                 <span class="material-symbols-outlined mr-1">download</span>导出
             </a>
         </div>

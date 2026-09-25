@@ -363,7 +363,7 @@ body {
     justify-content: center;
     width: 3.5rem;
     height: 3.5rem;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-lg);   /* 16px — MD3 FAB corner */
     background-color: var(--color-primary-container);
     color: var(--color-on-primary-container);
     box-shadow: var(--shadow-elevation-3);
@@ -1102,6 +1102,8 @@ table {
     border-bottom: 1px solid var(--color-outline-variant);
     white-space: nowrap;
 }
+.md-table thead th.text-right { text-align: right; }
+.md-table thead th.text-center { text-align: center; }
 .md-table tbody td {
     padding: 0.75rem 1rem;
     color: var(--color-on-surface);
