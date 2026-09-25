@@ -42,7 +42,7 @@
             </span>
             <span class="material-symbols-outlined transition-transform @(filtersCollapsed ? "" : "rotate-180")">expand_more</span>
         </button>
-        <div class="filter-body @(filtersCollapsed ? "collapsed" : "") p-3 sm:p-4">
+        <div class="filter-body @(filtersCollapsed ? "collapsed" : "") py-3 px-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <label class="block">
                     <span class="block text-body-small text-on-surface-variant mb-1">最低评分</span>
@@ -149,7 +149,7 @@
         <!-- 分页 -->
         @if (result.Items.Count > 0)
         {
-            <div class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-outline-variant md-card-elevated">
+            <div class="card-pagination">
                 <button @onclick="PrevPage" disabled="@(result.Page <= 1)"
                         class="md-btn-outlined state-layer">
                     <span class="material-symbols-outlined mr-1 sm:hidden">chevron_left</span><span class="hidden sm:inline">上一页</span>

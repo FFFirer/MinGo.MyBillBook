@@ -28,9 +28,9 @@
 
     <!-- 商户列表 -->
     <div class="md-card-elevated overflow-hidden">
-        <div class="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant">
-            <span class="material-symbols-outlined text-on-surface-variant text-[1.25rem]">storefront</span>
-            <h2 class="text-title-medium text-on-surface">商户</h2>
+        <div class="card-header">
+            <span class="material-symbols-outlined card-header-icon">storefront</span>
+            <h2 class="card-header-title">商户</h2>
             <span class="md-chip md-chip-assist-primary text-body-small">@(merchants?.Count ?? 0)</span>
         </div>
 
@@ -51,7 +51,7 @@
         }
         else
         {
-            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+            <div class="overflow-x-auto">
                 <table class="md-table responsive-cards">
                     <thead>
                         <tr>
@@ -107,10 +107,10 @@
 
     <!-- 别名规则列表 -->
     <div class="md-card-elevated overflow-hidden">
-        <div class="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-outline-variant">
-            <span class="material-symbols-outlined text-on-surface-variant text-[1.25rem]">rule</span>
-            <h2 class="text-title-medium text-on-surface">别名规则</h2>
-            <span class="text-body-small text-on-surface-variant hidden sm:inline">（按优先级降序匹配）</span>
+        <div class="card-header">
+            <span class="material-symbols-outlined card-header-icon">rule</span>
+            <h2 class="card-header-title">别名规则</h2>
+            <span class="card-header-subtitle hidden sm:inline">（按优先级降序匹配）</span>
             <span class="md-chip md-chip-assist-primary text-body-small">@(aliases?.Count ?? 0)</span>
         </div>
 
@@ -131,7 +131,7 @@
         }
         else
         {
-            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+            <div class="overflow-x-auto">
                 <table class="md-table responsive-cards">
                     <thead>
                         <tr>
