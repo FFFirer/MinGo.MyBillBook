@@ -7,7 +7,7 @@
     <div class="page-header">
         <h1>对账中心</h1>
         <div class="actions">
-            <button @onclick="LoadData" class="md-btn-tonal state-layer">
+            <button @onclick="LoadData" class="md-btn-tonal">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">refresh</span>
                 <span class="hidden xs:inline">刷新</span>
             </button>
@@ -22,7 +22,7 @@
     <section>
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
             <h2 class="text-title-medium md:text-title-large text-on-surface">账户余额对账</h2>
-            <button @onclick="OpenSnapshotDialog" class="md-btn-filled state-layer sm:w-auto w-full">
+            <button @onclick="OpenSnapshotDialog" class="md-btn-filled sm:w-auto w-full">
                 <span class="material-symbols-outlined mr-1">add</span>
                 录入银行余额
             </button>
@@ -122,7 +122,7 @@
                                         <td data-label="操作" class="text-right">
                                             @if (i.Status == "Open")
                                             {
-                                                <button @onclick="() => ResolveIssue(i)" class="md-btn-text state-layer">
+                                                <button @onclick="() => ResolveIssue(i)" class="md-btn-text">
                                                     标记已解决
                                                 </button>
                                             }

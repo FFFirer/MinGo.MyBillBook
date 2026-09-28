@@ -1,9 +1,9 @@
 <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
     @if (ShowCancel)
     {
-        <button @onclick="OnCancel" class="md-btn-outlined state-layer w-full sm:w-auto">@CancelText</button>
+        <button @onclick="OnCancel" class="md-btn-outlined w-full sm:w-auto">@CancelText</button>
     }
-    <button @onclick="OnSave" disabled="@IsSaving" class="md-btn-filled state-layer w-full sm:w-auto">
+    <button @onclick="OnSave" disabled="@IsSaving" class="md-btn-filled w-full sm:w-auto">
         @(IsSaving ? SavingText : SaveText)
     </button>
 </div>

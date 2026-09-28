@@ -4,8 +4,8 @@
         确定要删除@(!string.IsNullOrEmpty(EntityType) ? EntityType : "项目")「<span class="font-medium text-on-surface">@ItemName</span>」吗？此操作不可撤销。
     </p>
     <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-        <button @onclick="OnCancel" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-        <button @onclick="OnConfirm" class="md-btn-danger state-layer w-full sm:w-auto">确认删除</button>
+        <button @onclick="OnCancel" class="md-btn-outlined w-full sm:w-auto">取消</button>
+        <button @onclick="OnConfirm" class="md-btn-danger w-full sm:w-auto">确认删除</button>
     </div>
 </ModalDialog>
 

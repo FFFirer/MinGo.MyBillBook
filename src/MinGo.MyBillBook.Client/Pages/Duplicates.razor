@@ -12,7 +12,7 @@
             </p>
         </div>
         <div class="actions">
-            <button @onclick="Load" class="md-btn-tonal state-layer">
+            <button @onclick="Load" class="md-btn-tonal">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">refresh</span>
                 <span class="hidden xs:inline">刷新</span>
             </button>
@@ -64,7 +64,7 @@
                 <div class="flex gap-2 sm:col-span-2 lg:col-span-5">
                     <input type="search" @bind="filter.Keyword" @bind:event="oninput" placeholder="搜索商户/商品…"
                            class="md-text-field-outlined flex-1 min-w-0" />
-                    <button @onclick="ApplyFilters" class="md-btn-filled state-layer shrink-0" aria-label="搜索">
+                    <button @onclick="ApplyFilters" class="md-btn-filled shrink-0" aria-label="搜索">
                         <span class="material-symbols-outlined">search</span>
                     </button>
                 </div>
@@ -126,10 +126,10 @@
                     @if (c.Status == "Pending")
                     {
                         <div class="px-4 sm:px-6 py-3 border-t border-outline-variant flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-                            <button @onclick="() => Reject(c)" disabled="@isBusy" class="md-btn-outlined state-layer w-full sm:w-auto">
+                            <button @onclick="() => Reject(c)" disabled="@isBusy" class="md-btn-outlined w-full sm:w-auto">
                                 驳回（非重复）
                             </button>
-                            <button @onclick="() => Confirm(c)" disabled="@isBusy" class="md-btn-danger state-layer w-full sm:w-auto">
+                            <button @onclick="() => Confirm(c)" disabled="@isBusy" class="md-btn-danger w-full sm:w-auto">
                                 确认重复并删除
                             </button>
                         </div>

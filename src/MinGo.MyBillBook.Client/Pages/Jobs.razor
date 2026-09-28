@@ -8,7 +8,7 @@
     <div class="page-header">
         <h1>任务与重建</h1>
         <div class="actions">
-            <button @onclick="LoadAllAsync" class="md-btn-filled state-layer">
+            <button @onclick="LoadAllAsync" class="md-btn-filled">
                 <span class="material-symbols-outlined mr-1">refresh</span>刷新
             </button>
         </div>
@@ -35,7 +35,7 @@
                        class="md-text-field-outlined w-full" />
             </div>
             <button @onclick="TriggerRebuildAsync" disabled="@busy"
-                    class="md-btn-filled state-layer w-full sm:w-auto shrink-0">
+                    class="md-btn-filled w-full sm:w-auto shrink-0">
                 <span class="material-symbols-outlined mr-1">build</span>
                 @(busy ? "入队中…" : "入队重建")
             </button>

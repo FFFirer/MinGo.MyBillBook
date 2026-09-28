@@ -9,11 +9,11 @@
     <div class="page-header">
         <h1>消费分类</h1>
         <div class="actions">
-            <button @onclick="ScanSourceCategories" disabled="@isScanning" class="md-btn-outlined state-layer">
+            <button @onclick="ScanSourceCategories" disabled="@isScanning" class="md-btn-outlined">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">file_download</span>
                 <span class="hidden xs:inline">@(isScanning ? "扫描中…" : "从账单导入")</span><span class="xs:hidden">@(isScanning ? "扫描中…" : "导入")</span>
             </button>
-            <button @onclick="OpenCreateCategoryDialog" class="md-btn-filled state-layer">
+            <button @onclick="OpenCreateCategoryDialog" class="md-btn-filled">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">add</span>
                 <span class="hidden xs:inline">新增分类</span><span class="xs:hidden">新增</span>
             </button>
@@ -50,7 +50,7 @@
         <div class="md-card-elevated">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                 <h2 class="text-title-medium md:text-title-large">分类规则 (@rules.Count 条)</h2>
-                <button @onclick="OpenCreateRuleDialog" class="md-btn-filled state-layer sm:w-auto w-full">
+                <button @onclick="OpenCreateRuleDialog" class="md-btn-filled sm:w-auto w-full">
                     <span class="material-symbols-outlined mr-1">add</span>
                     新增规则
                 </button>
@@ -126,10 +126,10 @@
     }
 
     <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-4">
-        <button @onclick="CloseImportDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+        <button @onclick="CloseImportDialog" class="md-btn-outlined w-full sm:w-auto">取消</button>
         @if (scannedItems is not null && scannedItems.Count > 0)
         {
-            <button @onclick="ConfirmImport" disabled="@isImporting" class="md-btn-filled state-layer w-full sm:w-auto">
+            <button @onclick="ConfirmImport" disabled="@isImporting" class="md-btn-filled w-full sm:w-auto">
                 @(isImporting ? "导入中…" : $"导入选中 ({selectedNames.Count})")
             </button>
         }
