@@ -1,0 +1,32 @@
+<div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
+    @if (ShowCancel)
+    {
+        <button @onclick="OnCancel" class="md-btn-outlined state-layer w-full sm:w-auto">@CancelText</button>
+    }
+    <button @onclick="OnSave" disabled="@IsSaving" class="md-btn-filled state-layer w-full sm:w-auto">
+        @(IsSaving ? SavingText : SaveText)
+    </button>
+</div>
+
+@code {
+    /// <summary>Called when the cancel button is clicked.</summary>
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    /// <summary>Called when the save/confirm button is clicked.</summary>
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    /// <summary>Whether a save operation is in progress.</summary>
+    [Parameter] public bool IsSaving { get; set; }
+
+    /// <summary>Text for the save button.</summary>
+    [Parameter] public string SaveText { get; set; } = "保存";
+
+    /// <summary>Text shown while saving.</summary>
+    [Parameter] public string SavingText { get; set; } = "保存中…";
+
+    /// <summary>Text for the cancel button.</summary>
+    [Parameter] public string CancelText { get; set; } = "取消";
+
+    /// <summary>Whether to show the cancel button.</summary>
+    [Parameter] public bool ShowCancel { get; set; } = true;
+}

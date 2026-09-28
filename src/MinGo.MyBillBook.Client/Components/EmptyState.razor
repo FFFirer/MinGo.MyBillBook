@@ -1,0 +1,29 @@
+<div class="md-card-elevated p-6 sm:p-8 text-center empty-state">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <span class="material-symbols-outlined text-4xl mb-2 block @IconClass">@Icon</span>
+    }
+    <p class="text-on-surface-variant">@Message</p>
+    @if (SubMessage != null)
+    {
+        <p class="text-body-medium text-on-surface-variant mt-1">@SubMessage</p>
+    }
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Material icon name to display.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Primary message text.</summary>
+    [Parameter] public string Message { get; set; } = "";
+
+    /// <summary>Optional secondary message text.</summary>
+    [Parameter] public string? SubMessage { get; set; }
+
+    /// <summary>CSS class for the icon (e.g. "text-success", "text-error").</summary>
+    [Parameter] public string IconClass { get; set; } = "text-on-surface-variant";
+
+    /// <summary>Additional content below the message (e.g. action links).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

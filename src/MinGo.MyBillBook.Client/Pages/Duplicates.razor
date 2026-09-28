@@ -19,15 +19,7 @@
         </div>
     </div>
 
-    @if (errorMessage != null)
-    {
-        <div class="bg-error-container text-on-error-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="alert">
-            <span class="flex-1 text-body-medium break-words">@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-        </div>
-    }
+    <AlertBanner Message="@errorMessage" Variant="error" OnDismiss="@(() => errorMessage = null)" />
 
     <!-- 筛选面板 -->
     <div class="md-card-elevated overflow-hidden">

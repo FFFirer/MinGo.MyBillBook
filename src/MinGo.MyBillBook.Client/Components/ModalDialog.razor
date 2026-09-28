@@ -1,0 +1,35 @@
+@if (Visible)
+{
+    <div class="modal-root" @onclick="HandleBackdropClick" role="@Role" aria-modal="true" aria-label="@AriaLabel">
+        <div class="modal-panel @SizeClass" @onclick:stopPropagation>
+            @ChildContent
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Whether the modal is currently visible.</summary>
+    [Parameter] public bool Visible { get; set; }
+
+    /// <summary>Called when the user clicks the backdrop (outside the panel).</summary>
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    /// <summary>Accessible label for the dialog.</summary>
+    [Parameter] public string AriaLabel { get; set; } = "对话框";
+
+    /// <summary>ARIA role: "dialog" for normal dialogs, "alertdialog" for confirmations.</summary>
+    [Parameter] public string Role { get; set; } = "dialog";
+
+    /// <summary>Size variant: "sm" for compact confirmations, "" (default) for normal.</summary>
+    [Parameter] public string Size { get; set; } = "";
+
+    /// <summary>Dialog body content.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string SizeClass => Size == "sm" ? "modal-sm" : "";
+
+    private async Task HandleBackdropClick()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

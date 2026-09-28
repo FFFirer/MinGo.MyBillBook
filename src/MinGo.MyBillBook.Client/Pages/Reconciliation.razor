@@ -14,25 +14,9 @@
         </div>
     </div>
 
-    @if (errorMessage != null)
-    {
-        <div class="bg-error-container text-on-error-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="alert">
-            <span class="flex-1 text-body-medium break-words">@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-        </div>
-    }
+    <AlertBanner Message="@errorMessage" Variant="error" OnDismiss="@(() => errorMessage = null)" />
 
-    @if (infoMessage != null)
-    {
-        <div class="bg-success-container text-on-success-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="status">
-            <span class="flex-1 text-body-medium break-words">@infoMessage</span>
-            <button @onclick="() => infoMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-        </div>
-    }
+    <AlertBanner Message="@infoMessage" Variant="success" OnDismiss="@(() => infoMessage = null)" />
 
     <!-- 账户余额对账概览 -->
     <section>
@@ -206,43 +190,33 @@
 </div>
 
 <!-- 录入银行余额弹窗 -->
-@if (showSnapshotDialog)
-{
-    <div class="modal-root" @onclick="CloseSnapshotDialog" role="dialog" aria-modal="true" aria-label="录入银行余额">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-4">录入银行余额</h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="snapAccountSelect" class="block text-body-small text-on-surface-variant mb-1">账户</label>
-                    <select id="snapAccountSelect" @bind="formAccountId" class="md-text-field-outlined w-full">
-                        <option value="0">请选择账户</option>
-                        @if (accounts != null)
-                        {
-                            @foreach (var a in accounts)
-                            {
-                                <option value="@a.Id">@a.Name</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label for="snapDateInput" class="block text-body-small text-on-surface-variant mb-1">快照日期</label>
-                    <input id="snapDateInput" @bind="formDate" type="date" class="md-text-field-outlined w-full" />
-                </div>
-                <div>
-                    <label for="snapBalanceInput" class="block text-body-small text-on-surface-variant mb-1">银行真实余额（元）</label>
-                    <input id="snapBalanceInput" @bind="formBankBalance" type="number" step="0.01" inputmode="decimal" class="md-text-field-outlined w-full" placeholder="0.00" />
-                </div>
-            </div>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseSnapshotDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="SaveSnapshot" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">
-                    @(isSaving ? "保存中…" : "保存并对账")
-                </button>
-            </div>
+<ModalDialog Visible="@showSnapshotDialog" OnClose="@CloseSnapshotDialog" Size="sm" AriaLabel="录入银行余额">
+    <h2 class="text-title-large text-on-surface mb-4">录入银行余额</h2>
+    <div class="space-y-4">
+        <div>
+            <label for="snapAccountSelect" class="block text-body-small text-on-surface-variant mb-1">账户</label>
+            <select id="snapAccountSelect" @bind="formAccountId" class="md-text-field-outlined w-full">
+                <option value="0">请选择账户</option>
+                @if (accounts != null)
+                {
+                    @foreach (var a in accounts)
+                    {
+                        <option value="@a.Id">@a.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <div>
+            <label for="snapDateInput" class="block text-body-small text-on-surface-variant mb-1">快照日期</label>
+            <input id="snapDateInput" @bind="formDate" type="date" class="md-text-field-outlined w-full" />
+        </div>
+        <div>
+            <label for="snapBalanceInput" class="block text-body-small text-on-surface-variant mb-1">银行真实余额（元）</label>
+            <input id="snapBalanceInput" @bind="formBankBalance" type="number" step="0.01" inputmode="decimal" class="md-text-field-outlined w-full" placeholder="0.00" />
         </div>
     </div>
-}
+    <DialogFooter OnCancel="@CloseSnapshotDialog" OnSave="@SaveSnapshot" IsSaving="@isSaving" SaveText="保存并对账" SavingText="保存中…" />
+</ModalDialog>
 
 @code {
     private List<AccountReconDto>? accounts;

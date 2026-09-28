@@ -14,12 +14,7 @@
         </div>
     </div>
 
-    @if (toast != null)
-    {
-        <div class="md-snackbar @(toastIsError ? "md-snackbar-error" : "md-snackbar-success")" role="status" aria-live="polite">
-            @toast
-        </div>
-    }
+    <Toast @ref="toastRef" />
 
     <!-- 触发局部重建 -->
     <div class="md-card-elevated">
@@ -156,8 +151,7 @@
     private string fromStep = "ResolveMerchant";
     private int? batchId;
     private bool busy;
-    private string? toast;
-    private bool toastIsError;
+    private Toast? toastRef;
     private CancellationTokenSource? cts;
     private Task? pollTask;
     private int jobsPage = 1;
@@ -226,10 +220,7 @@
 
     private void ShowToast(string msg, bool isError)
     {
-        toast = msg;
-        toastIsError = isError;
-        StateHasChanged();
-        _ = Task.Delay(3000).ContinueWith(_ => { toast = null; InvokeAsync(StateHasChanged); });
+        _ = toastRef?.Show(msg, isError);
     }
 
     private static string StatusText(string s) => s switch

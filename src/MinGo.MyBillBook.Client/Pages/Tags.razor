@@ -19,15 +19,7 @@
         </div>
     </div>
 
-    @if (errorMessage != null)
-    {
-        <div class="bg-error-container text-on-error-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="alert">
-            <span class="flex-1 text-body-medium break-words">@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-        </div>
-    }
+    <AlertBanner Message="@errorMessage" Variant="error" OnDismiss="@(() => errorMessage = null)" />
 
     <!-- 标签列表 -->
     <div class="md-card-elevated overflow-hidden">
@@ -180,130 +172,95 @@
 </div>
 
 <!-- 删除确认弹窗 -->
-@if (confirmDeleteItem != null)
-{
-    <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <div class="flex items-center mb-4">
-                <div class="p-2 rounded-full bg-error-container mr-3 shrink-0">
-                    <span class="material-symbols-outlined text-error">warning</span>
-                </div>
-                <h2 class="text-title-large text-on-surface">确认删除</h2>
-            </div>
-            <p class="text-body-medium text-on-surface-variant mb-6">
-                确定要删除@(confirmDeleteItem.IsRule ? "规则" : "标签")「<strong class="text-on-surface">@confirmDeleteItem.Name</strong>」吗？此操作不可撤销。
-            </p>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-                <button @onclick="CancelDelete" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="ExecuteDelete" class="md-btn-danger state-layer w-full sm:w-auto">确认删除</button>
-            </div>
-        </div>
-    </div>
-}
+<ConfirmDeleteDialog Visible="@(confirmDeleteItem != null)" ItemName="@(confirmDeleteItem?.Name ?? "")" EntityType="@(confirmDeleteItem is { IsRule: true } ? "规则" : "标签")" OnCancel="@CancelDelete" OnConfirm="@ExecuteDelete" />
 
 <!-- 标签新增/编辑弹窗 -->
-@if (showTagDialog)
-{
-    <div class="modal-root" @onclick="CloseTagDialog" role="dialog" aria-modal="true" aria-label="@(editingTagId.HasValue ? "编辑标签" : "新增标签")">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <div class="flex items-center mb-4">
-                <div class="p-2 rounded-full bg-primary-container mr-3 shrink-0">
-                    <span class="material-symbols-outlined text-on-primary-container">sell</span>
-                </div>
-                <h2 class="text-title-large text-on-surface">@(editingTagId.HasValue ? "编辑标签" : "新增标签")</h2>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label for="tagNameInput" class="block text-body-small text-on-surface-variant mb-1">名称</label>
-                    <input id="tagNameInput" @bind="tagName" class="md-text-field-outlined w-full" placeholder="如：周末" />
-                </div>
-                <div>
-                    <label for="tagTypeSelect" class="block text-body-small text-on-surface-variant mb-1">类型</label>
-                    <select id="tagTypeSelect" @bind="tagType" class="md-text-field-outlined w-full">
-                        <option value="0">Scenario（场景）</option>
-                        <option value="1">Purpose（用途）</option>
-                        <option value="2">Nature（性质）</option>
-                        <option value="3">Project（项目）</option>
-                        <option value="4">Status（状态）</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="tagScopeSelect" class="block text-body-small text-on-surface-variant mb-1">作用域</label>
-                    <select id="tagScopeSelect" @bind="tagScope" class="md-text-field-outlined w-full">
-                        <option value="0">Global（全局）</option>
-                        <option value="1">Category（限定分类）</option>
-                        <option value="2">Account（限定账户）</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="tagSortInput" class="block text-body-small text-on-surface-variant mb-1">排序</label>
-                    <input id="tagSortInput" type="number" @bind="tagSortOrder" class="md-text-field-outlined w-full" />
-                </div>
-            </div>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseTagDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="SaveTag" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">@(isSaving ? "保存中…" : "保存")</button>
-            </div>
+<ModalDialog Visible="@showTagDialog" OnClose="@CloseTagDialog" Size="sm" AriaLabel="@(editingTagId.HasValue ? "编辑标签" : "新增标签")">
+    <div class="flex items-center mb-4">
+        <div class="p-2 rounded-full bg-primary-container mr-3 shrink-0">
+            <span class="material-symbols-outlined text-on-primary-container">sell</span>
+        </div>
+        <h2 class="text-title-large text-on-surface">@(editingTagId.HasValue ? "编辑标签" : "新增标签")</h2>
+    </div>
+    <div class="space-y-4">
+        <div>
+            <label for="tagNameInput" class="block text-body-small text-on-surface-variant mb-1">名称</label>
+            <input id="tagNameInput" @bind="tagName" class="md-text-field-outlined w-full" placeholder="如：周末" />
+        </div>
+        <div>
+            <label for="tagTypeSelect" class="block text-body-small text-on-surface-variant mb-1">类型</label>
+            <select id="tagTypeSelect" @bind="tagType" class="md-text-field-outlined w-full">
+                <option value="0">Scenario（场景）</option>
+                <option value="1">Purpose（用途）</option>
+                <option value="2">Nature（性质）</option>
+                <option value="3">Project（项目）</option>
+                <option value="4">Status（状态）</option>
+            </select>
+        </div>
+        <div>
+            <label for="tagScopeSelect" class="block text-body-small text-on-surface-variant mb-1">作用域</label>
+            <select id="tagScopeSelect" @bind="tagScope" class="md-text-field-outlined w-full">
+                <option value="0">Global（全局）</option>
+                <option value="1">Category（限定分类）</option>
+                <option value="2">Account（限定账户）</option>
+            </select>
+        </div>
+        <div>
+            <label for="tagSortInput" class="block text-body-small text-on-surface-variant mb-1">排序</label>
+            <input id="tagSortInput" type="number" @bind="tagSortOrder" class="md-text-field-outlined w-full" />
         </div>
     </div>
-}
+    <DialogFooter OnCancel="@CloseTagDialog" OnSave="@SaveTag" IsSaving="@isSaving" />
+</ModalDialog>
 
 <!-- 规则新增/编辑弹窗 -->
-@if (showRuleDialog)
-{
-    <div class="modal-root" @onclick="CloseRuleDialog" role="dialog" aria-modal="true" aria-label="@(editingRuleId.HasValue ? "编辑规则" : "新增规则")">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <div class="flex items-center mb-4">
-                <div class="p-2 rounded-full bg-secondary-container mr-3 shrink-0">
-                    <span class="material-symbols-outlined text-on-secondary-container">rule</span>
-                </div>
-                <h2 class="text-title-large text-on-surface">@(editingRuleId.HasValue ? "编辑规则" : "新增规则")</h2>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label for="ruleCondSelect" class="block text-body-small text-on-surface-variant mb-1">条件</label>
-                    <select id="ruleCondSelect" @bind="ruleCondition" class="md-text-field-outlined w-full">
-                        <option value="0">Category（分类）</option>
-                        <option value="1">Merchant（商户）</option>
-                        <option value="2">DayOfWeek（星期）</option>
-                        <option value="3">AmountRange（金额区间）</option>
-                        <option value="4">Keyword（关键词）</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="ruleCondValueInput" class="block text-body-small text-on-surface-variant mb-1">条件值</label>
-                    <input id="ruleCondValueInput" @bind="ruleConditionValue" class="md-text-field-outlined w-full" placeholder="@ConditionHint" />
-                    <p class="text-body-small text-on-surface-variant mt-1">@ConditionHint</p>
-                </div>
-                <div>
-                    <label for="ruleTagSelect" class="block text-body-small text-on-surface-variant mb-1">打标到</label>
-                    <select id="ruleTagSelect" @bind="ruleTagId" class="md-text-field-outlined w-full">
-                        <option value="0">— 请选择 —</option>
-                        @if (tags != null)
-                        {
-                            @foreach (var t in tags)
-                            {
-                                <option value="@t.Id">@t.Name</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label for="rulePriorityInput" class="block text-body-small text-on-surface-variant mb-1">优先级</label>
-                    <input id="rulePriorityInput" type="number" @bind="rulePriority" class="md-text-field-outlined w-full" />
-                    <p class="text-body-small text-on-surface-variant mt-1">数值越大优先级越高</p>
-                </div>
-                <label class="flex items-center gap-2 text-body-medium text-on-surface min-h-[44px] cursor-pointer">
-                    <input type="checkbox" @bind="ruleIsActive" class="w-5 h-5 rounded border-outline text-primary focus:ring-primary/40" /> 启用
-                </label>
-            </div>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseRuleDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="SaveRule" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">@(isSaving ? "保存中…" : "保存")</button>
-            </div>
+<ModalDialog Visible="@showRuleDialog" OnClose="@CloseRuleDialog" Size="sm" AriaLabel="@(editingRuleId.HasValue ? "编辑规则" : "新增规则")">
+    <div class="flex items-center mb-4">
+        <div class="p-2 rounded-full bg-secondary-container mr-3 shrink-0">
+            <span class="material-symbols-outlined text-on-secondary-container">rule</span>
         </div>
+        <h2 class="text-title-large text-on-surface">@(editingRuleId.HasValue ? "编辑规则" : "新增规则")</h2>
     </div>
-}
+    <div class="space-y-4">
+        <div>
+            <label for="ruleCondSelect" class="block text-body-small text-on-surface-variant mb-1">条件</label>
+            <select id="ruleCondSelect" @bind="ruleCondition" class="md-text-field-outlined w-full">
+                <option value="0">Category（分类）</option>
+                <option value="1">Merchant（商户）</option>
+                <option value="2">DayOfWeek（星期）</option>
+                <option value="3">AmountRange（金额区间）</option>
+                <option value="4">Keyword（关键词）</option>
+            </select>
+        </div>
+        <div>
+            <label for="ruleCondValueInput" class="block text-body-small text-on-surface-variant mb-1">条件值</label>
+            <input id="ruleCondValueInput" @bind="ruleConditionValue" class="md-text-field-outlined w-full" placeholder="@ConditionHint" />
+            <p class="text-body-small text-on-surface-variant mt-1">@ConditionHint</p>
+        </div>
+        <div>
+            <label for="ruleTagSelect" class="block text-body-small text-on-surface-variant mb-1">打标到</label>
+            <select id="ruleTagSelect" @bind="ruleTagId" class="md-text-field-outlined w-full">
+                <option value="0">— 请选择 —</option>
+                @if (tags != null)
+                {
+                    @foreach (var t in tags)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <div>
+            <label for="rulePriorityInput" class="block text-body-small text-on-surface-variant mb-1">优先级</label>
+            <input id="rulePriorityInput" type="number" @bind="rulePriority" class="md-text-field-outlined w-full" />
+            <p class="text-body-small text-on-surface-variant mt-1">数值越大优先级越高</p>
+        </div>
+        <label class="flex items-center gap-2 text-body-medium text-on-surface min-h-[44px] cursor-pointer">
+            <input type="checkbox" @bind="ruleIsActive" class="w-5 h-5 rounded border-outline text-primary focus:ring-primary/40" /> 启用
+        </label>
+    </div>
+    <DialogFooter OnCancel="@CloseRuleDialog" OnSave="@SaveRule" IsSaving="@isSaving" />
+</ModalDialog>
 
 @code {
     private List<TagDto>? tags;

@@ -146,80 +146,76 @@
         }
         else
         {
-            <div class="empty-state">
-                <span class="material-symbols-outlined">receipt_long</span>
-                <p>暂无账单数据</p>
+            <EmptyState Icon="receipt_long" Message="暂无账单数据">
                 <p class="text-body-medium mt-1">请先 <a href="import" class="text-primary hover:underline">导入对账单</a></p>
-            </div>
+            </EmptyState>
         }
     </div>
 </div>
 
 <!-- 账单详情 / 标签管理弹窗（移动端底部抽屉） -->
-@if (detailBill != null)
-{
-    <div class="modal-root" @onclick="CloseDetail" role="dialog" aria-modal="true" aria-label="账单详情">
-        <div class="modal-panel" @onclick:stopPropagation>
-            <div class="flex items-start justify-between gap-3 mb-4">
-                <div class="min-w-0 flex-1">
-                    <h2 class="text-title-large text-on-surface truncate">@detailBill.Merchant</h2>
-                    <p class="text-body-medium text-on-surface-variant mt-0.5">@detailBill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) · @(detailBill.CategoryName ?? "未分类") · <span class="@(detailBill.TransactionType == "Income" ? "text-success" : "text-error") font-medium">@((detailBill.TransactionType == "Income" ? "+" : "-") + detailBill.Amount.ToString("F2"))</span></p>
-                    @if (!string.IsNullOrWhiteSpace(detailBill.ProductName))
-                    {
-                        <p class="text-body-small text-on-surface-variant mt-0.5 break-words">@detailBill.ProductName</p>
-                    }
-                </div>
-                <button @onclick="CloseDetail" class="md-icon-btn shrink-0" aria-label="关闭">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </div>
-
-            <div class="mb-4">
-                <div class="text-body-medium font-medium text-on-surface mb-2">当前标签</div>
-                @if (detailTags == null)
+<ModalDialog Visible="@(detailBill != null)" OnClose="@CloseDetail" AriaLabel="账单详情">
+    <div class="flex items-start justify-between gap-3 mb-4">
+        <div class="min-w-0 flex-1">
+            <h2 class="text-title-large text-on-surface truncate">@detailBill?.Merchant</h2>
+            @if (detailBill != null)
+            {
+                <p class="text-body-medium text-on-surface-variant mt-0.5">@detailBill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) · @(detailBill.CategoryName ?? "未分类") · <span class="@(detailBill.TransactionType == "Income" ? "text-success" : "text-error") font-medium">@((detailBill.TransactionType == "Income" ? "+" : "-") + detailBill.Amount.ToString("F2"))</span></p>
+                @if (!string.IsNullOrWhiteSpace(detailBill.ProductName))
                 {
-                    <div class="text-body-medium text-on-surface-variant flex items-center gap-2"><span class="md-circular-progress"></span>加载中…</div>
+                    <p class="text-body-small text-on-surface-variant mt-0.5 break-words">@detailBill.ProductName</p>
                 }
-                else if (detailTags.Count == 0)
-                {
-                    <div class="text-body-medium text-on-surface-variant">暂无标签</div>
-                }
-                else
-                {
-                    <div class="flex flex-wrap gap-2">
-                        @foreach (var t in detailTags)
-                        {
-                            <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-label-small font-medium @(t.Source == "User" ? "bg-primary text-on-primary" : "bg-primary-container text-on-primary-container")">
-                                @t.Name
-                                <span class="opacity-70 text-[10px]">(@(t.Source == "User" ? "手工" : t.Source == "Rule" ? "规则" : t.Source))</span>
-                                <button @onclick="() => RemoveDetailTag(t)" class="inline-flex items-center justify-center rounded-full hover:bg-black/10 active:bg-black/20 transition-colors" style="width:24px;height:24px;" title="移除" aria-label="移除标签 @t.Name">
-                                    <span class="material-symbols-outlined" style="font-size:16px;">close</span>
-                                </button>
-                            </span>
-                        }
-                    </div>
-                }
-            </div>
-
-            <div class="flex flex-col sm:flex-row sm:items-end gap-2">
-                <div class="flex-1 min-w-0">
-                    <label for="addTagSelect" class="block text-body-small text-on-surface-variant mb-1">添加标签（手工）</label>
-                    <select id="addTagSelect" @bind="addTagId" class="md-text-field-outlined w-full">
-                        <option value="0">— 请选择 —</option>
-                        @if (allTags != null)
-                        {
-                            @foreach (var t in allTags)
-                            {
-                                <option value="@t.Id">@t.Name</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <button @onclick="AddDetailTag" disabled="@(addTagId == 0)" class="md-btn-filled state-layer shrink-0 sm:w-auto w-full">添加</button>
-            </div>
+            }
         </div>
+        <button @onclick="CloseDetail" class="md-icon-btn shrink-0" aria-label="关闭">
+            <span class="material-symbols-outlined">close</span>
+        </button>
     </div>
-}
+
+    <div class="mb-4">
+        <div class="text-body-medium font-medium text-on-surface mb-2">当前标签</div>
+        @if (detailTags == null)
+        {
+            <div class="text-body-medium text-on-surface-variant flex items-center gap-2"><span class="md-circular-progress"></span>加载中…</div>
+        }
+        else if (detailTags.Count == 0)
+        {
+            <div class="text-body-medium text-on-surface-variant">暂无标签</div>
+        }
+        else
+        {
+            <div class="flex flex-wrap gap-2">
+                @foreach (var t in detailTags)
+                {
+                    <span class="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-label-small font-medium @(t.Source == "User" ? "bg-primary text-on-primary" : "bg-primary-container text-on-primary-container")">
+                        @t.Name
+                        <span class="opacity-70 text-[10px]">(@(t.Source == "User" ? "手工" : t.Source == "Rule" ? "规则" : t.Source))</span>
+                        <button @onclick="() => RemoveDetailTag(t)" class="inline-flex items-center justify-center rounded-full hover:bg-black/10 active:bg-black/20 transition-colors" style="width:24px;height:24px;" title="移除" aria-label="移除标签 @t.Name">
+                            <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+                        </button>
+                    </span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="flex flex-col sm:flex-row sm:items-end gap-2">
+        <div class="flex-1 min-w-0">
+            <label for="addTagSelect" class="block text-body-small text-on-surface-variant mb-1">添加标签（手工）</label>
+            <select id="addTagSelect" @bind="addTagId" class="md-text-field-outlined w-full">
+                <option value="0">— 请选择 —</option>
+                @if (allTags != null)
+                {
+                    @foreach (var t in allTags)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <button @onclick="AddDetailTag" disabled="@(addTagId == 0)" class="md-btn-filled state-layer shrink-0 sm:w-auto w-full">添加</button>
+    </div>
+</ModalDialog>
 
 @code {
     private PagedResult? result;

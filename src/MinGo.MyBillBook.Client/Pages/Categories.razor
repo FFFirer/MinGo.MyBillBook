@@ -20,15 +20,7 @@
         </div>
     </div>
 
-    @if (errorMessage != null)
-    {
-        <div class="bg-error-container text-on-error-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="alert">
-            <span class="flex-1 text-body-medium break-words">@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-        </div>
-    }
+    <AlertBanner Message="@errorMessage" Variant="error" OnDismiss="@(() => errorMessage = null)" />
 
     @if (categories != null)
     {
@@ -103,167 +95,125 @@
 </div>
 
 <!-- 删除确认弹窗 -->
-@if (confirmDeleteName != null)
-{
-    <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <div class="flex items-center mb-4">
-                <div class="p-2 rounded-full bg-error-container mr-3 shrink-0">
-                    <span class="material-symbols-outlined text-error">warning</span>
-                </div>
-                <h2 class="text-title-large text-on-surface">确认删除</h2>
-            </div>
-            <p class="text-body-medium text-on-surface-variant mb-6">确定要删除@(confirmDeleteIsRule ? "规则" : "分类")「<strong class="text-on-surface">@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-                <button @onclick="CancelDelete" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="ConfirmDelete" class="md-btn-danger state-layer w-full sm:w-auto">确认删除</button>
-            </div>
-        </div>
-    </div>
-}
+<ConfirmDeleteDialog Visible="@(confirmDeleteName != null)" ItemName="@confirmDeleteName" EntityType="@(confirmDeleteIsRule ? "规则" : "分类")" OnCancel="@CancelDelete" OnConfirm="@ConfirmDelete" />
 
 <!-- 从账单导入分类弹窗 -->
-@if (showImportDialog)
-{
-    <div class="modal-root" @onclick="CloseImportDialog" role="dialog" aria-modal="true" aria-label="从账单导入分类">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-2">从账单导入分类</h2>
-            <p class="text-body-small text-on-surface-variant mb-4">以下是已导入账单中发现的、尚未映射到系统分类的支付宝交易分类。勾选需要创建的分类。</p>
+<ModalDialog Visible="@showImportDialog" OnClose="@CloseImportDialog" Size="sm" AriaLabel="从账单导入分类">
+    <h2 class="text-title-large text-on-surface mb-2">从账单导入分类</h2>
+    <p class="text-body-small text-on-surface-variant mb-4">以下是已导入账单中发现的、尚未映射到系统分类的支付宝交易分类。勾选需要创建的分类。</p>
 
-            @if (scannedItems is null || scannedItems.Count == 0)
-            {
-                <div class="flex items-center gap-3 py-6 justify-center text-on-surface-variant">
-                    <span class="material-symbols-outlined text-primary">check_circle</span>
-                    <span class="text-body-medium">所有交易分类均已映射，无需导入</span>
-                </div>
-            }
-            else
-            {
-                <div class="max-h-64 overflow-y-auto space-y-1 mb-4">
-                    @foreach (var item in scannedItems)
-                    {
-                        <label class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors">
-                            <input type="checkbox" checked="@selectedNames.Contains(item.SourceName)"
-                                   @onchange="e => ToggleSelection(item.SourceName, (bool)(e.Value ?? false))"
-                                   class="accent-primary w-4 h-4 shrink-0" />
-                            <span class="text-body-medium text-on-surface flex-1 truncate">@item.SourceName</span>
-                            <span class="text-body-small text-on-surface-variant tabular-nums">@item.Count 笔</span>
-                        </label>
-                    }
-                </div>
-            }
-
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-4">
-                <button @onclick="CloseImportDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                @if (scannedItems is not null && scannedItems.Count > 0)
-                {
-                    <button @onclick="ConfirmImport" disabled="@isImporting" class="md-btn-filled state-layer w-full sm:w-auto">
-                        @(isImporting ? "导入中…" : $"导入选中 ({selectedNames.Count})")
-                    </button>
-                }
-            </div>
+    @if (scannedItems is null || scannedItems.Count == 0)
+    {
+        <div class="flex items-center gap-3 py-6 justify-center text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary">check_circle</span>
+            <span class="text-body-medium">所有交易分类均已映射，无需导入</span>
         </div>
+    }
+    else
+    {
+        <div class="max-h-64 overflow-y-auto space-y-1 mb-4">
+            @foreach (var item in scannedItems)
+            {
+                <label class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors">
+                    <input type="checkbox" checked="@selectedNames.Contains(item.SourceName)"
+                           @onchange="e => ToggleSelection(item.SourceName, (bool)(e.Value ?? false))"
+                           class="accent-primary w-4 h-4 shrink-0" />
+                    <span class="text-body-medium text-on-surface flex-1 truncate">@item.SourceName</span>
+                    <span class="text-body-small text-on-surface-variant tabular-nums">@item.Count 笔</span>
+                </label>
+            }
+        </div>
+    }
+
+    <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-4">
+        <button @onclick="CloseImportDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+        @if (scannedItems is not null && scannedItems.Count > 0)
+        {
+            <button @onclick="ConfirmImport" disabled="@isImporting" class="md-btn-filled state-layer w-full sm:w-auto">
+                @(isImporting ? "导入中…" : $"导入选中 ({selectedNames.Count})")
+            </button>
+        }
     </div>
-}
+</ModalDialog>
 
 <!-- 分类新增/编辑弹窗 -->
-@if (showCategoryDialog)
-{
-    <div class="modal-root" @onclick="CloseCategoryDialog" role="dialog" aria-modal="true" aria-label="@(editingCategoryId.HasValue ? "编辑分类" : "新增分类")">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-4">@(editingCategoryId.HasValue ? "编辑分类" : "新增分类")</h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="catNameInput" class="block text-body-small text-on-surface-variant mb-1">名称</label>
-                    <input id="catNameInput" @bind="catFormName" class="md-text-field-outlined w-full" placeholder="如：餐饮" />
+<ModalDialog Visible="@showCategoryDialog" OnClose="@CloseCategoryDialog" Size="sm" AriaLabel="@(editingCategoryId.HasValue ? "编辑分类" : "新增分类")">
+    <h2 class="text-title-large text-on-surface mb-4">@(editingCategoryId.HasValue ? "编辑分类" : "新增分类")</h2>
+    <div class="space-y-4">
+        <div>
+            <label for="catNameInput" class="block text-body-small text-on-surface-variant mb-1">名称</label>
+            <input id="catNameInput" @bind="catFormName" class="md-text-field-outlined w-full" placeholder="如：餐饮" />
+        </div>
+        <div>
+            <label for="catIconInput" class="block text-body-small text-on-surface-variant mb-1">图标（Material Symbols 名称）</label>
+            <input id="catIconInput" @bind="catFormIcon" class="md-text-field-outlined w-full" placeholder="如：restaurant" />
+            @if (!string.IsNullOrWhiteSpace(catFormIcon))
+            {
+                <div class="mt-2 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">@catFormIcon</span>
+                    <span class="text-body-small text-on-surface-variant">预览</span>
                 </div>
-                <div>
-                    <label for="catIconInput" class="block text-body-small text-on-surface-variant mb-1">图标（Material Symbols 名称）</label>
-                    <input id="catIconInput" @bind="catFormIcon" class="md-text-field-outlined w-full" placeholder="如：restaurant" />
-                    @if (!string.IsNullOrWhiteSpace(catFormIcon))
+            }
+        </div>
+        <div>
+            <label for="catSortInput" class="block text-body-small text-on-surface-variant mb-1">排序序号</label>
+            <input id="catSortInput" @bind="catFormSortOrder" type="number" inputmode="numeric" class="md-text-field-outlined w-full" />
+        </div>
+        <div>
+            <label for="catParentSelect" class="block text-body-small text-on-surface-variant mb-1">父分类（可选）</label>
+            <select id="catParentSelect" @bind="catFormParentId" class="md-text-field-outlined w-full">
+                <option value="">无（一级分类）</option>
+                @if (categories != null)
+                {
+                    @foreach (var c in categories.Where(x => x.ParentId == null))
                     {
-                        <div class="mt-2 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">@catFormIcon</span>
-                            <span class="text-body-small text-on-surface-variant">预览</span>
-                        </div>
+                        <option value="@c.Id">@c.Name</option>
                     }
-                </div>
-                <div>
-                    <label for="catSortInput" class="block text-body-small text-on-surface-variant mb-1">排序序号</label>
-                    <input id="catSortInput" @bind="catFormSortOrder" type="number" inputmode="numeric" class="md-text-field-outlined w-full" />
-                </div>
-                <div>
-                    <label for="catParentSelect" class="block text-body-small text-on-surface-variant mb-1">父分类（可选）</label>
-                    <select id="catParentSelect" @bind="catFormParentId" class="md-text-field-outlined w-full">
-                        <option value="">无（一级分类）</option>
-                        @if (categories != null)
-                        {
-                            @foreach (var c in categories.Where(x => x.ParentId == null))
-                            {
-                                <option value="@c.Id">@c.Name</option>
-                            }
-                        }
-                    </select>
-                </div>
-            </div>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseCategoryDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="SaveCategory" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">
-                    @(isSaving ? "保存中…" : "保存")
-                </button>
-            </div>
+                }
+            </select>
         </div>
     </div>
-}
+    <DialogFooter OnCancel="@CloseCategoryDialog" OnSave="@SaveCategory" IsSaving="@isSaving" />
+</ModalDialog>
 
 <!-- 规则新增/编辑弹窗 -->
-@if (showRuleDialog)
-{
-    <div class="modal-root" @onclick="CloseRuleDialog" role="dialog" aria-modal="true" aria-label="@(editingRuleId.HasValue ? "编辑规则" : "新增规则")">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-4">@(editingRuleId.HasValue ? "编辑规则" : "新增规则")</h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="ruleCatSelect" class="block text-body-small text-on-surface-variant mb-1">分类</label>
-                    <select id="ruleCatSelect" @bind="ruleFormCategoryId" class="md-text-field-outlined w-full">
-                        <option value="0">请选择分类</option>
-                        @if (categories != null)
-                        {
-                            @foreach (var c in categories)
-                            {
-                                <option value="@c.Id">@c.Name</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label for="ruleFieldSelect" class="block text-body-small text-on-surface-variant mb-1">匹配字段</label>
-                    <select id="ruleFieldSelect" @bind="ruleFormMatchField" class="md-text-field-outlined w-full">
-                        @foreach (var field in Enum.GetValues<MatchField>())
-                        {
-                            <option value="@((int)field)">@GetMatchFieldName((int)field)</option>
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label for="rulePatternInput" class="block text-body-small text-on-surface-variant mb-1">匹配模式（关键词）</label>
-                    <input id="rulePatternInput" @bind="ruleFormMatchPattern" class="md-text-field-outlined w-full" placeholder="如：美团" />
-                </div>
-                <div>
-                    <label for="rulePriorityInput" class="block text-body-small text-on-surface-variant mb-1">优先级</label>
-                    <input id="rulePriorityInput" @bind="ruleFormPriority" type="number" inputmode="numeric" class="md-text-field-outlined w-full" />
-                    <p class="text-body-small text-on-surface-variant mt-1">数值越大优先级越高</p>
-                </div>
-            </div>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseRuleDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="SaveRule" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">
-                    @(isSaving ? "保存中…" : "保存")
-                </button>
-            </div>
+<ModalDialog Visible="@showRuleDialog" OnClose="@CloseRuleDialog" Size="sm" AriaLabel="@(editingRuleId.HasValue ? "编辑规则" : "新增规则")">
+    <h2 class="text-title-large text-on-surface mb-4">@(editingRuleId.HasValue ? "编辑规则" : "新增规则")</h2>
+    <div class="space-y-4">
+        <div>
+            <label for="ruleCatSelect" class="block text-body-small text-on-surface-variant mb-1">分类</label>
+            <select id="ruleCatSelect" @bind="ruleFormCategoryId" class="md-text-field-outlined w-full">
+                <option value="0">请选择分类</option>
+                @if (categories != null)
+                {
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <div>
+            <label for="ruleFieldSelect" class="block text-body-small text-on-surface-variant mb-1">匹配字段</label>
+            <select id="ruleFieldSelect" @bind="ruleFormMatchField" class="md-text-field-outlined w-full">
+                @foreach (var field in Enum.GetValues<MatchField>())
+                {
+                    <option value="@((int)field)">@GetMatchFieldName((int)field)</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="rulePatternInput" class="block text-body-small text-on-surface-variant mb-1">匹配模式（关键词）</label>
+            <input id="rulePatternInput" @bind="ruleFormMatchPattern" class="md-text-field-outlined w-full" placeholder="如：美团" />
+        </div>
+        <div>
+            <label for="rulePriorityInput" class="block text-body-small text-on-surface-variant mb-1">优先级</label>
+            <input id="rulePriorityInput" @bind="ruleFormPriority" type="number" inputmode="numeric" class="md-text-field-outlined w-full" />
+            <p class="text-body-small text-on-surface-variant mt-1">数值越大优先级越高</p>
         </div>
     </div>
-}
+    <DialogFooter OnCancel="@CloseRuleDialog" OnSave="@SaveRule" IsSaving="@isSaving" />
+</ModalDialog>
 
 @code {
     private List<CategoryDto>? categories;

@@ -28,12 +28,7 @@
         </div>
     </div>
 
-    @if (toastMessage != null)
-    {
-        <div class="md-snackbar @(toastIsError ? "md-snackbar-error" : "md-snackbar-success")" role="status" aria-live="polite">
-            @toastMessage
-        </div>
-    }
+    <Toast @ref="toastRef" />
 
     @if (summary != null)
     {
@@ -301,11 +296,7 @@
     }
     else
     {
-        <div class="md-card-elevated p-8 sm:p-12 text-center empty-state">
-            <span class="material-symbols-outlined">analytics</span>
-            <p class="text-on-surface-variant">暂无分析数据</p>
-            <p class="text-body-small text-on-surface-variant mt-1">请先导入并处理对账单数据，然后点击"同步数据"</p>
-        </div>
+        <EmptyState Icon="analytics" Message="暂无分析数据" SubMessage="请先导入并处理对账单数据，然后点击"同步数据"" />
     }
 </div>
 
@@ -323,8 +314,7 @@
     private int selectedYear = DateTime.Today.Year;
     private int[] years = Enumerable.Range(DateTime.Today.Year - 3, 4).Reverse().ToArray();
     private bool isSyncing;
-    private string? toastMessage;
-    private bool toastIsError;
+    private Toast? toastRef;
     private int dimensionPage = 1;
     private int catTagPage = 1;
     private const int PageSize = 20;
@@ -435,14 +425,9 @@
         finally { isSyncing = false; }
     }
 
-    private async void ShowToast(string message, bool isError = false)
+    private void ShowToast(string message, bool isError = false)
     {
-        toastMessage = message;
-        toastIsError = isError;
-        StateHasChanged();
-        await Task.Delay(3000);
-        toastMessage = null;
-        StateHasChanged();
+        _ = toastRef?.Show(message, isError);
     }
 
     public async ValueTask DisposeAsync()

@@ -1,0 +1,38 @@
+@if (_message != null)
+{
+    <div class="md-snackbar @(_isError ? "md-snackbar-error" : "md-snackbar-success")" role="status" aria-live="polite">
+        @_message
+    </div>
+}
+
+@code {
+    private string? _message;
+    private bool _isError;
+    private CancellationTokenSource? _cts;
+
+    /// <summary>Show a toast message. Auto-dismisses after the given duration.</summary>
+    public async Task Show(string message, bool isError = false, int durationMs = 3000)
+    {
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        _message = message;
+        _isError = isError;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(durationMs, token);
+            _message = null;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

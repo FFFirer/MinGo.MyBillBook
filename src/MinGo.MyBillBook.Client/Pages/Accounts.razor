@@ -15,15 +15,7 @@
         </div>
     </div>
 
-    @if (errorMessage != null)
-    {
-        <div class="bg-error-container text-on-error-container px-4 py-3 rounded-md flex justify-between items-start gap-3" role="alert">
-            <span class="flex-1 text-body-medium break-words">@errorMessage</span>
-            <button @onclick="() => errorMessage = null" class="md-icon-btn shrink-0" aria-label="关闭">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-        </div>
-    }
+    <AlertBanner Message="@errorMessage" Variant="error" OnDismiss="@(() => errorMessage = null)" />
 
     @if (accounts != null)
     {
@@ -92,72 +84,45 @@
 </div>
 
 <!-- 删除确认弹窗 -->
-@if (confirmDeleteName != null)
-{
-    <div class="modal-root" @onclick="CancelDelete" role="alertdialog" aria-modal="true" aria-label="确认删除">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <div class="flex items-center mb-4">
-                <div class="p-2 rounded-full bg-error-container mr-3 shrink-0">
-                    <span class="material-symbols-outlined text-error">warning</span>
-                </div>
-                <h2 class="text-title-large text-on-surface">确认删除</h2>
-            </div>
-            <p class="text-body-medium text-on-surface-variant mb-6">确定要删除账户「<strong class="text-on-surface">@confirmDeleteName</strong>」吗？此操作不可撤销。</p>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
-                <button @onclick="CancelDelete" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="ConfirmDelete" class="md-btn-danger state-layer w-full sm:w-auto">确认删除</button>
-            </div>
-        </div>
-    </div>
-}
+<ConfirmDeleteDialog Visible="@(confirmDeleteName != null)" ItemName="@confirmDeleteName" EntityType="账户" OnCancel="@CancelDelete" OnConfirm="@ConfirmDelete" />
 
 <!-- 新增/编辑弹窗 -->
-@if (showDialog)
-{
-    <div class="modal-root" @onclick="CloseDialog" role="dialog" aria-modal="true" aria-label="@(editingId.HasValue ? "编辑账户" : "新增账户")">
-        <div class="modal-panel modal-sm" @onclick:stopPropagation>
-            <h2 class="text-title-large text-on-surface mb-4">@(editingId.HasValue ? "编辑账户" : "新增账户")</h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="accNameInput" class="block text-body-small text-on-surface-variant mb-1">账户名</label>
-                    <input id="accNameInput" @bind="formName" class="md-text-field-outlined w-full" placeholder="如：支付宝余额" />
-                </div>
-                <div>
-                    <label for="accPlatformSelect" class="block text-body-small text-on-surface-variant mb-1">所属平台</label>
-                    <select id="accPlatformSelect" @bind="formPlatformId" class="md-text-field-outlined w-full">
-                        <option value="0">请选择平台</option>
-                        @if (platforms != null)
-                        {
-                            @foreach (var p in platforms)
-                            {
-                                <option value="@p.Id">@p.Name</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label for="accTypeSelect" class="block text-body-small text-on-surface-variant mb-1">账户类型</label>
-                    <select id="accTypeSelect" @bind="formAccountType" class="md-text-field-outlined w-full">
-                        @foreach (var type in Enum.GetValues<AccountType>())
-                        {
-                            <option value="@((int)type)">@GetAccountTypeName((int)type)</option>
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label for="accBalanceInput" class="block text-body-small text-on-surface-variant mb-1">余额</label>
-                    <input id="accBalanceInput" @bind="formBalance" type="number" step="0.01" inputmode="decimal" class="md-text-field-outlined w-full" placeholder="0.00" />
-                </div>
-            </div>
-            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
-                <button @onclick="CloseDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
-                <button @onclick="SaveAccount" disabled="@isSaving" class="md-btn-filled state-layer w-full sm:w-auto">
-                    @(isSaving ? "保存中…" : "保存")
-                </button>
-            </div>
+<ModalDialog Visible="@showDialog" OnClose="@CloseDialog" Size="sm" AriaLabel="@(editingId.HasValue ? "编辑账户" : "新增账户")">
+    <h2 class="text-title-large text-on-surface mb-4">@(editingId.HasValue ? "编辑账户" : "新增账户")</h2>
+    <div class="space-y-4">
+        <div>
+            <label for="accNameInput" class="block text-body-small text-on-surface-variant mb-1">账户名</label>
+            <input id="accNameInput" @bind="formName" class="md-text-field-outlined w-full" placeholder="如：支付宝余额" />
+        </div>
+        <div>
+            <label for="accPlatformSelect" class="block text-body-small text-on-surface-variant mb-1">所属平台</label>
+            <select id="accPlatformSelect" @bind="formPlatformId" class="md-text-field-outlined w-full">
+                <option value="0">请选择平台</option>
+                @if (platforms != null)
+                {
+                    @foreach (var p in platforms)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <div>
+            <label for="accTypeSelect" class="block text-body-small text-on-surface-variant mb-1">账户类型</label>
+            <select id="accTypeSelect" @bind="formAccountType" class="md-text-field-outlined w-full">
+                @foreach (var type in Enum.GetValues<AccountType>())
+                {
+                    <option value="@((int)type)">@GetAccountTypeName((int)type)</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="accBalanceInput" class="block text-body-small text-on-surface-variant mb-1">余额</label>
+            <input id="accBalanceInput" @bind="formBalance" type="number" step="0.01" inputmode="decimal" class="md-text-field-outlined w-full" placeholder="0.00" />
         </div>
     </div>
-}
+    <DialogFooter OnCancel="@CloseDialog" OnSave="@SaveAccount" IsSaving="@isSaving" />
+</ModalDialog>
 
 @code {
     private List<AccountDto>? accounts;

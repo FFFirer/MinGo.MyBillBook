@@ -1,0 +1,41 @@
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="@CssClass flex justify-between items-start gap-3 px-4 py-3 rounded-md" role="@Role">
+        <span class="flex-1 text-body-medium break-words">@Message</span>
+        @if (Dismissable)
+        {
+            <button @onclick="HandleDismiss" class="md-icon-btn shrink-0" aria-label="关闭">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>The message text to display.</summary>
+    [Parameter] public string? Message { get; set; }
+
+    /// <summary>Visual variant: "error", "success", or "info".</summary>
+    [Parameter] public string Variant { get; set; } = "error";
+
+    /// <summary>Whether the banner can be dismissed by the user.</summary>
+    [Parameter] public bool Dismissable { get; set; } = true;
+
+    /// <summary>Called when the user clicks the close button.</summary>
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private string CssClass => Variant switch
+    {
+        "error" => "bg-error-container text-on-error-container",
+        "success" => "bg-success-container text-on-success-container",
+        "info" => "bg-info-container text-on-info-container",
+        _ => "bg-error-container text-on-error-container"
+    };
+
+    private string Role => Variant == "success" ? "status" : "alert";
+
+    private async Task HandleDismiss()
+    {
+        await OnDismiss.InvokeAsync();
+    }
+}
