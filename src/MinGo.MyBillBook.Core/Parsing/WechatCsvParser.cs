@@ -101,6 +101,7 @@ public class WechatCsvParser : IBillParser
                     Counterparty = GetField(csv, columnMap, "交易对方"),
                     PaymentMethod = GetField(csv, columnMap, "支付方式", "收/付款方式"),
                     Status = GetField(csv, columnMap, "当前状态", "交易状态"),
+                    SourceCategory = GetField(csv, columnMap, "交易分类", "分类"),
                 };
 
                 if (string.IsNullOrEmpty(rawRow.TransactionId) && string.IsNullOrEmpty(rawRow.PaymentTransactionId))
@@ -188,6 +189,7 @@ public class WechatCsvParser : IBillParser
                     Counterparty = GetField(values, columnMap, "交易对方"),
                     PaymentMethod = GetField(values, columnMap, "支付方式", "收/付款方式"),
                     Status = GetField(values, columnMap, "当前状态", "交易状态"),
+                    SourceCategory = GetField(values, columnMap, "交易分类", "分类"),
                 };
 
                 var txType = GetField(values, columnMap, "交易类型");

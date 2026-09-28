@@ -118,3 +118,25 @@ public interface IRebuildService
     /// </summary>
     Task<int> RebuildAsync(string? fromStep, int? batchId, CancellationToken ct = default);
 }
+
+/// <summary>
+/// 从已导入账单的支付宝"交易分类"列扫描唯一原始分类，
+/// 为未映射到系统分类的值自动创建新 BillCategory。
+/// </summary>
+public interface ISourceCategoryImportService
+{
+    /// <summary>
+    /// 扫描所有已处理的 NormalizedTransaction，返回尚未映射到系统分类的唯一 SourceCategory 列表。
+    /// 每项包含原始分类名及其在账单中出现的次数。
+    /// </summary>
+    Task<List<SourceCategoryScanItem>> ScanAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 为指定的原始分类名创建新的 BillCategory（SourceName 设为原始名，Name 也设为原始名）。
+    /// 返回新创建的分类 Id 列表。
+    /// </summary>
+    Task<List<int>> ImportAsync(IEnumerable<string> sourceNames, CancellationToken ct = default);
+}
+
+/// <summary>扫描结果中的单项：原始分类名及出现次数。</summary>
+public record SourceCategoryScanItem(string SourceName, int Count);

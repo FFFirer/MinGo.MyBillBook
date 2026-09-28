@@ -78,6 +78,9 @@ public class AlipayCsvParser : IBillParser
                 columnMap[name] = i;
         }
 
+        // 诊断日志：输出检测到的列名，便于排查"交易分类"等字段是否被正确识别
+        System.Diagnostics.Debug.WriteLine($"[AlipayCsvParser] 检测到 {columnMap.Count} 列：{string.Join(", ", columnMap.Keys)}");
+
         while (csv.Read())
         {
             try
@@ -93,7 +96,7 @@ public class AlipayCsvParser : IBillParser
                     Counterparty = GetField(csv, columnMap, "交易对方"),
                     PaymentMethod = GetField(csv, columnMap, "收/付款方式", "支付方式"),
                     Status = GetField(csv, columnMap, "交易状态"),
-                    SourceCategory = GetField(csv, columnMap, "交易分类"),
+                    SourceCategory = GetField(csv, columnMap, "交易分类", "分类", "类别", "业务类型"),
                 };
 
                 if (!string.IsNullOrEmpty(rawRow.TransactionId) || !string.IsNullOrEmpty(rawRow.PaymentTransactionId))

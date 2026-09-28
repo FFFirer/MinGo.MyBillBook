@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MinGo.MyBillBook.Core.Interfaces;
 using MinGo.MyBillBook.Core.Models;
 using MinGo.MyBillBook.Data;
 
@@ -7,7 +8,7 @@ namespace MinGo.MyBillBook.Controllers;
 
 [ApiController]
 [Route("api")]
-public class ManagementController(AppDbContext db) : ControllerBase
+public class ManagementController(AppDbContext db, ISourceCategoryImportService sourceCategoryImport) : ControllerBase
 {
     // === 支付平台 ===
     [HttpGet("platforms")]
@@ -148,6 +149,25 @@ public class ManagementController(AppDbContext db) : ControllerBase
         db.BillCategories.Remove(cat);
         await db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    // === 从账单导入分类 ===
+    [HttpGet("categories/source-categories/scan")]
+    public async Task<ActionResult> ScanSourceCategories(CancellationToken ct)
+    {
+        var unmapped = await sourceCategoryImport.ScanAsync(ct);
+        return Ok(unmapped);
+    }
+
+    [HttpPost("categories/source-categories/import")]
+    public async Task<ActionResult> ImportSourceCategories(
+        [FromBody] ImportSourceCategoriesRequest req, CancellationToken ct)
+    {
+        if (req.SourceNames is null || req.SourceNames.Count == 0)
+            return BadRequest(new { message = "未选择任何分类" });
+
+        var ids = await sourceCategoryImport.ImportAsync(req.SourceNames, ct);
+        return Ok(new { CreatedCount = ids.Count, CategoryIds = ids });
     }
 
     // === 分类规则 ===
@@ -421,3 +441,4 @@ public record CreateMerchantRequest(string CanonicalName, int? DefaultCategoryId
 public record CreateMerchantAliasRequest(string Pattern, AliasMatchType MatchType, int MerchantId, int Priority, bool IsActive = true);
 public record CreateTagRequest(string Name, TagType TagType, TagScope Scope, int? ScopeId, int SortOrder);
 public record CreateTagRuleRequest(TagRuleCondition Condition, string ConditionValue, int TagId, int Priority, bool IsActive = true);
+public record ImportSourceCategoriesRequest(List<string> SourceNames);

@@ -77,6 +77,7 @@ builder.Services.AddScoped<IPipelineStep<BillImportContext>, ReconcileStep>();
 
 // Phase 9: 局部重跑 + Job 队列（BackgroundService 轮询 Pending 任务异步执行）
 builder.Services.AddScoped<IRebuildService, RebuildService>();
+builder.Services.AddScoped<ISourceCategoryImportService, SourceCategoryImportService>();
 builder.Services.AddHostedService<PipelineJobWorker>();
 
 // Add controllers for Web API

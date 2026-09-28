@@ -14,6 +14,12 @@ public class BillCategory
     /// </summary>
     public bool IsDefault { get; set; }
 
+    /// <summary>
+    /// 平台原始分类名称（如支付宝"交易分类"列的"餐饮美食"）。
+    /// 由分类导入功能自动设置，用于 CategoryNormalizer 精确匹配。
+    /// </summary>
+    public string? SourceName { get; set; }
+
     public BillCategory? Parent { get; set; }
     public ICollection<BillCategory> Children { get; set; } = [];
     public ICollection<CategoryRule> Rules { get; set; } = [];

@@ -186,6 +186,8 @@ public class AppDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(50).IsRequired();
+            e.Property(x => x.SourceName).HasMaxLength(50);
+            e.HasIndex(x => x.SourceName).IsUnique();
             e.HasOne(x => x.Parent).WithMany(x => x.Children).HasForeignKey(x => x.ParentId);
         });
 

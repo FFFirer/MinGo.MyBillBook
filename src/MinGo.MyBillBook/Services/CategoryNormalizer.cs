@@ -63,6 +63,15 @@ public class CategoryNormalizer(AppDbContext db) : ICategoryNormalizer
 
         var trimmed = sourceCategory.Trim();
 
+        // 1) DB SourceName 精确匹配（由分类导入功能自动创建）
+        var sourceMatch = await db.BillCategories
+            .Where(c => c.SourceName == trimmed)
+            .Select(c => (int?)c.Id)
+            .FirstOrDefaultAsync(ct);
+        if (sourceMatch.HasValue)
+            return new CategoryNormalizationResult(sourceMatch.Value, 0.9);
+
+        // 2) 静态关键词映射
         if (KeywordMap.TryGetValue(trimmed, out var targetName))
         {
             var categoryId = await db.BillCategories
@@ -74,6 +83,7 @@ public class CategoryNormalizer(AppDbContext db) : ICategoryNormalizer
                 return new CategoryNormalizationResult(categoryId.Value, 0.85);
         }
 
+        // 3) 数据库分类名模糊匹配
         var categories = await db.BillCategories
             .Select(c => new { c.Id, c.Name })
             .ToListAsync(ct);

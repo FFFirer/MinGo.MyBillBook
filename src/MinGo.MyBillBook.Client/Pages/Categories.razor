@@ -9,6 +9,10 @@
     <div class="page-header">
         <h1>消费分类</h1>
         <div class="actions">
+            <button @onclick="ScanSourceCategories" disabled="@isScanning" class="md-btn-outlined state-layer">
+                <span class="material-symbols-outlined mr-1 sm:mr-2">file_download</span>
+                <span class="hidden xs:inline">@(isScanning ? "扫描中…" : "从账单导入")</span><span class="xs:hidden">@(isScanning ? "扫描中…" : "导入")</span>
+            </button>
             <button @onclick="OpenCreateCategoryDialog" class="md-btn-filled state-layer">
                 <span class="material-symbols-outlined mr-1 sm:mr-2">add</span>
                 <span class="hidden xs:inline">新增分类</span><span class="xs:hidden">新增</span>
@@ -118,6 +122,50 @@
     </div>
 }
 
+<!-- 从账单导入分类弹窗 -->
+@if (showImportDialog)
+{
+    <div class="modal-root" @onclick="CloseImportDialog" role="dialog" aria-modal="true" aria-label="从账单导入分类">
+        <div class="modal-panel modal-sm" @onclick:stopPropagation>
+            <h2 class="text-title-large text-on-surface mb-2">从账单导入分类</h2>
+            <p class="text-body-small text-on-surface-variant mb-4">以下是已导入账单中发现的、尚未映射到系统分类的支付宝交易分类。勾选需要创建的分类。</p>
+
+            @if (scannedItems is null || scannedItems.Count == 0)
+            {
+                <div class="flex items-center gap-3 py-6 justify-center text-on-surface-variant">
+                    <span class="material-symbols-outlined text-primary">check_circle</span>
+                    <span class="text-body-medium">所有交易分类均已映射，无需导入</span>
+                </div>
+            }
+            else
+            {
+                <div class="max-h-64 overflow-y-auto space-y-1 mb-4">
+                    @foreach (var item in scannedItems)
+                    {
+                        <label class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors">
+                            <input type="checkbox" checked="@selectedNames.Contains(item.SourceName)"
+                                   @onchange="e => ToggleSelection(item.SourceName, (bool)(e.Value ?? false))"
+                                   class="accent-primary w-4 h-4 shrink-0" />
+                            <span class="text-body-medium text-on-surface flex-1 truncate">@item.SourceName</span>
+                            <span class="text-body-small text-on-surface-variant tabular-nums">@item.Count 笔</span>
+                        </label>
+                    }
+                </div>
+            }
+
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-4">
+                <button @onclick="CloseImportDialog" class="md-btn-outlined state-layer w-full sm:w-auto">取消</button>
+                @if (scannedItems is not null && scannedItems.Count > 0)
+                {
+                    <button @onclick="ConfirmImport" disabled="@isImporting" class="md-btn-filled state-layer w-full sm:w-auto">
+                        @(isImporting ? "导入中…" : $"导入选中 ({selectedNames.Count})")
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
 <!-- 分类新增/编辑弹窗 -->
 @if (showCategoryDialog)
 {
@@ -222,16 +270,23 @@
     private List<RuleDto>? rules;
     private bool showCategoryDialog;
     private bool showRuleDialog;
+    private bool showImportDialog;
     private int? editingCategoryId;
     private int? editingRuleId;
     private int? confirmDeleteId;
     private string? confirmDeleteName;
     private bool confirmDeleteIsRule;
     private bool isSaving;
+    private bool isScanning;
+    private bool isImporting;
     private string? errorMessage;
     private int rulesPage = 1;
     private const int PageSize = 20;
     private IEnumerable<RuleDto> PagedRules => rules?.Skip((rulesPage - 1) * PageSize).Take(PageSize) ?? [];
+
+    // 分类导入相关
+    private List<SourceCategoryScanDto>? scannedItems;
+    private HashSet<string> selectedNames = [];
 
     // 分类表单字段
     private string catFormName = string.Empty;
@@ -451,7 +506,66 @@
         _ => "未知"
     };
 
+    // === 从账单导入分类 ===
+    private async Task ScanSourceCategories()
+    {
+        isScanning = true;
+        errorMessage = null;
+        try
+        {
+            scannedItems = await Http.GetFromJsonAsync<List<SourceCategoryScanDto>>("api/categories/source-categories/scan");
+            selectedNames = scannedItems is null ? [] : new HashSet<string>(scannedItems.Select(x => x.SourceName));
+            showImportDialog = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"扫描失败: {ex.Message}";
+        }
+        finally
+        {
+            isScanning = false;
+        }
+    }
+
+    private void ToggleSelection(string name, bool selected)
+    {
+        if (selected) selectedNames.Add(name);
+        else selectedNames.Remove(name);
+    }
+
+    private void CloseImportDialog()
+    {
+        showImportDialog = false;
+        scannedItems = null;
+        selectedNames.Clear();
+    }
+
+    private async Task ConfirmImport()
+    {
+        if (selectedNames.Count == 0) return;
+        isImporting = true;
+        errorMessage = null;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/categories/source-categories/import",
+                new { SourceNames = selectedNames.ToList() });
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                errorMessage = error?.Message ?? "导入失败";
+                return;
+            }
+            CloseImportDialog();
+            await LoadData();
+        }
+        finally
+        {
+            isImporting = false;
+        }
+    }
+
     private record CategoryDto(int Id, string Name, string Icon, int? ParentId, int SortOrder);
     private record RuleDto(int Id, int CategoryId, string CategoryName, int MatchField, string MatchPattern, int Priority, bool IsActive);
+    private record SourceCategoryScanDto(string SourceName, int Count);
     private record ErrorResponse(string Message);
 }
