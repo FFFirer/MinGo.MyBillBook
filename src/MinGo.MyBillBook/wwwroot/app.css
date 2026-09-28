@@ -1256,3 +1256,183 @@ table {
 }
 
 .components-reconnect-overlay { z-index: 9999; }
+
+/* ============================================================
+   Mobile Rendering Fixes (2026-09-28)
+   Fix modal backdrop, matrix table sticky, and appbar issues
+   ============================================================ */
+
+/* Fix 1: Modal backdrop - use solid fallback for color-mix compatibility */
+.modal-root,
+.md-dialog-scrim {
+    /* Fallback for browsers that don't support color-mix */
+    background: rgba(0, 0, 0, 0.32);
+    background: color-mix(in srgb, var(--color-scrim) 32%, transparent);
+    /* Ensure modal covers full viewport including dynamic toolbar areas */
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Prevent content from escaping modal bounds */
+    contain: layout style;
+}
+
+/* Fix 2: Modal panel - ensure proper stacking and containment */
+.modal-panel,
+.md-dialog {
+    /* Ensure modal content stays within bounds */
+    contain: layout style;
+    /* Fix for iOS Safari: prevent rubber-banding from affecting modal */
+    overscroll-behavior: contain;
+}
+
+/* Fix 3: Matrix table sticky first column - improved mobile compatibility */
+@media (max-width: 767px) {
+    .matrix-scroll {
+        /* Ensure scroll container has proper dimensions */
+        -webkit-overflow-scrolling: touch;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    
+    .matrix-scroll table {
+        /* Prevent table from collapsing */
+        table-layout: auto;
+    }
+    
+    .matrix-scroll table th:first-child,
+    .matrix-scroll table td:first-child {
+        /* Stronger sticky positioning for mobile */
+        position: -webkit-sticky;
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        /* Ensure background covers content behind */
+        background-color: var(--color-surface-container);
+        /* Add right border instead of box-shadow for better compatibility */
+        border-right: 1px solid var(--color-outline-variant);
+        box-shadow: none;
+        /* Ensure minimum width for readability */
+        min-width: 6rem;
+        max-width: 10rem;
+    }
+    
+    .matrix-scroll table thead th:first-child {
+        background-color: var(--color-surface-container-high);
+        z-index: 3;
+    }
+    
+    /* Ensure data cells don't overlap with sticky column */
+    .matrix-scroll table td:not(:first-child),
+    .matrix-scroll table th:not(:first-child) {
+        position: relative;
+        z-index: 1;
+    }
+}
+
+/* Fix 4: Mobile appbar - ensure it stays above all content */
+.mobile-appbar {
+    /* Ensure appbar is always on top of page content */
+    z-index: 40;
+    /* Prevent content from appearing above appbar */
+    isolation: isolate;
+}
+
+/* Fix 5: Responsive cards - prevent text overflow in card mode */
+@media (max-width: 767px) {
+    table.responsive-cards td {
+        /* Ensure flex items don't overflow */
+        overflow: hidden;
+    }
+    
+    table.responsive-cards td::before {
+        /* Ensure label doesn't push content */
+        flex-shrink: 0;
+    }
+    
+    table.responsive-cards td > * {
+        /* Ensure content respects available space */
+        min-width: 0;
+        flex-shrink: 1;
+    }
+    
+    /* Fix for wrap-cell: ensure proper wrapping */
+    table.responsive-cards td.wrap-cell > * {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+}
+
+/* Fix 6: Page header - prevent overlap with mobile appbar */
+.page-header {
+    /* Ensure page header doesn't overlap with sticky appbar */
+    position: relative;
+    z-index: 1;
+}
+
+/* Fix 7: Main content area - ensure proper containment */
+main {
+    /* Prevent content from escaping main area */
+    position: relative;
+    z-index: 1;
+}
+
+/* Fix 8: Card overflow - ensure cards don't bleed into other elements */
+.md-card-elevated {
+    /* Ensure cards contain their content */
+    contain: layout style;
+}
+
+/* Fix 9: Scroll hint - improve compatibility */
+.scroll-hint::after {
+    /* Use solid color fallback for gradient */
+    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1));
+    pointer-events: none;
+}
+
+/* Fix 10: Body scroll lock when modal is open */
+body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
+
+/* ============================================================
+   Additional Mobile Fixes - Ensure modal backdrop visibility
+   ============================================================ */
+
+/* Force modal backdrop to be visible even if color-mix fails */
+.modal-root::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.32);
+    z-index: -1;
+}
+
+/* Ensure modal panel is above backdrop */
+.modal-panel {
+    position: relative;
+    z-index: 1;
+}
+
+/* Fix for iOS Safari: ensure fixed position works correctly */
+@supports (-webkit-touch-callout: none) {
+    .modal-root {
+        /* iOS Safari specific fix */
+        height: -webkit-fill-available;
+    }
+}
+
+/* Ensure matrix table cells have proper spacing on mobile */
+@media (max-width: 767px) {
+    .matrix-scroll table td {
+        /* Add minimum padding to prevent text collision */
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
+    /* Ensure sticky column has enough width */
+    .matrix-scroll table td:first-child {
+        padding-right: 0.75rem;
+    }
+}
