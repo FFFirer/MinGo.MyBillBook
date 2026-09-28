@@ -1266,8 +1266,8 @@ table {
 .modal-root,
 .md-dialog-scrim {
     /* Fallback for browsers that don't support color-mix */
-    background: rgba(0, 0, 0, 0.32);
-    background: color-mix(in srgb, var(--color-scrim) 32%, transparent);
+    background: rgba(0, 0, 0, 0.32) !important;
+    background: color-mix(in srgb, var(--color-scrim) 32%, transparent) !important;
     /* Ensure modal covers full viewport including dynamic toolbar areas */
     min-height: 100vh;
     min-height: 100dvh;
@@ -1399,15 +1399,6 @@ body.modal-open {
 /* ============================================================
    Additional Mobile Fixes - Ensure modal backdrop visibility
    ============================================================ */
-
-/* Force modal backdrop to be visible even if color-mix fails */
-.modal-root::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.32);
-    z-index: -1;
-}
 
 /* Ensure modal panel is above backdrop */
 .modal-panel {
