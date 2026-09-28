@@ -61,34 +61,34 @@
            Material Design 3 Baseline tokens (Light scheme, default)
            Reference: https://m3.material.io/styles/color/system/overview
            ============================================================ */
-        @@theme {
-            --breakpoint-xs: 30rem;
 
-            /* ---- Color roles: Primary ---- */
+        /* ---- Color roles exposed as CSS custom properties on :root ---- */
+        :root {
+            /* Primary */
             --color-primary: #6750A4;
             --color-on-primary: #FFFFFF;
             --color-primary-container: #EADDFF;
             --color-on-primary-container: #21005D;
 
-            /* ---- Color roles: Secondary ---- */
+            /* Secondary */
             --color-secondary: #625B71;
             --color-on-secondary: #FFFFFF;
             --color-secondary-container: #E8DEF8;
             --color-on-secondary-container: #1D192B;
 
-            /* ---- Color roles: Tertiary ---- */
+            /* Tertiary */
             --color-tertiary: #7D5260;
             --color-on-tertiary: #FFFFFF;
             --color-tertiary-container: #FFD8E4;
             --color-on-tertiary-container: #31111D;
 
-            /* ---- Color roles: Error ---- */
+            /* Error */
             --color-error: #B3261E;
             --color-on-error: #FFFFFF;
             --color-error-container: #F9DEDC;
             --color-on-error-container: #410E0B;
 
-            /* ---- Color roles: Surface ---- */
+            /* Surface */
             --color-background: #FEF7FF;
             --color-on-background: #1D1B20;
             --color-surface: #FEF7FF;
@@ -103,7 +103,7 @@
             --color-surface-container-high: #ECE6F0;
             --color-surface-container-highest: #E6E0E9;
 
-            /* ---- Color roles: Outline & Inverse ---- */
+            /* Outline & Inverse */
             --color-outline: #79747E;
             --color-outline-variant: #CAC4D0;
             --color-inverse-surface: #322F35;
@@ -112,7 +112,7 @@
             --color-scrim: #000000;
             --color-shadow: #000000;
 
-            /* ---- Custom colors (MD3 "custom color" pattern): Success / Warning / Info ---- */
+            /* Custom colors (MD3 "custom color" pattern): Success / Warning / Info */
             --color-success: #146C2E;
             --color-on-success: #FFFFFF;
             --color-success-container: #C4EED3;
@@ -127,8 +127,12 @@
             --color-on-info: #FFFFFF;
             --color-info-container: #D1E4FF;
             --color-on-info-container: #001D36;
+        }
 
-            /* ---- Shape scale (MD3 official) ---- */
+        @@theme {
+            --breakpoint-xs: 30rem;
+
+            /* Shape scale (MD3 official) */
             --radius-none: 0;
             --radius-xs: 4px;
             --radius-sm: 8px;
@@ -137,7 +141,7 @@
             --radius-xl: 28px;
             --radius-full: 9999px;
 
-            /* ---- Override Tailwind rounded-* utilities to match MD3 ---- */
+            /* Override Tailwind rounded-* utilities to match MD3 */
             --rounded-none: var(--radius-none);
             --rounded-sm: var(--radius-sm);
             --rounded: var(--radius-xs);
@@ -148,7 +152,7 @@
             --rounded-3xl: var(--radius-xl);
             --rounded-full: var(--radius-full);
 
-            /* ---- Elevation (MD3 5-level official shadows) ---- */
+            /* Elevation (MD3 5-level official shadows) */
             --shadow-elevation-0: none;
             --shadow-elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.30), 0 1px 3px 1px rgb(0 0 0 / 0.15);
             --shadow-elevation-2: 0 1px 2px 0 rgb(0 0 0 / 0.30), 0 2px 6px 2px rgb(0 0 0 / 0.15);
@@ -156,7 +160,7 @@
             --shadow-elevation-4: 0 2px 3px 0 rgb(0 0 0 / 0.30), 0 6px 10px 4px rgb(0 0 0 / 0.15);
             --shadow-elevation-5: 0 4px 4px 0 rgb(0 0 0 / 0.30), 0 8px 12px 6px rgb(0 0 0 / 0.15);
 
-            /* ---- Typography roles (Roboto, MD3 official type scale) ---- */
+            /* Typography roles (Roboto, MD3 official type scale) */
             --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
             --text-display-large: 57px;
