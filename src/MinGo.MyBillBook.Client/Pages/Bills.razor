@@ -141,6 +141,25 @@
                 </table>
             </div>
 
+            <!-- 移动端卡片视图（替代 table responsive-cards） -->
+            <div class="bill-card-list">
+                @foreach (var bill in result.Items)
+                {
+                    <div class="bill-card" @onclick="() => OpenDetail(bill)">
+                        <div class="bill-card__top">
+                            <span class="bill-card__merchant">@bill.Merchant</span>
+                            <span class="bill-card__amount @(bill.TransactionType == "Income" ? "bill-card__amount--income" : "bill-card__amount--expense")">
+                                @(bill.TransactionType == "Income" ? "+" : "-")@bill.Amount.ToString("F2")
+                            </span>
+                        </div>
+                        <div class="bill-card__bottom">
+                            <span class="bill-card__date">@bill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</span>
+                            <span class="bill-card__category">@(bill.CategoryName ?? "未分类")</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
             <!-- 分页 -->
             <Paginator TotalCount="result.TotalCount" PageSize="result.PageSize" @bind-Page="filter.Page" @bind-Page:after="OnPageChanged" />
         }

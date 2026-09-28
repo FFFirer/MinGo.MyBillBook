@@ -74,6 +74,43 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- 移动端卡片视图 -->
+                <div class="recon-card-list">
+                    @foreach (var a in PagedAccounts)
+                    {
+                        var hasSnap = a.SnapshotDate != null;
+                        var diff = a.Difference ?? 0m;
+                        <div class="recon-card">
+                            <div class="recon-card__top">
+                                <span class="recon-card__name">@a.Name</span>
+                                @if (hasSnap)
+                                {
+                                    <span class="recon-card__diff @(Math.Abs(diff) > 0.01m ? "recon-card__diff--error" : "recon-card__diff--ok")">
+                                        @(diff > 0 ? "+" : "")@diff.ToString("F2")
+                                    </span>
+                                }
+                            </div>
+                            <div class="recon-card__bottom">
+                                @if (hasSnap)
+                                {
+                                    <span>银行 @a.BankBalance?.ToString("F2") · 计算 @a.CalculatedBalance?.ToString("F2")</span>
+                                    @if (Math.Abs(diff) > 0.01m)
+                                    {
+                                        <span class="md-chip md-chip-assist-error" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">有差异</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="md-chip md-chip-assist-success" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">已平账</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-on-surface-variant">未对账</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
                 <Paginator TotalCount="@(accounts?.Count ?? 0)" PageSize="PageSize" @bind-Page="accountsPage" />
             </div>
         }
@@ -132,6 +169,24 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- 移动端卡片视图 -->
+                    <div class="issue-card-list">
+                        @foreach (var i in PagedIssues)
+                        {
+                            <div class="issue-card">
+                                <div class="issue-card__top">
+                                    <span class="issue-card__name">@i.AccountName</span>
+                                    <span class="issue-card__diff">@i.Difference.ToString("F2")</span>
+                                </div>
+                                <div class="issue-card__bottom">
+                                    <span>@i.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                                    <span class="md-chip @(i.Status == "Open" ? "md-chip-assist-warning" : "md-chip-assist-success")" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">
+                                        @(i.Status == "Open" ? "待处理" : "已解决")
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    </div>
                     <Paginator TotalCount="@(issues?.Count ?? 0)" PageSize="PageSize" @bind-Page="issuesPage" />
                 </div>
             }
@@ -181,6 +236,22 @@
                                 }
                             </tbody>
                         </table>
+                    </div>
+                    <!-- 移动端卡片视图 -->
+                    <div class="transfer-card-list">
+                        @foreach (var t in PagedTransfers)
+                        {
+                            <div class="transfer-card">
+                                <div class="transfer-card__top">
+                                    <span class="transfer-card__amount">@t.Amount.ToString("F2")</span>
+                                    <span class="transfer-card__date">@t.OccurredAt.ToString("yyyy-MM-dd")</span>
+                                </div>
+                                <div class="transfer-card__bottom">
+                                    <span>@AccountName(t.FromAccountId) → @AccountName(t.ToAccountId)</span>
+                                    <span class="md-chip md-chip-assist-info" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">@TransferStatusName(t.Status)</span>
+                                </div>
+                            </div>
+                        }
                     </div>
                     <Paginator TotalCount="@(transfers?.Count ?? 0)" PageSize="PageSize" @bind-Page="transfersPage" />
                 </div>

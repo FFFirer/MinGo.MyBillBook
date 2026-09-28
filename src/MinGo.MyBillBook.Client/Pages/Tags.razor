@@ -91,6 +91,25 @@
                     </tbody>
                 </table>
             </div>
+            <!-- 移动端卡片视图 -->
+            <div class="tag-card-list">
+                @foreach (var t in PagedTags)
+                {
+                    <div class="tag-card">
+                        <div class="tag-card__top">
+                            <span class="tag-card__name">@t.Name</span>
+                            <span class="@GetTagTypeChipClass(t.TagType)" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">@GetTagTypeDisplayName(t.TagType)</span>
+                        </div>
+                        <div class="tag-card__bottom">
+                            <span>@GetScopeDisplayName(t.Scope)</span>
+                            @if (t.TaggedCount > 0)
+                            {
+                                <span class="md-chip md-chip-assist-info" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">@t.TaggedCount</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
             <Paginator TotalCount="@(tags?.Count ?? 0)" PageSize="PageSize" @bind-Page="tagsPage" />
         }
     </div>
@@ -165,6 +184,24 @@
                         }
                     </tbody>
                 </table>
+            </div>
+            <!-- 移动端卡片视图 -->
+            <div class="tagrule-card-list">
+                @foreach (var r in PagedRules)
+                {
+                    <div class="tagrule-card">
+                        <div class="tagrule-card__top">
+                            <span class="@GetConditionChipClass(r.Condition)" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">@GetConditionDisplayName(r.Condition)</span>
+                            <span class="tagrule-card__value">@r.ConditionValue</span>
+                        </div>
+                        <div class="tagrule-card__bottom">
+                            <span class="md-chip md-chip-assist-primary" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">→ @r.TagName</span>
+                            <span class="md-chip @(r.IsActive ? "md-chip-assist-success" : "md-chip-assist-error")" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">
+                                @(r.IsActive ? "启用" : "停用")
+                            </span>
+                        </div>
+                    </div>
+                }
             </div>
             <Paginator TotalCount="@(rules?.Count ?? 0)" PageSize="PageSize" @bind-Page="rulesPage" />
         }

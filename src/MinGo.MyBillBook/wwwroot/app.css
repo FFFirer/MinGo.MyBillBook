@@ -1402,3 +1402,334 @@ body.modal-open {
         padding-right: 0.75rem;
     }
 }
+
+/* ============================================================
+   Bill Card List — compact mobile card layout (no labels/lines)
+   ============================================================ */
+.bill-card-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.bill-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.bill-card:not(:last-child) {
+    border-bottom: 1px solid var(--color-outline-variant);
+}
+
+.bill-card:active {
+    background-color: var(--color-surface-container-high);
+}
+
+.bill-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.bill-card__merchant {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-body-large);
+    font-weight: 500;
+    color: var(--color-on-surface);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bill-card__amount {
+    flex-shrink: 0;
+    font-size: var(--text-title-medium);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.bill-card__amount--income {
+    color: var(--color-success, #2e7d32);
+}
+
+.bill-card__amount--expense {
+    color: var(--color-error, #c62828);
+}
+
+.bill-card__bottom {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-body-small);
+    color: var(--color-on-surface-variant);
+}
+
+.bill-card__category {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    background-color: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+    font-size: var(--text-label-small);
+    font-weight: 500;
+}
+
+/* Desktop: hide bill-card-list, show table */
+@media (min-width: 768px) {
+    .bill-card-list {
+        display: none;
+    }
+}
+
+/* Mobile: hide table tbody, show bill-card-list */
+@media (max-width: 767px) {
+    .overflow-x-auto:has(+ .bill-card-list) table.responsive-cards tbody {
+        display: none;
+    }
+}
+
+/* ============================================================
+   Generic mobile card-list pattern (shared by all pages)
+   ============================================================ */
+
+/* --- Merchant card list --- */
+.merchant-card-list,
+.alias-card-list,
+.catrule-card-list,
+.account-card-list,
+.tag-card-list,
+.tagrule-card-list,
+.recon-card-list,
+.issue-card-list,
+.transfer-card-list,
+.job-card-list,
+.rule-card-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.merchant-card,
+.alias-card,
+.catrule-card,
+.account-card,
+.tag-card,
+.tagrule-card,
+.recon-card,
+.issue-card,
+.transfer-card,
+.job-card,
+.rule-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.75rem 1rem;
+    transition: background-color 0.15s ease;
+}
+
+.merchant-card:not(:last-child),
+.alias-card:not(:last-child),
+.catrule-card:not(:last-child),
+.account-card:not(:last-child),
+.tag-card:not(:last-child),
+.tagrule-card:not(:last-child),
+.recon-card:not(:last-child),
+.issue-card:not(:last-child),
+.transfer-card:not(:last-child),
+.job-card:not(:last-child),
+.rule-card:not(:last-child) {
+    border-bottom: 1px solid var(--color-outline-variant);
+}
+
+.merchant-card:active,
+.alias-card:active,
+.catrule-card:active,
+.account-card:active,
+.tag-card:active,
+.tagrule-card:active,
+.recon-card:active,
+.issue-card:active,
+.transfer-card:active,
+.job-card:active,
+.rule-card:active {
+    background-color: var(--color-surface-container-high);
+}
+
+.merchant-card__top,
+.alias-card__top,
+.catrule-card__top,
+.account-card__top,
+.tag-card__top,
+.tagrule-card__top,
+.recon-card__top,
+.issue-card__top,
+.transfer-card__top,
+.job-card__top,
+.rule-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.merchant-card__bottom,
+.alias-card__bottom,
+.catrule-card__bottom,
+.account-card__bottom,
+.tag-card__bottom,
+.tagrule-card__bottom,
+.recon-card__bottom,
+.issue-card__bottom,
+.transfer-card__bottom,
+.job-card__bottom,
+.rule-card__bottom {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-body-small);
+    color: var(--color-on-surface-variant);
+}
+
+/* Primary text elements */
+.merchant-card__name,
+.account-card__name,
+.tag-card__name,
+.recon-card__name,
+.issue-card__account,
+.catrule-card__category {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-body-large);
+    font-weight: 500;
+    color: var(--color-on-surface);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Numeric / amount elements */
+.merchant-card__bill,
+.account-card__balance,
+.recon-card__diff,
+.issue-card__diff,
+.transfer-card__amount {
+    flex-shrink: 0;
+    font-size: var(--text-title-medium);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--color-on-surface);
+}
+
+.merchant-card__bill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--text-body-medium);
+    font-weight: 500;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.recon-card__diff--warn,
+.issue-card__diff--warn {
+    color: var(--color-error, #c62828);
+}
+
+/* Monospace / pattern elements */
+.alias-card__pattern,
+.catrule-card__pattern,
+.rule-card__condition,
+.rule-card__action {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: var(--text-body-small);
+    color: var(--color-on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rule-card__action {
+    color: var(--color-on-surface);
+}
+
+/* Transfer-specific */
+.transfer-card__accounts {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-body-small);
+    color: var(--color-on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Job-specific */
+.job-card__type {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-body-large);
+    font-weight: 500;
+    color: var(--color-on-surface);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.job-card__error {
+    color: var(--color-error, #c62828);
+    font-weight: 500;
+}
+
+/* Tag rule condition chip in top row */
+.tagrule-card__value {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-body-medium);
+    color: var(--color-on-surface);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Desktop: hide all card lists, show tables */
+@media (min-width: 768px) {
+    .merchant-card-list,
+    .alias-card-list,
+    .catrule-card-list,
+    .account-card-list,
+    .tag-card-list,
+    .tagrule-card-list,
+    .recon-card-list,
+    .issue-card-list,
+    .transfer-card-list,
+    .job-card-list,
+    .rule-card-list {
+        display: none;
+    }
+}
+
+/* Mobile: hide table tbody when card list follows */
+@media (max-width: 767px) {
+    .overflow-x-auto:has(+ .merchant-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .alias-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .catrule-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .account-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .tag-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .tagrule-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .recon-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .issue-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .transfer-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .job-card-list) table.responsive-cards tbody,
+    .overflow-x-auto:has(+ .rule-card-list) table.responsive-cards tbody {
+        display: none;
+    }
+}

@@ -78,6 +78,24 @@
                     </tbody>
                 </table>
             </div>
+            <!-- 移动端卡片视图 -->
+            <div class="account-card-list">
+                @foreach (var a in PagedAccounts)
+                {
+                    <div class="account-card">
+                        <div class="account-card__top">
+                            <span class="account-card__name">@a.Name</span>
+                            <span class="account-card__balance">@a.Balance.ToString("F2")</span>
+                        </div>
+                        <div class="account-card__bottom">
+                            <span>@a.PlatformName</span>
+                            <span class="md-chip @(a.IsActive ? "md-chip-assist-success" : "md-chip-assist-info")" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">
+                                @(a.IsActive ? "活跃" : "停用")
+                            </span>
+                        </div>
+                    </div>
+                }
+            </div>
             <Paginator TotalCount="@(accounts?.Count ?? 0)" PageSize="PageSize" @bind-Page="accountsPage" />
         </div>
     }

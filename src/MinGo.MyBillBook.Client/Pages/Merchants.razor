@@ -94,6 +94,30 @@
                     </tbody>
                 </table>
             </div>
+            <!-- 移动端卡片视图 -->
+            <div class="merchant-card-list">
+                @foreach (var m in PagedMerchants)
+                {
+                    <div class="merchant-card">
+                        <div class="merchant-card__top">
+                            <span class="merchant-card__name">@m.CanonicalName</span>
+                            @if (m.BillCount > 0)
+                            {
+                                <a href="@($"bills?keyword={Uri.EscapeDataString(m.CanonicalName)}")" class="merchant-card__bill">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">receipt_long</span><span class="tabular-nums">@m.BillCount</span>
+                                </a>
+                            }
+                        </div>
+                        <div class="merchant-card__bottom">
+                            <span>@(m.DefaultCategoryName ?? "—")</span>
+                            @if (m.AliasCount > 0)
+                            {
+                                <span class="merchant-card__alias">别名 @m.AliasCount</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
             <Paginator TotalCount="@(merchants?.Count ?? 0)" PageSize="PageSize" @bind-Page="merchantsPage" />
         }
     </div>
@@ -168,6 +192,26 @@
                         }
                     </tbody>
                 </table>
+            </div>
+            <!-- 移动端卡片视图 -->
+            <div class="alias-card-list">
+                @foreach (var a in PagedAliases)
+                {
+                    <div class="alias-card">
+                        <div class="alias-card__top">
+                            <span class="alias-card__pattern">@a.Pattern</span>
+                            <span class="md-chip @MatchTypeBadgeClass(a.MatchType)" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">
+                                @MatchTypeLabel(a.MatchType)
+                            </span>
+                        </div>
+                        <div class="alias-card__bottom">
+                            <span>→ @a.MerchantName</span>
+                            <span class="md-chip @(a.IsActive ? "md-chip-assist-success" : "md-chip-assist-error")" style="height:1.5rem;padding:0 0.5rem;font-size:var(--text-label-small);">
+                                @(a.IsActive ? "启用" : "停用")
+                            </span>
+                        </div>
+                    </div>
+                }
             </div>
             <Paginator TotalCount="@(aliases?.Count ?? 0)" PageSize="PageSize" @bind-Page="aliasesPage" />
         }

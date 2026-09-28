@@ -89,6 +89,21 @@
                     </tbody>
                 </table>
             </div>
+            <!-- 移动端卡片视图 -->
+            <div class="catrule-card-list">
+                @foreach (var r in PagedRules)
+                {
+                    <div class="catrule-card">
+                        <div class="catrule-card__top">
+                            <span class="catrule-card__category">@r.CategoryName</span>
+                            <span class="catrule-card__field">@GetMatchFieldName(r.MatchField)</span>
+                        </div>
+                        <div class="catrule-card__bottom">
+                            <span class="catrule-card__pattern">@r.MatchPattern</span>
+                        </div>
+                    </div>
+                }
+            </div>
             <Paginator TotalCount="@(rules?.Count ?? 0)" PageSize="PageSize" @bind-Page="rulesPage" />
         </div>
     }
