@@ -129,10 +129,8 @@
             --color-on-info-container: #001D36;
         }
 
-        @@theme {
-            --breakpoint-xs: 30rem;
-
-            /* Shape scale (MD3 official) */
+        /* ---- Shape, elevation & typography as CSS custom properties on :root ---- */
+        :root {
             --radius-none: 0;
             --radius-xs: 4px;
             --radius-sm: 8px;
@@ -141,7 +139,6 @@
             --radius-xl: 28px;
             --radius-full: 9999px;
 
-            /* Override Tailwind rounded-* utilities to match MD3 */
             --rounded-none: var(--radius-none);
             --rounded-sm: var(--radius-sm);
             --rounded: var(--radius-xs);
@@ -152,7 +149,6 @@
             --rounded-3xl: var(--radius-xl);
             --rounded-full: var(--radius-full);
 
-            /* Elevation (MD3 5-level official shadows) */
             --shadow-elevation-0: none;
             --shadow-elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.30), 0 1px 3px 1px rgb(0 0 0 / 0.15);
             --shadow-elevation-2: 0 1px 2px 0 rgb(0 0 0 / 0.30), 0 2px 6px 2px rgb(0 0 0 / 0.15);
@@ -160,83 +156,71 @@
             --shadow-elevation-4: 0 2px 3px 0 rgb(0 0 0 / 0.30), 0 6px 10px 4px rgb(0 0 0 / 0.15);
             --shadow-elevation-5: 0 4px 4px 0 rgb(0 0 0 / 0.30), 0 8px 12px 6px rgb(0 0 0 / 0.15);
 
-            /* Typography roles (Roboto, MD3 official type scale) */
-            --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
-
             --text-display-large: 57px;
             --text-display-large--line-height: 64px;
             --text-display-large--font-weight: 400;
             --text-display-large--letter-spacing: -0.25px;
-
             --text-display-medium: 45px;
             --text-display-medium--line-height: 52px;
             --text-display-medium--font-weight: 400;
             --text-display-medium--letter-spacing: 0;
-
             --text-display-small: 36px;
             --text-display-small--line-height: 44px;
             --text-display-small--font-weight: 400;
             --text-display-small--letter-spacing: 0;
-
             --text-headline-large: 32px;
             --text-headline-large--line-height: 40px;
             --text-headline-large--font-weight: 400;
             --text-headline-large--letter-spacing: 0;
-
             --text-headline-medium: 28px;
             --text-headline-medium--line-height: 36px;
             --text-headline-medium--font-weight: 400;
             --text-headline-medium--letter-spacing: 0;
-
             --text-headline-small: 24px;
             --text-headline-small--line-height: 32px;
             --text-headline-small--font-weight: 400;
             --text-headline-small--letter-spacing: 0;
-
             --text-title-large: 22px;
             --text-title-large--line-height: 28px;
             --text-title-large--font-weight: 400;
             --text-title-large--letter-spacing: 0;
-
             --text-title-medium: 16px;
             --text-title-medium--line-height: 24px;
             --text-title-medium--font-weight: 500;
             --text-title-medium--letter-spacing: 0.15px;
-
             --text-title-small: 14px;
             --text-title-small--line-height: 20px;
             --text-title-small--font-weight: 500;
             --text-title-small--letter-spacing: 0.1px;
-
             --text-body-large: 16px;
             --text-body-large--line-height: 24px;
             --text-body-large--font-weight: 400;
             --text-body-large--letter-spacing: 0.5px;
-
             --text-body-medium: 14px;
             --text-body-medium--line-height: 20px;
             --text-body-medium--font-weight: 400;
             --text-body-medium--letter-spacing: 0.25px;
-
             --text-body-small: 12px;
             --text-body-small--line-height: 16px;
             --text-body-small--font-weight: 400;
             --text-body-small--letter-spacing: 0.4px;
-
             --text-label-large: 14px;
             --text-label-large--line-height: 20px;
             --text-label-large--font-weight: 500;
             --text-label-large--letter-spacing: 0.1px;
-
             --text-label-medium: 12px;
             --text-label-medium--line-height: 16px;
             --text-label-medium--font-weight: 500;
             --text-label-medium--letter-spacing: 0.5px;
-
             --text-label-small: 11px;
             --text-label-small--line-height: 16px;
             --text-label-small--font-weight: 500;
             --text-label-small--letter-spacing: 0.5px;
+        }
+
+        @@theme {
+            --breakpoint-xs: 30rem;
+            --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
         }
 
         /* ============================================================
