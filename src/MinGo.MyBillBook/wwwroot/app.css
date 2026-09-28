@@ -270,6 +270,7 @@ body {
 @media (hover: hover) {
     .md-btn-elevated:hover { box-shadow: var(--shadow-elevation-2); }
     .md-btn-filled:hover   { box-shadow: var(--shadow-elevation-1); }
+    .md-btn-tonal:hover    { box-shadow: var(--shadow-elevation-1); }
 }
 
 /* Disabled */
@@ -598,16 +599,16 @@ select.md-text-field-filled {
 }
 .md-nav-item.active,
 .md-nav-item[aria-current="page"] {
-    background-color: var(--color-secondary-container);
-    color: var(--color-on-secondary-container);
+    background-color: var(--color-primary-container);
+    color: var(--color-on-primary-container);
     font-weight: 500;
 }
 .md-nav-item.active::before { display: none; }
 
-/* Legacy active link rule (was: bg #F3E8FF) — now MD3 tokens */
+/* Legacy active link rule — now MD3 tokens */
 a.active:not(.md-nav-item) {
-    background-color: var(--color-secondary-container);
-    color: var(--color-on-secondary-container);
+    background-color: var(--color-primary-container);
+    color: var(--color-on-primary-container);
     font-weight: 500;
 }
 
@@ -683,12 +684,13 @@ a.active:not(.md-nav-item) {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: color-mix(in srgb, var(--color-scrim) 32%, transparent);
+    background-color: rgba(0, 0, 0, 0.32);
+    background-color: color-mix(in srgb, var(--color-scrim) 32%, transparent);
     padding: 1rem;
 }
 .modal-panel,
 .md-dialog {
-    background: var(--color-surface-container-high);
+    background-color: var(--color-surface-container-high);
     color: var(--color-on-surface);
     border-radius: var(--radius-xl);   /* 28px extra-large */
     box-shadow: var(--shadow-elevation-3);
@@ -716,7 +718,7 @@ a.active:not(.md-nav-item) {
         max-height: 92vh;
         padding: 1.25rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
         animation: sheet-up 0.22s cubic-bezier(0.2, 0, 0, 1);
-        background: var(--color-surface-container);
+        background-color: var(--color-surface-container);
     }
     .modal-panel::before {
         content: "";
@@ -746,7 +748,7 @@ a.active:not(.md-nav-item) {
     padding: 0.875rem 1rem;
     border-radius: var(--radius-xs);
     box-shadow: var(--shadow-elevation-3);
-    background: var(--color-inverse-surface);
+    background-color: var(--color-inverse-surface);
     color: var(--color-inverse-on-surface);
     font-size: var(--text-body-medium);
     line-height: var(--text-body-medium--line-height);
@@ -768,7 +770,7 @@ a.active:not(.md-nav-item) {
 .toast-success,
 .toast-error,
 .toast-info {
-    background: var(--color-inverse-surface);
+    background-color: var(--color-inverse-surface);
     color: var(--color-inverse-on-surface);
 }
 .toast-success::before,
@@ -828,7 +830,7 @@ a.active:not(.md-nav-item) {
 .mobile-appbar {
     position: sticky;
     top: 0;
-    z-index: 30;
+    z-index: 40;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -836,8 +838,9 @@ a.active:not(.md-nav-item) {
     padding-top: env(safe-area-inset-top, 0px);
     padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
     padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
-    background: var(--color-surface-container);
+    background-color: var(--color-surface-container);
     color: var(--color-on-surface);
+    isolation: isolate;
 }
 @media (min-width: 1024px) {
     .mobile-appbar { display: none; }
@@ -961,7 +964,7 @@ table {
     }
     table.responsive-cards tr {
         display: block;
-        background: var(--color-surface-container);
+        background-color: var(--color-surface-container);
         border: 1px solid var(--color-outline-variant);
         border-radius: var(--radius-md);
         padding: 0.5rem 0.75rem;
@@ -1017,12 +1020,12 @@ table {
 .matrix-scroll table td:first-child {
     position: sticky;
     left: 0;
-    background: var(--color-surface-container);
+    background-color: var(--color-surface-container);
     z-index: 1;
     box-shadow: 1px 0 0 var(--color-outline-variant);
 }
 .matrix-scroll table thead th:first-child {
-    background: var(--color-surface-container-high);
+    background-color: var(--color-surface-container-high);
     z-index: 2;
 }
 
@@ -1266,8 +1269,8 @@ table {
 .modal-root,
 .md-dialog-scrim {
     /* Fallback for browsers that don't support color-mix */
-    background: rgba(0, 0, 0, 0.32);
-    background: color-mix(in srgb, var(--color-scrim) 32%, transparent);
+    background-color: rgba(0, 0, 0, 0.32);
+    background-color: color-mix(in srgb, var(--color-scrim) 32%, transparent);
     /* Ensure modal covers full viewport including dynamic toolbar areas */
     min-height: 100vh;
     min-height: 100dvh;
@@ -1326,14 +1329,6 @@ table {
     }
 }
 
-/* Fix 4: Mobile appbar - ensure it stays above all content */
-.mobile-appbar {
-    /* Ensure appbar is always on top of page content */
-    z-index: 40;
-    /* Prevent content from appearing above appbar */
-    isolation: isolate;
-}
-
 /* Fix 5: Responsive cards - prevent text overflow in card mode */
 @media (max-width: 767px) {
     table.responsive-cards td {
@@ -1372,12 +1367,7 @@ table {
     contain: layout style;
 }
 
-/* Fix 9: Scroll hint - improve compatibility */
-.scroll-hint::after {
-    /* Use solid color fallback for gradient */
-    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1));
-    pointer-events: none;
-}
+/* Fix 9: removed — hard-coded gradient broke dark mode; original rule at ~line 1032 is theme-aware */
 
 /* Fix 10: Body scroll lock when modal is open */
 body.modal-open {
@@ -1388,14 +1378,8 @@ body.modal-open {
 }
 
 /* ============================================================
-   Additional Mobile Fixes - Ensure modal backdrop visibility
+   Additional Mobile Fixes - iOS Safari compatibility
    ============================================================ */
-
-/* Ensure modal panel is above backdrop */
-.modal-panel {
-    position: relative;
-    z-index: 1;
-}
 
 /* Fix for iOS Safari: ensure fixed position works correctly */
 @supports (-webkit-touch-callout: none) {

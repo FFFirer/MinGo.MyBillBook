@@ -1,6 +1,6 @@
 @if (_message != null)
 {
-    <div class="md-snackbar @(_isError ? "md-snackbar-error" : "md-snackbar-success")" role="status" aria-live="polite">
+    <div class="md-snackbar bg-inverse-surface text-inverse-on-surface @(_isError ? "md-snackbar-error" : "md-snackbar-success")" role="status" aria-live="polite">
         @_message
     </div>
 }

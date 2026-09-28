@@ -215,7 +215,7 @@
                     <table class="text-body-medium border-collapse min-w-max">
                         <thead>
                             <tr>
-                                <th class="text-left py-2 px-2 sticky left-0 z-10 text-on-surface">@DimensionLabel()</th>
+                                <th class="text-left py-2 px-2 sticky left-0 z-10 bg-surface-container-high text-on-surface">@DimensionLabel()</th>
                                 @foreach (var mo in months)
                                 {
                                     <th class="py-2 px-2 text-right text-on-surface-variant font-normal whitespace-nowrap">@mo.Substring(5)</th>
@@ -226,7 +226,7 @@
                             @foreach (var n in names)
                             {
                                 <tr class="border-t border-outline-variant">
-                                    <td class="py-1.5 px-2 font-medium text-on-surface sticky left-0 z-10 whitespace-nowrap max-w-[8rem] truncate" title="@n">@n</td>
+                                    <td class="py-1.5 px-2 font-medium text-on-surface sticky left-0 z-10 bg-surface-container whitespace-nowrap max-w-[8rem] truncate" title="@n">@n</td>
                                     @foreach (var mo in months)
                                     {
                                         var amt = lookup.GetValueOrDefault((n, mo), 0m);
@@ -262,7 +262,7 @@
                     <table class="text-body-medium border-collapse min-w-max">
                         <thead>
                             <tr>
-                                <th class="text-left py-2 px-2 sticky left-0 z-10 text-on-surface">分类＼标签</th>
+                                <th class="text-left py-2 px-2 sticky left-0 z-10 bg-surface-container-high text-on-surface">分类＼标签</th>
                                 @foreach (var t in tags)
                                 {
                                     <th class="py-2 px-2 text-right text-on-surface-variant font-normal whitespace-nowrap">@t</th>
@@ -273,7 +273,7 @@
                             @foreach (var cat in cats)
                             {
                                 <tr class="border-t border-outline-variant">
-                                    <td class="py-1.5 px-2 font-medium text-on-surface sticky left-0 z-10 whitespace-nowrap max-w-[8rem] truncate" title="@cat">@cat</td>
+                                    <td class="py-1.5 px-2 font-medium text-on-surface sticky left-0 z-10 bg-surface-container whitespace-nowrap max-w-[8rem] truncate" title="@cat">@cat</td>
                                     @foreach (var t in tags)
                                     {
                                         var amt = lookup.GetValueOrDefault((cat, t), 0m);
