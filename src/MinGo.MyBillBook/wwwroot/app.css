@@ -1266,13 +1266,11 @@ table {
 .modal-root,
 .md-dialog-scrim {
     /* Fallback for browsers that don't support color-mix */
-    background: rgba(0, 0, 0, 0.32) !important;
-    background: color-mix(in srgb, var(--color-scrim) 32%, transparent) !important;
+    background: rgba(0, 0, 0, 0.32);
+    background: color-mix(in srgb, var(--color-scrim) 32%, transparent);
     /* Ensure modal covers full viewport including dynamic toolbar areas */
     min-height: 100vh;
     min-height: 100dvh;
-    /* Prevent content from escaping modal bounds */
-    contain: layout style;
 }
 
 /* Fix 2: Modal panel - ensure proper stacking and containment */
@@ -1364,13 +1362,6 @@ table {
 /* Fix 6: Page header - prevent overlap with mobile appbar */
 .page-header {
     /* Ensure page header doesn't overlap with sticky appbar */
-    position: relative;
-    z-index: 1;
-}
-
-/* Fix 7: Main content area - ensure proper containment */
-main {
-    /* Prevent content from escaping main area */
     position: relative;
     z-index: 1;
 }
