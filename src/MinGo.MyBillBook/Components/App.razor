@@ -221,6 +221,68 @@
         @@theme {
             --breakpoint-xs: 30rem;
             --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+            /* ============================================================
+               MD3 Color tokens → Tailwind utilities mapping
+               This tells Tailwind v4 CDN how to map bg-{name}, text-{name}, border-{name}
+               to the corresponding CSS custom properties defined in :root above.
+               ============================================================ */
+            --color-primary: var(--color-primary);
+            --color-on-primary: var(--color-on-primary);
+            --color-primary-container: var(--color-primary-container);
+            --color-on-primary-container: var(--color-on-primary-container);
+
+            --color-secondary: var(--color-secondary);
+            --color-on-secondary: var(--color-on-secondary);
+            --color-secondary-container: var(--color-secondary-container);
+            --color-on-secondary-container: var(--color-on-secondary-container);
+
+            --color-tertiary: var(--color-tertiary);
+            --color-on-tertiary: var(--color-on-tertiary);
+            --color-tertiary-container: var(--color-tertiary-container);
+            --color-on-tertiary-container: var(--color-on-tertiary-container);
+
+            --color-error: var(--color-error);
+            --color-on-error: var(--color-on-error);
+            --color-error-container: var(--color-error-container);
+            --color-on-error-container: var(--color-on-error-container);
+
+            --color-background: var(--color-background);
+            --color-on-background: var(--color-on-background);
+            --color-surface: var(--color-surface);
+            --color-on-surface: var(--color-on-surface);
+            --color-surface-variant: var(--color-surface-variant);
+            --color-on-surface-variant: var(--color-on-surface-variant);
+            --color-surface-dim: var(--color-surface-dim);
+            --color-surface-bright: var(--color-surface-bright);
+            --color-surface-container-lowest: var(--color-surface-container-lowest);
+            --color-surface-container-low: var(--color-surface-container-low);
+            --color-surface-container: var(--color-surface-container);
+            --color-surface-container-high: var(--color-surface-container-high);
+            --color-surface-container-highest: var(--color-surface-container-highest);
+
+            --color-outline: var(--color-outline);
+            --color-outline-variant: var(--color-outline-variant);
+            --color-inverse-surface: var(--color-inverse-surface);
+            --color-inverse-on-surface: var(--color-inverse-on-surface);
+            --color-inverse-primary: var(--color-inverse-primary);
+            --color-scrim: var(--color-scrim);
+            --color-shadow: var(--color-shadow);
+
+            --color-success: var(--color-success);
+            --color-on-success: var(--color-on-success);
+            --color-success-container: var(--color-success-container);
+            --color-on-success-container: var(--color-on-success-container);
+
+            --color-warning: var(--color-warning);
+            --color-on-warning: var(--color-on-warning);
+            --color-warning-container: var(--color-warning-container);
+            --color-on-warning-container: var(--color-on-warning-container);
+
+            --color-info: var(--color-info);
+            --color-on-info: var(--color-on-info);
+            --color-info-container: var(--color-info-container);
+            --color-on-info-container: var(--color-on-info-container);
         }
 
         /* ============================================================
