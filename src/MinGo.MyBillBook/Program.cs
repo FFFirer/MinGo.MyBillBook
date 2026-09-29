@@ -28,7 +28,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         ?? "Data Source=mybillbook.db"));
 
 // DuckDB
-builder.Services.AddSingleton<DuckDbContext>(_ => new DuckDbContext("analysis.duckdb"));
+var duckDbPath = Path.Combine(builder.Environment.ContentRootPath, "analysis.duckdb");
+builder.Services.AddSingleton<DuckDbContext>(_ => new DuckDbContext(duckDbPath));
 
 // Quartz.NET
 builder.Services.AddQuartz(q =>

@@ -56,6 +56,7 @@ public class DuckDbSyncService(AppDbContext efDb, DuckDbContext duckDb)
             status = r.Status ?? "",
             source_file = r.SourceFile ?? "",
             source_transaction_id = r.SourceTransactionId ?? "",
+            source_payment_transaction_id = r.SourcePaymentTransactionId ?? "",
             is_manual_adjusted = r.IsManualAdjusted
         }).ToList();
 
@@ -66,7 +67,8 @@ public class DuckDbSyncService(AppDbContext efDb, DuckDbContext duckDb)
                    CAST(transaction_date AS DATE) AS transaction_date,
                    counterparty, merchant, category_id, category_name, category_icon,
                    product_name, amount_minor, transaction_type, status, source_file,
-                   is_manual_adjusted, source_transaction_id, CURRENT_TIMESTAMP AS synced_at
+                   is_manual_adjusted, source_transaction_id, source_payment_transaction_id,
+                   CURRENT_TIMESTAMP AS synced_at
             FROM read_parquet('{path}')
             """);
 
@@ -124,8 +126,20 @@ public class DuckDbSyncService(AppDbContext efDb, DuckDbContext duckDb)
     private static async Task<string> WriteParquetAsync<T>(List<T> rows, string fileName, CancellationToken ct) where T : class
     {
         var full = Path.Combine(DataDir, fileName);
-        await using var fs = File.Create(full);
-        await ParquetSerializer.SerializeAsync(rows, fs, cancellationToken: ct);
+        // DuckDB 可能仍在读取上一轮的同名 parquet，重试等待其释放句柄。
+        for (var i = 0; ; i++)
+        {
+            try
+            {
+                await using var fs = File.Create(full);
+                await ParquetSerializer.SerializeAsync(rows, fs, cancellationToken: ct);
+                break;
+            }
+            catch (IOException) when (i < 5)
+            {
+                await Task.Delay(300 * (i + 1), ct);
+            }
+        }
         return full.Replace('\\', '/');
     }
 
@@ -149,6 +163,7 @@ public class DuckDbSyncService(AppDbContext efDb, DuckDbContext duckDb)
         public string status { get; set; } = "";
         public string source_file { get; set; } = "";
         public string source_transaction_id { get; set; } = "";
+        public string source_payment_transaction_id { get; set; } = "";
         public bool is_manual_adjusted { get; set; }
     }
 

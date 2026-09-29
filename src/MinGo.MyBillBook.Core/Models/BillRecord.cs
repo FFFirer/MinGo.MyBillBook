@@ -20,6 +20,8 @@ public class BillRecord
     public string SourceFile { get; set; } = string.Empty;
     /// <summary>来源交易号（商户订单号），用于分析层溯源与跨平台核对。</summary>
     public string SourceTransactionId { get; set; } = string.Empty;
+    /// <summary>来源支付流水号（平台交易号），辅助溯源与跨平台对账。</summary>
+    public string SourcePaymentTransactionId { get; set; } = string.Empty;
     public bool IsManualAdjusted { get; set; }
     public bool SyncedToDuckDb { get; set; }
 

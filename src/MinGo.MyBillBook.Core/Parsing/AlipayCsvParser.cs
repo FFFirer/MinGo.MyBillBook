@@ -87,8 +87,8 @@ public class AlipayCsvParser : IBillParser
             {
                 var rawRow = new RawBillRow
                 {
-                    TransactionId = GetField(csv, columnMap, "交易订单号", "商户订单号"),
-                    PaymentTransactionId = GetField(csv, columnMap, "交易号"),
+                    TransactionId = GetField(csv, columnMap, "商家订单号"),
+                    PaymentTransactionId = GetField(csv, columnMap, "交易订单号"),
                     TransactionDate = ParseDate(GetField(csv, columnMap, "交易时间", "交易创建时间")),
                     ProductName = GetField(csv, columnMap, "商品说明", "商品名称"),
                     AmountMinor = ParseAmountMinor(GetField(csv, columnMap, "金额")),

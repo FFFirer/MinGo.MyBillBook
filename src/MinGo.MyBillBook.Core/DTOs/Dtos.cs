@@ -8,6 +8,7 @@ public record BillImportResult(
     int TotalCount,
     int SuccessCount,
     int DuplicateCount,
+    int UpdatedCount,
     List<string> Errors);
 
 public record BillQueryFilter
@@ -46,6 +47,10 @@ public record BillDto
     public string? FundAccountName { get; init; }
     public string Status { get; init; } = string.Empty;
     public bool IsManualAdjusted { get; init; }
+    /// <summary>来源交易号（商户订单号）。</summary>
+    public string? SourceTransactionId { get; init; }
+    /// <summary>来源支付流水号（平台交易号）。</summary>
+    public string? SourcePaymentTransactionId { get; init; }
     /// <summary>该账单携带的标签名称（正交横向维度）。</summary>
     public List<string> Tags { get; init; } = [];
 }

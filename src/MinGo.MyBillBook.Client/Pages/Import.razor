@@ -13,7 +13,7 @@
     {
         <div class="md-card-elevated p-4 sm:p-6">
             <h2 class="text-title-large mb-3 text-on-surface">导入结果</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
                 <div class="text-center p-3 rounded-md bg-surface-container">
                     <p class="text-body-small text-on-surface-variant">总记录数</p>
                     <p class="text-title-large font-medium tabular-nums text-on-surface">@importResult.TotalCount</p>
@@ -22,13 +22,17 @@
                     <p class="text-body-small text-on-success-container">成功导入</p>
                     <p class="text-title-large font-medium text-on-success-container tabular-nums">@importResult.SuccessCount</p>
                 </div>
+                <div class="text-center p-3 rounded-md bg-primary-container">
+                    <p class="text-body-small text-on-primary-container">更新记录</p>
+                    <p class="text-title-large font-medium text-on-primary-container tabular-nums">@importResult.UpdatedCount</p>
+                </div>
                 <div class="text-center p-3 rounded-md bg-warning-container">
                     <p class="text-body-small text-on-warning-container">重复跳过</p>
                     <p class="text-title-large font-medium text-on-warning-container tabular-nums">@importResult.DuplicateCount</p>
                 </div>
-                <div class="text-center p-3 rounded-md bg-primary-container">
-                    <p class="text-body-small text-on-primary-container">批次 ID</p>
-                    <p class="text-title-large font-medium text-on-primary-container tabular-nums">@importResult.BatchId</p>
+                <div class="text-center p-3 rounded-md bg-surface-container">
+                    <p class="text-body-small text-on-surface-variant">批次 ID</p>
+                    <p class="text-title-large font-medium text-on-surface-variant tabular-nums">@importResult.BatchId</p>
                 </div>
             </div>
             @if (importResult.Errors.Count > 0)
@@ -295,7 +299,7 @@
         await LoadBatches();
     }
 
-    private record BillImportResult(int BatchId, string FileName, int TotalCount, int SuccessCount, int DuplicateCount, List<string> Errors);
+    private record BillImportResult(int BatchId, string FileName, int TotalCount, int SuccessCount, int DuplicateCount, int UpdatedCount, List<string> Errors);
     private record BatchInfo(int Id, string PlatformName, string FileName, DateTime ImportDate, int TotalCount, int SuccessCount, int DuplicateCount, string Status);
     private record PipelineRunInfo(int Id, string PipelineType, string Status, DateTime StartedAt, DateTime? CompletedAt, List<PipelineStepInfo> Steps);
     private record PipelineStepInfo(string StepName, string Status, int InputCount, int OutputCount, int ErrorCount, int WarningCount, DateTime? CompletedAt);

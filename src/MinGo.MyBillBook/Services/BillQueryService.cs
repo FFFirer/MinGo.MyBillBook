@@ -56,6 +56,7 @@ public class BillQueryService(AppDbContext db) : IBillQueryService
                 TransactionType = r.TransactionType.ToString(), PlatformName = r.Platform.Name,
                 FundAccountName = r.FundAccount != null ? r.FundAccount.Name : null,
                 r.Status, r.IsManualAdjusted,
+                r.SourceTransactionId, r.SourcePaymentTransactionId,
                 Tags = r.Tags.Select(t => t.Tag.Name).ToList()
             })
             .ToListAsync(ct);
@@ -67,6 +68,7 @@ public class BillQueryService(AppDbContext db) : IBillQueryService
             ProductName = r.ProductName, Amount = r.AmountMinor / 100m,
             TransactionType = r.TransactionType, PlatformName = r.PlatformName,
             FundAccountName = r.FundAccountName, Status = r.Status, IsManualAdjusted = r.IsManualAdjusted,
+            SourceTransactionId = r.SourceTransactionId, SourcePaymentTransactionId = r.SourcePaymentTransactionId,
             Tags = r.Tags
         }).ToList();
 
@@ -85,6 +87,7 @@ public class BillQueryService(AppDbContext db) : IBillQueryService
                 TransactionType = x.TransactionType.ToString(), PlatformName = x.Platform.Name,
                 FundAccountName = x.FundAccount != null ? x.FundAccount.Name : null,
                 x.Status, x.IsManualAdjusted,
+                x.SourceTransactionId, x.SourcePaymentTransactionId,
                 Tags = x.Tags.Select(t => t.Tag.Name).ToList()
             })
             .FirstOrDefaultAsync(ct);
@@ -97,6 +100,7 @@ public class BillQueryService(AppDbContext db) : IBillQueryService
             ProductName = r.ProductName, Amount = r.AmountMinor / 100m,
             TransactionType = r.TransactionType, PlatformName = r.PlatformName,
             FundAccountName = r.FundAccountName, Status = r.Status, IsManualAdjusted = r.IsManualAdjusted,
+            SourceTransactionId = r.SourceTransactionId, SourcePaymentTransactionId = r.SourcePaymentTransactionId,
             Tags = r.Tags
         };
     }

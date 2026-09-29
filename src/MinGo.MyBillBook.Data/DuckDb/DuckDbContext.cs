@@ -35,6 +35,15 @@ public class DuckDbContext : IDisposable
                 File.Delete(dbPath);
             _connection.Open();
         }
+        catch (DuckDBException ex) when (
+            ex.Message.Contains("already open", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("Cannot open file", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("正在使用此文件", StringComparison.OrdinalIgnoreCase))
+        {
+            // 文件被其他进程锁定：等待后重试
+            Thread.Sleep(500);
+            _connection.Open();
+        }
     }
 
     private void InitializeSchema()
@@ -60,6 +69,7 @@ public class DuckDbContext : IDisposable
                 source_file VARCHAR,
                 is_manual_adjusted BOOLEAN,
                 source_transaction_id VARCHAR,
+                source_payment_transaction_id VARCHAR,
                 synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS merchants (
@@ -89,6 +99,7 @@ public class DuckDbContext : IDisposable
         alter.CommandText = """
             ALTER TABLE bill_records ADD COLUMN IF NOT EXISTS merchant_id INTEGER;
             ALTER TABLE bill_records ADD COLUMN IF NOT EXISTS source_transaction_id VARCHAR;
+            ALTER TABLE bill_records ADD COLUMN IF NOT EXISTS source_payment_transaction_id VARCHAR;
             """;
         alter.ExecuteNonQuery();
     }

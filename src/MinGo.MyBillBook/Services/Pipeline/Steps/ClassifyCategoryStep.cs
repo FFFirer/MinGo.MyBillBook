@@ -59,6 +59,7 @@ public class ClassifyCategoryStep(
                 Status = tx.Status,
                 SourceFile = context.Batch.FileName,
                 SourceTransactionId = tx.SourceTransactionId,
+                SourcePaymentTransactionId = tx.SourcePaymentTransactionId,
                 IsManualAdjusted = false,
                 SyncedToDuckDb = false
             };

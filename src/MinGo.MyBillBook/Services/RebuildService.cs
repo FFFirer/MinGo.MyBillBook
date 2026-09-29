@@ -1,6 +1,9 @@
+using System.Linq.Expressions;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using MinGo.MyBillBook.Core.Interfaces;
 using MinGo.MyBillBook.Core.Models;
+using MinGo.MyBillBook.Core.Parsing;
 using MinGo.MyBillBook.Core.Pipeline;
 using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Services.Pipeline;
@@ -39,8 +42,130 @@ public class RebuildService(
         foreach (var batch in batches)
             total += await RebuildBatchAsync(batch, startStep, startOrder, ct);
 
+        // 回填历史 BillRawRecord / BillRecord 缺失的流水号字段（列是后期迁移加入的，早期记录为空字符串）。
+        await BackfillTransactionIdsAsync(ct);
+
         logger.LogInformation("局部重跑完成：from={FromStep}, 批次 {BatchCount} 个, 记录 {Total} 条", startStep, batches.Count, total);
         return total;
+    }
+
+    /// <summary>
+    /// 从 BillRawRecords 回填 BillRecords 中缺失的 SourceTransactionId / SourcePaymentTransactionId。
+    /// 这两个列是后期迁移加入的，历史记录的值为空字符串。
+    /// 优先使用 RawRecord 标量字段；若标量字段本身也为空（早期导入），则从 RawPayload JSON 中解析。
+    /// 回填后标记 SyncedToDuckDb = false 以触发 DuckDB 同步。
+    /// </summary>
+    private async Task BackfillTransactionIdsAsync(CancellationToken ct)
+    {
+        // 第一步：回填 BillRawRecord 自身的标量字段（从 RawPayload JSON 解析）。
+        await BackfillRawRecordScalarsAsync(ct);
+
+        // 第二步：从（已更新的）BillRawRecord 回填 BillRecord。
+        await BackfillFieldAsync(
+            r => r.SourcePaymentTransactionId == "" && r.RawRecordId > 0,
+            (r, raw) => r.SourcePaymentTransactionId =
+                !string.IsNullOrEmpty(raw.SourcePaymentTransactionId)
+                    ? raw.SourcePaymentTransactionId
+                    : ParsePaymentTransactionIdFromPayload(raw.RawPayload),
+            "SourcePaymentTransactionId", ct);
+
+        await BackfillFieldAsync(
+            r => r.SourceTransactionId == "" && r.RawRecordId > 0,
+            (r, raw) => r.SourceTransactionId =
+                !string.IsNullOrEmpty(raw.SourceTransactionId)
+                    ? raw.SourceTransactionId
+                    : ParseTransactionIdFromPayload(raw.RawPayload),
+            "SourceTransactionId", ct);
+    }
+
+    /// <summary>
+    /// 回填 BillRawRecord 上缺失的 SourceTransactionId / SourcePaymentTransactionId 标量字段。
+    /// 早期导入时这些列尚未创建，标量值为空字符串，但 RawPayload JSON 中包含完整的解析结果。
+    /// </summary>
+    private async Task BackfillRawRecordScalarsAsync(CancellationToken ct)
+    {
+        var emptyRawIds = await db.BillRawRecords
+            .Where(r => r.SourcePaymentTransactionId == "" || r.SourceTransactionId == "")
+            .Select(r => r.Id)
+            .ToListAsync(ct);
+        if (emptyRawIds.Count == 0) return;
+
+        var batchSize = 500;
+        int count = 0;
+        for (var i = 0; i < emptyRawIds.Count; i += batchSize)
+        {
+            var batch = emptyRawIds.Skip(i).Take(batchSize).ToList();
+            var raws = await db.BillRawRecords
+                .Where(r => batch.Contains(r.Id))
+                .ToListAsync(ct);
+
+            foreach (var raw in raws)
+            {
+                var changed = false;
+                if (string.IsNullOrEmpty(raw.SourcePaymentTransactionId))
+                {
+                    raw.SourcePaymentTransactionId = ParsePaymentTransactionIdFromPayload(raw.RawPayload);
+                    changed = true;
+                }
+                if (string.IsNullOrEmpty(raw.SourceTransactionId))
+                {
+                    raw.SourceTransactionId = ParseTransactionIdFromPayload(raw.RawPayload);
+                    changed = true;
+                }
+                if (changed) count++;
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+
+        logger.LogInformation("回填 BillRawRecord 标量字段: {Count} 条", count);
+    }
+
+    private static string ParsePaymentTransactionIdFromPayload(string payload)
+    {
+        if (string.IsNullOrEmpty(payload)) return "";
+        var row = JsonSerializer.Deserialize<RawBillRow>(payload);
+        return row?.PaymentTransactionId ?? "";
+    }
+
+    private static string ParseTransactionIdFromPayload(string payload)
+    {
+        if (string.IsNullOrEmpty(payload)) return "";
+        var row = JsonSerializer.Deserialize<RawBillRow>(payload);
+        return row?.TransactionId ?? "";
+    }
+
+    private async Task BackfillFieldAsync(
+        System.Linq.Expressions.Expression<Func<BillRecord, bool>> predicate,
+        Action<BillRecord, BillRawRecord> assign,
+        string fieldName,
+        CancellationToken ct)
+    {
+        var ids = await db.BillRecords.Where(predicate).Select(r => r.Id).ToListAsync(ct);
+        if (ids.Count == 0) return;
+
+        var batchSize = 500;
+        for (var i = 0; i < ids.Count; i += batchSize)
+        {
+            var batch = ids.Skip(i).Take(batchSize).ToList();
+            var rows = await db.BillRecords
+                .Where(r => batch.Contains(r.Id))
+                .Include(r => r.RawRecord)
+                .ToListAsync(ct);
+
+            foreach (var row in rows)
+            {
+                if (row.RawRecord is not null)
+                {
+                    assign(row, row.RawRecord);
+                    row.SyncedToDuckDb = false;
+                }
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+
+        logger.LogInformation("回填 {Field}: {Count} 条", fieldName, ids.Count);
     }
 
     /// <summary>

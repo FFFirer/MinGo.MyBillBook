@@ -103,6 +103,8 @@
                             <th class="text-left hide-mobile">标签</th>
                             <th class="text-right">金额</th>
                             <th class="text-center hide-mobile">平台</th>
+                            <th class="text-left hide-mobile">商家流水号</th>
+                            <th class="text-left hide-mobile">平台流水号</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -135,6 +137,8 @@
                                     @(bill.TransactionType == "Income" ? "+" : "-")@bill.Amount.ToString("F2")
                                 </td>
                                 <td data-label="平台" class="text-center text-on-surface-variant hide-mobile">@bill.PlatformName</td>
+                                <td data-label="商家流水号" class="text-on-surface-variant font-mono text-body-small truncate max-w-40 hide-mobile" title="@bill.SourceTransactionId">@(bill.SourceTransactionId ?? "—")</td>
+                                <td data-label="平台流水号" class="text-on-surface-variant font-mono text-body-small truncate max-w-40 hide-mobile" title="@bill.SourcePaymentTransactionId">@(bill.SourcePaymentTransactionId ?? "—")</td>
                             </tr>
                         }
                     </tbody>
@@ -156,6 +160,19 @@
                             <span class="bill-card__date">@bill.TransactionDate.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)</span>
                             <span class="bill-card__category">@(bill.CategoryName ?? "未分类")</span>
                         </div>
+                        @if (!string.IsNullOrWhiteSpace(bill.SourceTransactionId) || !string.IsNullOrWhiteSpace(bill.SourcePaymentTransactionId))
+                        {
+                            <div class="bill-card__ids text-body-small text-on-surface-variant mt-1 space-y-0.5">
+                                @if (!string.IsNullOrWhiteSpace(bill.SourceTransactionId))
+                                {
+                                    <div class="truncate"><span class="text-on-surface-variant/70">商家：</span><span class="font-mono">@bill.SourceTransactionId</span></div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(bill.SourcePaymentTransactionId))
+                                {
+                                    <div class="truncate"><span class="text-on-surface-variant/70">平台：</span><span class="font-mono">@bill.SourcePaymentTransactionId</span></div>
+                                }
+                            </div>
+                        }
                     </div>
                 }
             </div>
@@ -183,6 +200,25 @@
                 @if (!string.IsNullOrWhiteSpace(detailBill.ProductName))
                 {
                     <p class="text-body-small text-on-surface-variant mt-0.5 break-words">@detailBill.ProductName</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(detailBill.SourceTransactionId) || !string.IsNullOrWhiteSpace(detailBill.SourcePaymentTransactionId))
+                {
+                    <div class="mt-2 pt-2 border-t border-outline-variant/30 space-y-1">
+                        @if (!string.IsNullOrWhiteSpace(detailBill.SourceTransactionId))
+                        {
+                            <p class="text-body-small text-on-surface-variant">
+                                <span class="text-on-surface-variant/70">商家流水号：</span>
+                                <span class="font-mono text-on-surface break-all">@detailBill.SourceTransactionId</span>
+                            </p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(detailBill.SourcePaymentTransactionId))
+                        {
+                            <p class="text-body-small text-on-surface-variant">
+                                <span class="text-on-surface-variant/70">平台流水号：</span>
+                                <span class="font-mono text-on-surface break-all">@detailBill.SourcePaymentTransactionId</span>
+                            </p>
+                        }
+                    </div>
                 }
             }
         </div>
@@ -345,6 +381,7 @@
     private record BillItem(int Id, DateTime TransactionDate, string Counterparty, string Merchant,
         string? CategoryName, int? CategoryId, string ProductName, decimal Amount,
         string TransactionType, string PlatformName, string? FundAccountName, string Status, bool IsManualAdjusted,
+        string? SourceTransactionId, string? SourcePaymentTransactionId,
         List<string> Tags);
     private record TagOption(int Id, string Name);
     private record BillTag(int TagId, string Name, string Source, double Confidence);

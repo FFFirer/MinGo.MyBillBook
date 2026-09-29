@@ -86,6 +86,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.Counterparty).HasMaxLength(200);
             e.Property(x => x.ProductName).HasMaxLength(500);
             e.Property(x => x.SourceTransactionId).HasMaxLength(200);
+            e.Property(x => x.SourcePaymentTransactionId).HasMaxLength(200);
             e.HasOne(x => x.RawRecord).WithMany().HasForeignKey(x => x.RawRecordId);
             e.HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformId);
             e.HasOne(x => x.FundAccount).WithMany().HasForeignKey(x => x.FundAccountId);
@@ -96,6 +97,7 @@ public class AppDbContext : DbContext
             e.HasIndex(x => x.MerchantId);
             e.HasIndex(x => x.SyncedToDuckDb);
             e.HasIndex(x => x.SourceTransactionId);
+            e.HasIndex(x => x.SourcePaymentTransactionId);
         });
 
         modelBuilder.Entity<ClassificationResult>(e =>
