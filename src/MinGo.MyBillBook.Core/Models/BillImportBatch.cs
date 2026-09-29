@@ -11,6 +11,9 @@ public class BillImportBatch
     public int DuplicateCount { get; set; }
     public ImportBatchStatus Status { get; set; } = ImportBatchStatus.Imported;
 
+    /// <summary>原始文件在对象存储中的 key，用于重新解析（ReParse）。</summary>
+    public string? OriginalFileKey { get; set; }
+
     public PaymentPlatform Platform { get; set; } = null!;
     public ICollection<BillRawRecord> RawRecords { get; set; } = [];
 }

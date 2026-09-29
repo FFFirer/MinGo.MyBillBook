@@ -10,6 +10,7 @@ using MinGo.MyBillBook.Hubs;
 using MinGo.MyBillBook.Services;
 using MinGo.MyBillBook.Services.Pipeline;
 using MinGo.MyBillBook.Services.Pipeline.Steps;
+using MinGo.MyBillBook.Services.Storage;
 using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,6 +52,7 @@ builder.Services.AddQuartz(q =>
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // Application services
+builder.Services.AddSingleton<IObjectStorage, LocalObjectStorage>();
 builder.Services.AddScoped<IBillImportService, BillImportService>();
 builder.Services.AddScoped<IBillProcessingService, BillProcessingService>();
 builder.Services.AddScoped<IBillQueryService, BillQueryService>();
@@ -67,6 +69,7 @@ builder.Services.AddSingleton<IBillParser, WechatCsvParser>();
 
 // Pipeline engine
 builder.Services.AddScoped<IPipelineRunner, PipelineRunner>();
+builder.Services.AddScoped<IPipelineStep<BillImportContext>, ReParseStep>();
 builder.Services.AddScoped<IPipelineStep<BillImportContext>, NormalizeStep>();
 builder.Services.AddScoped<IPipelineStep<BillImportContext>, ResolveMerchantStep>();
 builder.Services.AddScoped<IPipelineStep<BillImportContext>, DeduplicateStep>();

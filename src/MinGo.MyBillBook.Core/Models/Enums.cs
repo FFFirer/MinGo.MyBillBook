@@ -171,12 +171,14 @@ public enum PipelineStepStatus
 }
 
 /// <summary>
-/// 后台任务类型（设计第 16 节 Job 队列）。Import 为批次处理，Rebuild 为规则变更后的局部重跑。
+/// 后台任务类型（设计第 16 节 Job 队列）。Import 为批次处理，Rebuild 为规则变更后的局部重跑，
+/// Reparse 为从原始文件重新解析并重建。
 /// </summary>
 public enum PipelineJobType
 {
     Process = 0,
-    Rebuild = 1
+    Rebuild = 1,
+    Reparse = 2
 }
 
 /// <summary>

@@ -222,6 +222,7 @@ public class AppDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.FileName).HasMaxLength(500).IsRequired();
+            e.Property(x => x.OriginalFileKey).HasMaxLength(1000);
             e.HasOne(x => x.Platform).WithMany().HasForeignKey(x => x.PlatformId);
         });
 

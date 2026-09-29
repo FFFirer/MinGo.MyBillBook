@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using MinGo.MyBillBook.Core.Interfaces;
 using MinGo.MyBillBook.Core.Models;
 using MinGo.MyBillBook.Data;
 
@@ -13,7 +14,7 @@ namespace MinGo.MyBillBook.Controllers;
 /// </summary>
 [ApiController]
 [Route("api")]
-public class JobController(AppDbContext db) : ControllerBase
+public class JobController(AppDbContext db, IRebuildService rebuildService) : ControllerBase
 {
     /// <summary>入队局部重建任务（规则变更后无需重导 CSV）。立即返回 jobId，Worker 异步执行。</summary>
     [HttpPost("bill/rebuild")]
@@ -31,6 +32,31 @@ public class JobController(AppDbContext db) : ControllerBase
         db.PipelineJobs.Add(job);
         await db.SaveChangesAsync(ct);
         return Accepted($"/api/jobs/{job.Id}", new { jobId = job.Id, status = job.Status.ToString(), from, batchId });
+    }
+
+    /// <summary>入队从原始文件重建任务。从存储的原始文件重新解析并跑完整管道。</summary>
+    [HttpPost("bill/reparse")]
+    public async Task<ActionResult> EnqueueReparse([FromQuery] int? batchId, CancellationToken ct)
+    {
+        var payload = JsonSerializer.Serialize(new { batchId });
+        var job = new PipelineJob
+        {
+            Type = PipelineJobType.Reparse,
+            Payload = payload,
+            Status = PipelineJobStatus.Pending,
+            CreatedAt = DateTime.Now
+        };
+        db.PipelineJobs.Add(job);
+        await db.SaveChangesAsync(ct);
+        return Accepted($"/api/jobs/{job.Id}", new { jobId = job.Id, status = job.Status.ToString(), batchId });
+    }
+
+    /// <summary>清空全部账单数据（保留分类/商户/标签等规则配置）。</summary>
+    [HttpPost("bill/clear-all")]
+    public async Task<ActionResult<ClearDataResult>> ClearAllData(CancellationToken ct)
+    {
+        var result = await rebuildService.ClearAllDataAsync(ct);
+        return Ok(result);
     }
 
     /// <summary>入队批次处理任务。立即返回 jobId，Worker 异步执行。</summary>

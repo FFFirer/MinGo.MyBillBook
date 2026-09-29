@@ -24,6 +24,7 @@
             <div class="flex-1 sm:flex-none sm:min-w-[16rem]">
                 <label for="fromStepSelect" class="block text-body-small text-on-surface-variant mb-1">起点步骤</label>
                 <select id="fromStepSelect" @bind="fromStep" class="md-text-field-outlined w-full">
+                    <option value="ReParse">ReParse（从原始文件重解析）</option>
                     <option value="Normalize">Normalize（全量重建）</option>
                     <option value="ResolveMerchant">ResolveMerchant（商户重算）</option>
                     <option value="ClassifyCategory">ClassifyCategory（分类/标签重算）</option>
@@ -41,6 +42,53 @@
             </button>
         </div>
     </div>
+
+    <!-- 从原始文件重解析 -->
+    <div class="md-card-elevated">
+        <h2 class="text-title-medium md:text-title-large mb-1">从原始文件重解析</h2>
+        <p class="text-body-small text-on-surface-variant mb-4">从对象存储中读取导入时保存的原始文件，使用当前解析器重新解析并跑完整管道。适用于解析器升级后重跑历史数据。</p>
+        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+            <div class="flex-1 sm:flex-none sm:w-40">
+                <label for="reparseBatchIdInput" class="block text-body-small text-on-surface-variant mb-1">批次 Id（留空=全部）</label>
+                <input id="reparseBatchIdInput" type="number" @bind="reparseBatchId" placeholder="全部批次"
+                       class="md-text-field-outlined w-full" />
+            </div>
+            <button @onclick="TriggerReParseAsync" disabled="@reparseBusy"
+                    class="md-btn-filled w-full sm:w-auto shrink-0">
+                <span class="material-symbols-outlined mr-1">restart_alt</span>
+                @(reparseBusy ? "入队中…" : "入队重解析")
+            </button>
+        </div>
+    </div>
+
+    <!-- 危险操作：清空数据 -->
+    <div class="md-card-elevated" style="border: 1px solid var(--color-error);">
+        <h2 class="text-title-medium md:text-title-large mb-1 text-error">清空全部数据</h2>
+        <p class="text-body-small text-on-surface-variant mb-4">删除所有账单相关数据（Raw / Normalized / Canonical / 重复候选 / 管道运行记录），但保留分类、商户、标签等规则配置。此操作不可逆。</p>
+        <button @onclick="OnClearAllClick" disabled="@clearBusy"
+                class="md-btn-danger w-full sm:w-auto">
+            <span class="material-symbols-outlined mr-1">delete_forever</span>
+            @(clearBusy ? "清空中…" : "清空全部数据")
+        </button>
+    </div>
+
+    <!-- 确认对话框 -->
+    @if (showClearConfirm)
+    {
+        <div class="modal-root" @onclick="() => showClearConfirm = false">
+            <div class="modal-panel modal-sm md-card-elevated" @onclick:stopPropagation>
+                <h3 class="text-title-medium text-error mb-2">确认清空</h3>
+                <p class="text-body-medium text-on-surface-variant mb-4">
+                    此操作将删除所有账单数据，但保留规则配置。<br/>
+                    <strong class="text-error">此操作不可逆！</strong>
+                </p>
+                <div class="flex justify-end gap-2">
+                    <button @onclick="() => showClearConfirm = false" class="md-btn-outlined">取消</button>
+                    <button @onclick="ConfirmClearAllAsync" class="md-btn-danger">确认清空</button>
+                </div>
+            </div>
+        </div>
+    }
 
     <!-- 任务队列 -->
     <div class="md-card-elevated">
@@ -190,7 +238,11 @@
     private List<RuleDto>? rules;
     private string fromStep = "ResolveMerchant";
     private int? batchId;
+    private int? reparseBatchId;
     private bool busy;
+    private bool reparseBusy;
+    private bool clearBusy;
+    private bool showClearConfirm;
     private Toast? toastRef;
     private CancellationTokenSource? cts;
     private Task? pollTask;
@@ -258,6 +310,67 @@
         }
     }
 
+    private async Task TriggerReParseAsync()
+    {
+        reparseBusy = true;
+        try
+        {
+            var url = "api/bill/reparse";
+            if (reparseBatchId.HasValue) url += $"?batchId={reparseBatchId.Value}";
+            var resp = await Http.PostAsync(url, null);
+            if (resp.IsSuccessStatusCode)
+            {
+                ShowToast("重解析任务已入队，Worker 将异步执行", false);
+                await LoadAllAsync();
+            }
+            else
+            {
+                ShowToast($"入队失败：{(int)resp.StatusCode}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"入队异常：{ex.Message}", true);
+        }
+        finally
+        {
+            reparseBusy = false;
+        }
+    }
+
+    private void OnClearAllClick()
+    {
+        showClearConfirm = true;
+    }
+
+    private async Task ConfirmClearAllAsync()
+    {
+        showClearConfirm = false;
+        clearBusy = true;
+        try
+        {
+            var resp = await Http.PostAsync("api/bill/clear-all", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var result = await resp.Content.ReadFromJsonAsync<ClearDataResult>();
+                ShowToast($"数据已清空，共删除 {result?.TotalDeleted ?? 0} 条记录", false);
+                await LoadAllAsync();
+            }
+            else
+            {
+                ShowToast($"清空失败：{(int)resp.StatusCode}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"清空异常：{ex.Message}", true);
+        }
+        finally
+        {
+            clearBusy = false;
+        }
+    }
+
     private void ShowToast(string msg, bool isError)
     {
         _ = toastRef?.Show(msg, isError);
@@ -299,4 +412,7 @@
         DateTime CreatedAt, DateTime? StartedAt, DateTime? CompletedAt, string? Error);
 
     private record RuleDto(string Type, int RuleId, string Condition, string Action, int Priority, bool IsActive);
+
+    private record ClearDataResult(int TotalDeleted, int BatchesDeleted, int RawRecordsDeleted,
+        int NormalizedDeleted, int CanonicalDeleted, int DuplicatesDeleted, int PipelineRunsDeleted);
 }

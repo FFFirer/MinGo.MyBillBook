@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MinGo.MyBillBook.Services;
 
-public class BillImportService(AppDbContext db, IBillParserFactory parserFactory) : IBillImportService
+public class BillImportService(AppDbContext db, IBillParserFactory parserFactory, IObjectStorage objectStorage) : IBillImportService
 {
     public async Task<BillImportResult> ImportAsync(Stream fileStream, string fileName, int platformId, CancellationToken ct = default)
     {
@@ -16,7 +16,12 @@ public class BillImportService(AppDbContext db, IBillParserFactory parserFactory
             ?? parserFactory.DetectParser(fileStream, fileName)
             ?? throw new InvalidOperationException("无法识别的文件格式");
 
-        var result = parser.Parse(fileStream, fileName);
+        // 将流拷贝到可重读的缓冲区：解析器会消费流，之后还需存储原始文件
+        using var buffer = new MemoryStream();
+        await fileStream.CopyToAsync(buffer, ct);
+        buffer.Position = 0;
+
+        var result = parser.Parse(buffer, fileName);
         var errors = new List<string>(result.Errors);
 
         var batch = new BillImportBatch
@@ -28,6 +33,12 @@ public class BillImportService(AppDbContext db, IBillParserFactory parserFactory
             Status = ImportBatchStatus.Imported
         };
         db.BillImportBatches.Add(batch);
+        await db.SaveChangesAsync(ct);
+
+        // 存储原始文件到对象存储，用于后续重新解析（ReParse）
+        buffer.Position = 0;
+        var storageKey = $"bills/{DateTime.Now:yyyy/MM}/{batch.Id}_{fileName}";
+        batch.OriginalFileKey = await objectStorage.PutAsync(storageKey, buffer, ct: ct);
         await db.SaveChangesAsync(ct);
 
         int success = 0, duplicate = 0, updated = 0, rowNumber = 0;

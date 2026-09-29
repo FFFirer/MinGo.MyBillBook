@@ -70,6 +70,14 @@ public class PipelineJobWorker(
                     logger.LogInformation("Job {JobId} (Rebuild from={From}) 完成，重算 {Count} 条", job.Id, payload.From, count);
                     break;
                 }
+                case PipelineJobType.Reparse:
+                {
+                    var payload = ParseRebuildPayload(job.Payload);
+                    var rebuild = scope.ServiceProvider.GetRequiredService<IRebuildService>();
+                    var count = await rebuild.RebuildAsync("ReParse", payload.BatchId, ct);
+                    logger.LogInformation("Job {JobId} (Reparse) 完成，重算 {Count} 条", job.Id, count);
+                    break;
+                }
                 case PipelineJobType.Process:
                 {
                     var payload = ParseRebuildPayload(job.Payload);

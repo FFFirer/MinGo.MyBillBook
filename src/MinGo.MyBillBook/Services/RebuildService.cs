@@ -19,6 +19,7 @@ public class RebuildService(
     AppDbContext db,
     IPipelineRunner pipelineRunner,
     IMerchantResolver merchantResolver,
+    IObjectStorage objectStorage,
     IEnumerable<IPipelineStep<BillImportContext>> importSteps,
     ILogger<RebuildService> logger) : IRebuildService
 {
@@ -170,7 +171,7 @@ public class RebuildService(
 
     /// <summary>
     /// 将请求的起点步骤映射到受支持的重算起点，并返回其 Order。
-    /// Canonical 层作为整体经 PublishCanonical 重新生成，故起点收敛到 Normalize / ResolveMerchant / ClassifyCategory 三档。
+    /// Canonical 层作为整体经 PublishCanonical 重新生成，故起点收敛到 ReParse / Normalize / ResolveMerchant / ClassifyCategory 四档。
     /// </summary>
     private static (string Step, int Order) ResolveStart(string? fromStep)
     {
@@ -179,6 +180,7 @@ public class RebuildService(
 
         var order = fromStep.Trim().ToLowerInvariant() switch
         {
+            "reparsestep" or "reparse" => 5,
             "normalizestep" or "normalize" => 10,
             "resolvemerchantstep" or "resolvemerchant" or "merchant" => 15,
             "deduplicatestep" or "deduplicate" => 15,
@@ -191,6 +193,7 @@ public class RebuildService(
 
         return order switch
         {
+            5 => ("ReParse", 5),
             10 => ("Normalize", 10),
             15 => ("ResolveMerchant", 15),
             _ => ("ClassifyCategory", 20)
@@ -199,6 +202,18 @@ public class RebuildService(
 
     private async Task<int> RebuildBatchAsync(BillImportBatch batch, string startStep, int startOrder, CancellationToken ct)
     {
+        // ReParse 起点：ReParseStep 自己负责清理旧数据并创建新 RawRecords，无需预先清理
+        if (startOrder == 5)
+        {
+            var reparseContext = new BillImportContext
+            {
+                ImportBatchId = batch.Id,
+                Source = "rebuild",
+                Batch = batch
+            };
+            return await pipelineRunner.RunAsync(reparseContext, importSteps, PipelineType.Rebuild, startStep, ct);
+        }
+
         // 1) 删除本批次的下游 Canonical 数据（保留手工调整记录），避免 PublishCanonical 重新生成时重复。
         var preservedRawIds = await ClearCanonicalAsync(batch.Id, startOrder, ct);
 
@@ -319,5 +334,69 @@ public class RebuildService(
         foreach (var part in matched.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             if (int.TryParse(part, out var id))
                 yield return id;
+    }
+
+    /// <inheritdoc />
+    public async Task<ClearDataResult> ClearAllDataAsync(CancellationToken ct = default)
+    {
+        logger.LogInformation("开始清空全部账单数据...");
+
+        // 按依赖顺序删除（子表先删）
+        var classifications = await db.ClassificationResults.ToListAsync(ct);
+        db.ClassificationResults.RemoveRange(classifications);
+
+        var tags = await db.TransactionTags.ToListAsync(ct);
+        db.TransactionTags.RemoveRange(tags);
+
+        var candidates = await db.DuplicateCandidates.ToListAsync(ct);
+        db.DuplicateCandidates.RemoveRange(candidates);
+
+        var transfers = await db.Transfers.ToListAsync(ct);
+        db.Transfers.RemoveRange(transfers);
+
+        var bills = await db.BillRecords.ToListAsync(ct);
+        db.BillRecords.RemoveRange(bills);
+
+        var normalized = await db.NormalizedTransactions.ToListAsync(ct);
+        db.NormalizedTransactions.RemoveRange(normalized);
+
+        var raws = await db.BillRawRecords.ToListAsync(ct);
+        db.BillRawRecords.RemoveRange(raws);
+
+        // 删除对象存储中的原始文件
+        var batches = await db.BillImportBatches.ToListAsync(ct);
+        foreach (var batch in batches)
+        {
+            if (!string.IsNullOrEmpty(batch.OriginalFileKey))
+            {
+                try
+                {
+                    await objectStorage.DeleteAsync(batch.OriginalFileKey, ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "删除原始文件失败: {Key}", batch.OriginalFileKey);
+                }
+            }
+        }
+
+        var batchCount = batches.Count;
+        db.BillImportBatches.RemoveRange(batches);
+
+        // 清理管道运行历史
+        var pipelineSteps = await db.PipelineStepRuns.ToListAsync(ct);
+        db.PipelineStepRuns.RemoveRange(pipelineSteps);
+        var runs = await db.PipelineRuns.ToListAsync(ct);
+        db.PipelineRuns.RemoveRange(runs);
+        var jobs = await db.PipelineJobs.ToListAsync(ct);
+        db.PipelineJobs.RemoveRange(jobs);
+
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "清空完成: 批次 {Batches}, 原始记录 {Raws}, 标准化记录 {Normalized}, 账单记录 {Bills}",
+            batchCount, raws.Count, normalized.Count, bills.Count);
+
+        return new ClearDataResult(batchCount, raws.Count, normalized.Count, bills.Count);
     }
 }

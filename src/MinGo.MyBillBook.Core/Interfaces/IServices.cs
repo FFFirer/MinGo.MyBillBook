@@ -117,7 +117,17 @@ public interface IRebuildService
     /// batchId 为空则重建所有已完成批次。返回重跑的记录数。
     /// </summary>
     Task<int> RebuildAsync(string? fromStep, int? batchId, CancellationToken ct = default);
+
+    /// <summary>
+    /// 清空全部账单数据（BillRecords/NormalizedTransactions/BillRawRecords/BillImportBatches 及关联的
+    /// ClassificationResults/TransactionTags/DuplicateCandidates/Transfers/PipelineRuns/PipelineJobs），
+    /// 保留分类/商户/标签等规则配置。同时清空对象存储中的原始文件和 DuckDB 分析表。
+    /// </summary>
+    Task<ClearDataResult> ClearAllDataAsync(CancellationToken ct = default);
 }
+
+/// <summary>清空数据操作结果。</summary>
+public record ClearDataResult(int BatchesDeleted, int RawRecordsDeleted, int NormalizedDeleted, int BillRecordsDeleted);
 
 /// <summary>
 /// 从已导入账单的支付宝"交易分类"列扫描唯一原始分类，
