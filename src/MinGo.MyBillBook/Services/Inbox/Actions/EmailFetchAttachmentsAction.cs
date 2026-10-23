@@ -46,7 +46,7 @@ public sealed class EmailFetchAttachmentsAction(
         }
 
         var folderName = context.Get("folder") ?? account.Folder;
-        var downloadDir = NormalizeRelativeDir(context.Get("download_dir") ?? "attachments");
+        var downloadDir = InboxWorkspace.NormalizeRelativeDirectory(context.Get("download_dir"), "attachments");
         var attachmentPatterns = context.Get("attachments");
         var markSeen = ParseBool(context.Get("mark_seen"), defaultValue: true);
         var includeInline = ParseBool(context.Get("include_inline"), defaultValue: false);
@@ -281,12 +281,6 @@ public sealed class EmailFetchAttachmentsAction(
             1 => terms[0],
             _ => terms.Aggregate(SearchQuery.And)
         };
-    }
-
-    private static string NormalizeRelativeDir(string value)
-    {
-        var normalized = value.Replace('\\', '/').Trim().Trim('/');
-        return normalized.Length == 0 ? "attachments" : normalized;
     }
 
     private static string GetUniquePath(string directory, string fileName)

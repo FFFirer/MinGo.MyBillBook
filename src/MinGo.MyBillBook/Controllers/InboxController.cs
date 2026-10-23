@@ -19,6 +19,7 @@ namespace MinGo.MyBillBook.Controllers;
 public class InboxController(
     InboxWorkflowCatalog catalog,
     InboxEmailAccounts emailAccounts,
+    InboxWorkspaceCleaner workspaceCleaner,
     IInboxWorkflowRunner runner,
     AppDbContext db,
     ILogger<InboxController> logger) : ControllerBase
@@ -281,6 +282,25 @@ public class InboxController(
         return Accepted(new { todoId = todo.Id, runId = todo.RunId, message = "已提交，工作流将在数秒内继续" });
     }
 
+    // ---------- 工作目录 ----------
+
+    /// <summary>运行目录概况（数量、占用、保留策略）。</summary>
+    [HttpGet("workspace")]
+    public async Task<ActionResult<InboxWorkspaceInfo>> GetWorkspace(CancellationToken ct)
+        => Ok(await workspaceCleaner.GetInfoAsync(ct));
+
+    /// <summary>按保留策略清理运行目录；dryRun=true 只预览不删除。活动运行目录永远保留。</summary>
+    [HttpPost("workspace/cleanup")]
+    public async Task<ActionResult<InboxCleanupResult>> CleanupWorkspace(
+        [FromQuery] bool dryRun = false,
+        CancellationToken ct = default)
+    {
+        var result = await workspaceCleaner.CleanupAsync(dryRun, ct);
+        if (!dryRun && result.Deleted > 0)
+            logger.LogInformation("手动清理运行目录：删除 {Count} 个", result.Deleted);
+        return Ok(result);
+    }
+
     // ---------- 自检 ----------
 
     [HttpGet("health")]
@@ -300,6 +320,8 @@ public class InboxController(
             workflowErrors = workflows.Count(w => w.Error is not null),
             emailAccountCount = emailAccounts.List().Count,
             emailAccountsConfigured = emailAccounts.List().Count(a => a.Configured),
+            workspaceRetentionDays = workspaceCleaner.RetentionDays,
+            workspaceMaxRuns = workspaceCleaner.MaxRuns,
             pendingTodos,
             activeRuns
         });

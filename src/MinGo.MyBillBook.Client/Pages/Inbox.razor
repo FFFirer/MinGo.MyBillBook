@@ -143,6 +143,81 @@
         }
     </div>
 
+    @* ==================== 工作目录 ==================== *@
+    <div class="md-card-elevated p-4 sm:p-6">
+        <div class="flex items-center gap-2 mb-1">
+            <h2 class="text-title-large text-on-surface">工作目录</h2>
+            @if (workspace is not null)
+            {
+                <span class="md-chip-assist">@workspace.RunDirectories 个运行目录</span>
+            }
+        </div>
+        <p class="text-body-small text-on-surface-variant mb-4">
+            每次运行在 <code class="font-mono break-all">data/inbox-workspace/runs/{id}</code> 下保留附件、解压结果等文件。
+            超过保留天数或数量的历史目录会被自动清理；处于排队/执行/等待输入的运行始终保留。
+        </p>
+
+        @if (workspace is null)
+        {
+            <p class="text-body-medium text-on-surface-variant flex items-center gap-2">
+                <span class="md-circular-progress"></span>加载中…
+            </p>
+        }
+        else
+        {
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div class="p-3 rounded-md bg-surface-container">
+                    <p class="text-label-small text-on-surface-variant">运行目录</p>
+                    <p class="text-title-small text-on-surface tabular-nums">@workspace.RunDirectories</p>
+                </div>
+                <div class="p-3 rounded-md bg-surface-container">
+                    <p class="text-label-small text-on-surface-variant">占用空间</p>
+                    <p class="text-title-small text-on-surface tabular-nums">@FormatBytes(workspace.TotalBytes)</p>
+                </div>
+                <div class="p-3 rounded-md bg-surface-container">
+                    <p class="text-label-small text-on-surface-variant">活动运行</p>
+                    <p class="text-title-small text-on-surface tabular-nums">@workspace.ActiveRuns</p>
+                </div>
+                <div class="p-3 rounded-md bg-surface-container">
+                    <p class="text-label-small text-on-surface-variant">保留策略</p>
+                    <p class="text-title-small text-on-surface tabular-nums">
+                        @(workspace.RetentionDays > 0 ? $"{workspace.RetentionDays} 天" : "不限")
+                        / @workspace.MaxRuns 个
+                    </p>
+                </div>
+            </div>
+
+            <p class="text-body-small text-on-surface-variant break-all font-mono mb-3">@workspace.Root</p>
+
+            @if (workspace.DirectoryErrors > 0)
+            {
+                <p class="text-body-small text-error mb-3">@workspace.DirectoryErrors 个目录无法读取，可能被其他进程占用。</p>
+            }
+
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                <button @onclick="() => OpenCleanupDialog(false)" class="md-btn-outlined w-full sm:w-auto">
+                    <span class="material-symbols-outlined mr-1">visibility</span>预览清理
+                </button>
+                <button @onclick="() => OpenCleanupDialog(true)" class="md-btn-filled w-full sm:w-auto">
+                    <span class="material-symbols-outlined mr-1">delete_sweep</span>立即清理
+                </button>
+            </div>
+
+            @if (cleanupPreview is not null)
+            {
+                <div class="mt-3 p-3 rounded-md bg-surface-container">
+                    <p class="text-body-medium text-on-surface">
+                        预览：共扫描 @cleanupPreview.Scanned 个目录，将删除 @cleanupPreview.Deleted 个（@FormatBytes(cleanupPreview.DeletedBytes)），
+                        保留 @cleanupPreview.Kept 个，跳过 @cleanupPreview.SkippedActive 个活动目录。
+                    </p>
+                    <p class="text-body-small text-on-surface-variant mt-1 tabular-nums">
+                        清理截止 @cleanupPreview.Cutoff.ToString("yyyy-MM-dd HH:mm")（保留 @cleanupPreview.RetentionDays 天，最多 @cleanupPreview.MaxRuns 个）
+                    </p>
+                </div>
+            }
+        }
+    </div>
+
     @* ==================== 工作流 ==================== *@
     <div class="md-card-elevated p-4 sm:p-6">
         <h2 class="text-title-large text-on-surface mb-1">工作流</h2>
@@ -463,8 +538,31 @@
     </div>
 </ModalDialog>
 
+@* ==================== 清理运行目录确认 ==================== *@
+<ModalDialog Visible="showCleanupDialog" OnClose="CloseCleanupDialog" AriaLabel="清理运行目录" Role="alertdialog" Size="sm">
+    <h3 class="text-title-medium text-error mb-2">确认清理运行目录</h3>
+    <p class="text-body-medium text-on-surface-variant mb-4">
+        将按保留策略删除历史运行目录及其中的附件/解压文件。排队、执行中与等待输入的运行目录不会被删除，此操作不可撤销。
+    </p>
+    <div class="flex justify-end gap-2">
+        <button @onclick="CloseCleanupDialog" class="md-btn-outlined">返回</button>
+        <button @onclick="ConfirmCleanupAsync" disabled="@cleaningWorkspace" class="md-btn-danger">
+            @if (cleaningWorkspace)
+            {
+                <span class="loading-spinner mr-1" style="width:16px;height:16px;border-width:2px;"></span>
+            }
+            <span>@(cleaningWorkspace ? "清理中…" : "确认清理")</span>
+        </button>
+    </div>
+</ModalDialog>
+
 @code {
     private const int PageSize = 10;
+
+    private WorkspaceInfoDto? workspace;
+    private CleanupResultDto? cleanupPreview;
+    private bool showCleanupDialog;
+    private bool cleaningWorkspace;
 
     private List<WorkflowDto> workflows = [];
     private List<EmailAccountDto> emailAccounts = [];
@@ -504,6 +602,7 @@
     {
         await LoadWorkflowsAsync();
         await LoadEmailAccountsAsync();
+        await LoadWorkspaceAsync();
         await LoadTodosAsync();
         await LoadRunsAsync();
         loading = false;
@@ -534,6 +633,7 @@
         loading = true;
         await LoadWorkflowsAsync();
         await LoadEmailAccountsAsync();
+        await LoadWorkspaceAsync();
         await LoadTodosAsync();
         await LoadRunsAsync();
         if (expandedRunId.HasValue)
@@ -563,6 +663,88 @@
         {
             if (!silent)
                 ShowToast($"加载邮箱账号失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task LoadWorkspaceAsync()
+    {
+        try
+        {
+            workspace = await Http.GetFromJsonAsync<WorkspaceInfoDto>("api/inbox/workspace");
+        }
+        catch (Exception ex)
+        {
+            workspace = null;
+            ShowToast($"加载工作目录信息失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task OpenCleanupDialog(bool deleteNow)
+    {
+        if (!deleteNow)
+        {
+            await PreviewCleanupAsync();
+            return;
+        }
+
+        showCleanupDialog = true;
+    }
+
+    private void CloseCleanupDialog()
+    {
+        if (cleaningWorkspace)
+            return;
+        showCleanupDialog = false;
+    }
+
+    private async Task PreviewCleanupAsync()
+    {
+        try
+        {
+            var resp = await Http.PostAsync("api/inbox/workspace/cleanup?dryRun=true", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                cleanupPreview = await resp.Content.ReadFromJsonAsync<CleanupResultDto>();
+            }
+            else
+            {
+                ShowToast($"预览清理失败：{await ReadErrorAsync(resp)}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"预览清理异常：{ex.Message}", true);
+        }
+    }
+
+    private async Task ConfirmCleanupAsync()
+    {
+        cleaningWorkspace = true;
+        try
+        {
+            var resp = await Http.PostAsync("api/inbox/workspace/cleanup", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var result = await resp.Content.ReadFromJsonAsync<CleanupResultDto>();
+                showCleanupDialog = false;
+                ShowToast(result is null
+                    ? "清理完成"
+                    : $"已删除 {result.Deleted} 个运行目录（{FormatBytes(result.DeletedBytes)}）");
+                await LoadWorkspaceAsync();
+                await PreviewCleanupAsync();
+            }
+            else
+            {
+                ShowToast($"清理失败：{await ReadErrorAsync(resp)}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"清理异常：{ex.Message}", true);
+        }
+        finally
+        {
+            cleaningWorkspace = false;
         }
     }
 
@@ -943,6 +1125,17 @@
         _ => "text-on-surface-variant"
     };
 
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024)
+            return $"{bytes} B";
+        if (bytes < 1024 * 1024)
+            return $"{bytes / 1024.0:0.#} KB";
+        if (bytes < 1024L * 1024 * 1024)
+            return $"{bytes / (1024.0 * 1024):0.#} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):0.##} GB";
+    }
+
     private static string FormatDuration(DateTime? start, DateTime? end)
     {
         if (start is null)
@@ -991,6 +1184,14 @@
           }
         }
         """;
+
+    private record WorkspaceInfoDto(
+        string Root, int RetentionDays, int MaxRuns, int RunDirectories,
+        long TotalBytes, int ActiveRuns, int DirectoryErrors);
+
+    private record CleanupResultDto(
+        bool DryRun, DateTime Cutoff, int RetentionDays, int MaxRuns, int Scanned,
+        int Deleted, long DeletedBytes, int Kept, int SkippedActive, List<string> Failures);
 
     private record WorkflowDetailDto(
         string Name, string FileName, string? Description, bool Manual,

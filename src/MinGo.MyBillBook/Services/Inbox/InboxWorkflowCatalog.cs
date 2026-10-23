@@ -61,6 +61,7 @@ public sealed class InboxWorkflowCatalog
 
         created.Add(WriteIfMissing("sample-manual-import.yaml", SampleWorkflowYaml));
         created.Add(WriteIfMissing("sample-email-import.yaml", SampleEmailWorkflowYaml));
+        created.Add(WriteIfMissing("sample-archive-import.yaml", SampleArchiveWorkflowYaml));
 
         return created;
     }
@@ -141,7 +142,7 @@ public sealed class InboxWorkflowCatalog
 
     private const string SampleEmailWorkflowYaml = """
         name: 示例：从邮箱导入 CSV 账单
-        description: 从配置的 IMAP 邮箱下载 CSV 账单附件，人工确认后导入并运行清洗管道。带密码的 ZIP 需等 Phase 3 解压能力。
+        description: 从配置的 IMAP 邮箱下载账单附件，人工确认后导入并运行清洗管道。
 
         on:
           manual: true
@@ -172,6 +173,54 @@ public sealed class InboxWorkflowCatalog
                 uses: bill/import
                 with:
                   file: attachments/*.csv
+                  platform: auto
+
+              - id: process
+                name: 运行清洗管道
+                uses: bill/process
+                with:
+                  batch_id: ${{ steps.import.outputs.batch_id }}
+        """;
+
+    private const string SampleArchiveWorkflowYaml = """
+        name: 示例：解压加密账单压缩包
+        description: 手动上传带密码的 ZIP，输入解压密码后自动解压、定位账单文件、导入并清洗。
+
+        on:
+          manual: true
+
+        jobs:
+          - name: import
+            steps:
+              - id: password
+                name: 输入解压密码
+                uses: human/input
+                with:
+                  title: 压缩包解压密码
+                  prompt: 请输入本次 ZIP 的解压密码（例如身份证后六位或公众号中查看的密码）。
+                  input_type: password
+                  expires_hours: 72
+
+              - id: extract
+                name: 解压附件
+                uses: archive/extract
+                with:
+                  source: input/*.zip
+                  target: extracted
+                  password: ${{ steps.password.outputs.value }}
+
+              - id: detect
+                name: 定位账单文件
+                uses: file/detect
+                with:
+                  source: extracted/**/*
+                  extensions: csv,xlsx
+
+              - id: import
+                name: 导入账单
+                uses: bill/import
+                with:
+                  file: ${{ steps.detect.outputs.first_file }}
                   platform: auto
 
               - id: process

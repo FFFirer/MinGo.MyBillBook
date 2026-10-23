@@ -27,6 +27,13 @@ public sealed class InboxWorkspace
 
     public string Root => _root;
 
+    /// <summary>把用户写的目录规范化为相对路径（正斜杠、无首尾斜杠）；空值使用 fallback。</summary>
+    public static string NormalizeRelativeDirectory(string? value, string fallback)
+    {
+        var normalized = (value ?? string.Empty).Replace('\\', '/').Trim().Trim('/');
+        return normalized.Length == 0 ? fallback : normalized;
+    }
+
     public string GetRunPath(int runId)
         => Path.Combine(_root, "runs", runId.ToString(CultureInfo.InvariantCulture));
 

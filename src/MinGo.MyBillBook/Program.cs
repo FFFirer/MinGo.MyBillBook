@@ -92,11 +92,14 @@ builder.Services.AddHostedService<PipelineJobWorker>();
 builder.Services.AddSingleton<InboxWorkspace>();
 builder.Services.AddSingleton<InboxWorkflowCatalog>();
 builder.Services.AddSingleton<InboxEmailAccounts>();
+builder.Services.AddScoped<InboxWorkspaceCleaner>();
 builder.Services.AddScoped<IInboxWorkflowRunner, InboxWorkflowRunner>();
 builder.Services.AddScoped<IInboxAction, HumanInputAction>();
 builder.Services.AddScoped<IInboxAction, BillImportAction>();
 builder.Services.AddScoped<IInboxAction, BillProcessAction>();
 builder.Services.AddScoped<IInboxAction, EmailFetchAttachmentsAction>();
+builder.Services.AddScoped<IInboxAction, ArchiveExtractAction>();
+builder.Services.AddScoped<IInboxAction, FileDetectAction>();
 builder.Services.AddHostedService<InboxWorkflowWorker>();
 
 // Add controllers for Web API

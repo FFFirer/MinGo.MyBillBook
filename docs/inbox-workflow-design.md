@@ -1,7 +1,7 @@
 # Inbox：邮件驱动的账单数据接入工作流
 
-> 状态：Phase 1（手动触发 + 待办介入 + 标准导入衔接）与 Phase 2（IMAP 取附件）已实现。
-> 本文档描述整体设计；Phase 3+（加密解压、定时调度、安全增强）按文末计划推进。
+> 状态：Phase 1（手动触发 + 待办介入 + 标准导入衔接）、Phase 2（IMAP 取附件）与 Phase 3（加密解压、文件识别、工作目录清理）已实现。
+> 本文档描述整体设计；Phase 4+（定时调度、安全增强）按文末计划推进。
 
 ## 1. 背景与目标
 
@@ -23,7 +23,7 @@
 
 ## 2. 非目标
 
-- 不做加密 ZIP 解压与文件识别（`archive/extract`、`file/detect`，Phase 3）；
+- 不做 7z / RAR 等非 ZIP 归档格式（`archive/extract` 仅支持 ZIP，含 ZipCrypto 与 AES）；
 - 不做 Quartz 定时触发（Phase 4）；
 - 不做 Secret 落盘加密与金库管理（Phase 5）；Phase 2 采用配置引用 + 只读展示 + API 掩码；
 - 不做多 Job 并行、`needs` 依赖图、条件表达式（`if`）、矩阵构建；
@@ -31,6 +31,7 @@
 
 Phase 1 交付的是**可运行的引擎骨架**：手动触发 → 可选上传种子文件 → `human/input` 生成待办并挂起 → 用户完成待办 → 自动恢复 → `bill/import` → `bill/process` → 完成。
 Phase 2 在此基础上加入 `email/fetch-attachments`，打通“邮件 → 附件 → 导入”链路；账号与密码仍来自配置，不引入数据库 CRUD。
+Phase 3 补齐账单 ZIP 常见的加密场景：`archive/extract` 解压、`file/detect` 定位，并加入运行目录保留策略与清理入口。
 
 ## 3. 总体架构
 
@@ -50,14 +51,16 @@ Phase 2 在此基础上加入 `email/fetch-attachments`，打通“邮件 → �
 │                                                           │
 │  InboxWorkflowWorker (BackgroundService, 2s 轮询)          │
 │    ├─ 恢复 WaitingInput 且待办已完成的运行                   │
-│    └─ 领取 Queued 运行，顺序执行 steps                      │
+│    ├─ 领取 Queued 运行，顺序执行 steps                      │
+│    └─ 按计划运行 InboxWorkspaceCleaner（清理历史运行目录）    │
 │                                                           │
 │  Actions                                                  │
 │    human/input   → 创建 InboxTodo + 通知 + 挂起             │
 │    email/fetch-attachments → IMAP 检索 + 附件落盘（MailKit） │
+│    archive/extract → ZIP 解压（密码、路径与大小限制）        │
+│    file/detect   → 按扩展名定位文件                          │
 │    bill/import   → 复用 IBillImportService                 │
 │    bill/process  → 复用 IBillProcessingService             │
-│    (Phase 3) archive/extract, file/detect                 │
 └───────────────┬───────────────────────────────────────────┘
                 │
         SQLite (EF Core) + data/inbox-workspace/runs/{id}
@@ -91,17 +94,24 @@ jobs:
 
       - id: extract
         name: 解压附件
-        uses: archive/extract            # Phase 3
+        uses: archive/extract
         with:
           source: attachments/*.zip
           password: ${{ steps.password.outputs.value }}
           target: extracted/
 
+      - id: detect
+        name: 定位账单文件
+        uses: file/detect
+        with:
+          source: extracted/**/*
+          extensions: csv,xlsx
+
       - id: import
         name: 导入账单
         uses: bill/import
         with:
-          file: extracted/*.csv
+          file: ${{ steps.detect.outputs.first_file }}
           platform: alipay
 
       - id: process
@@ -264,6 +274,8 @@ Todo:  Pending → Completed
 |--------|------|------|------|
 | `human/input` | `title`、`prompt`、`input_type`、`placeholder`、`expires_hours` | `value` | 创建待办并挂起；恢复时读取已完成待办 |
 | `email/fetch-attachments` | `account`（必填）、`search`、`folder`、`download_dir`、`attachments`、`mark_seen`、`include_inline`、`limit`、`max_file_mb` | `count`、`messages`、`files`（JSON 数组）、`first_file`、`first_name`、`folder` | 通过 MailKit 连接 IMAP，检索邮件并把附件写入运行目录（默认 `attachments/`） |
+| `archive/extract` | `source`（必填，zip glob）、`target`、`password`、`flatten`、`max_file_mb`、`max_total_mb`、`max_entries` | `count`、`files`（JSON 数组）、`first_file`、`first_name`、`target`、`bytes`、`warnings` | 解压 ZIP（支持 ZipCrypto 与 AES），默认扁平化到 `extracted/` |
+| `file/detect` | `source`（必填，glob）、`extensions`、`required` | `count`、`files`（JSON 数组）、`first_file`、`first_name`、`extensions` | 按扩展名从工作目录中筛选文件，供导入步骤定位 |
 | `bill/import` | `file`（相对 workspace，支持通配符）、`platform`（`alipay` / `wechat` / `auto`） | `batch_id`、`total`、`success`、`updated`、`duplicate` | 调用现有 `IBillImportService`，原始文件进入对象存储 |
 | `bill/process` | `batch_id` | `processed` | 调用现有 `IBillProcessingService`，运行 9 步清洗管道 |
 
@@ -275,6 +287,21 @@ Todo:  Pending → Completed
 - `max_file_mb` 默认 50，超限文件删除并记录日志；
 - 至少成功保存一个附件且 `mark_seen: true` 时，把对应邮件标记为已读；单封邮件或单个附件失败不会中断整个步骤；
 - 只有“没有任何附件保存成功且发生过下载错误”时步骤才失败；否则以 `count=0` 完成，便于由后续人工步骤判断。
+
+`archive/extract` 的行为约定：
+
+- `source` 支持 glob（如 `attachments/*.zip`），可一次解压多个压缩包；
+- `password` 通常来自前序 `human/input`，也可用 `${{ secrets.KEY }}`；日志只记录“已提供/无”，**不输出密码**；
+- 默认 `flatten: true`，只保留文件名；设为 `false` 时保留目录结构，含 `.`/`..` 的路径片段直接跳过；
+- 每个条目都做目标目录包含性校验（防 zip-slip），并限制单文件 `max_file_mb`（默认 200）、总量 `max_total_mb`（默认 500）与条目数 `max_entries`（默认 500）；
+- 重名文件自动追加 `-2`、`-3` 后缀；单个条目失败只记入 `warnings`，不中断其他文件；
+- 缺密码或密码错误时失败，并给出“密码错误或加密方式不支持”等可操作提示；只有所有压缩包都没有解出文件时步骤才失败。
+
+`file/detect` 的行为约定：
+
+- `extensions` 为逗号分隔的扩展名列表（默认 `csv,xlsx`），大小写不敏感；
+- `required: true`（默认）时找不到匹配文件即失败，避免导入步骤拿到空输入；
+- 输出 `files` JSON 数组与 `first_file`，后者适合直接传给 `bill/import`。
 
 Action 抽象：
 
@@ -297,14 +324,16 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 | GET | `/api/inbox/workflows` | 工作流列表（含解析错误） |
 | GET | `/api/inbox/workflows/{name}` | 工作流详情 + 原始 YAML |
 | POST | `/api/inbox/workflows/{name}/runs` | 手动触发；可 multipart 上传种子文件到 `input/`；202 返回 runId |
-| POST | `/api/inbox/workflows/sample` | 创建演示工作流文件（手动导入 + 邮件导入，已存在则不覆盖） |
+| POST | `/api/inbox/workflows/sample` | 创建演示工作流文件（手动导入 + 邮件导入 + 加密 ZIP 导入，已存在则不覆盖） |
 | GET | `/api/inbox/email-accounts` | 邮箱账号只读列表（含配置状态与错误，密码不返回） |
+| GET | `/api/inbox/workspace` | 运行目录概况：数量、占用、活动运行数、保留策略 |
+| POST | `/api/inbox/workspace/cleanup?dryRun=` | 按保留策略清理运行目录；`dryRun=true` 仅预览；活动运行目录始终保留 |
 | GET | `/api/inbox/runs` | 运行记录（状态/工作流筛选 + 分页） |
 | GET | `/api/inbox/runs/{id}` | 运行详情：步骤输入输出、日志、关联待办 |
 | POST | `/api/inbox/runs/{id}/cancel` | 取消 Queued/WaitingInput 运行，相关待办置 Expired |
 | GET | `/api/inbox/todos` | 待办列表（默认 Pending） |
 | POST | `/api/inbox/todos/{id}/complete` | 提交待办输入 |
-| GET | `/api/inbox/health` | 引擎自检（工作流目录、邮箱账号数量、待处理数） |
+| GET | `/api/inbox/health` | 引擎自检（工作流目录、邮箱账号数量、保留策略、待处理数、活动运行数） |
 
 敏感值处理：`input_type=password` 的待办在 API 返回中掩码为 `******`；数据库中保留原值供后续步骤使用（本地单用户部署；后续可接入加密存储）。
 
@@ -312,6 +341,7 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 
 - **待办事项**：页面顶部展示 Pending 待办，直接内联输入并提交（密码框 / 文本框）；提交后提示“已提交，工作流将在数秒内继续”。
 - **邮箱连接**：只读卡片展示 `Inbox:EmailAccounts` 中的账号（可用 / 配置不完整、主机端口、文件夹、密码来源）；未配置时给出 JSON 示例。
+- **工作目录**：展示运行目录数量、占用空间、活动运行与保留策略；提供“预览清理”（dry run）与“立即清理”（二次确认）。清理活动运行目录会被跳过。
 - **工作流**：卡片列表，展示描述、触发方式、步骤链；点击“运行”弹出确认框，可附加一个种子文件（Phase 1 演示用），提交后轮询运行状态。
 - **运行记录**：表格 + 分页；状态徽标；展开显示每个步骤的状态、耗时、错误与日志；运行中每 3 秒自动刷新。
 - 通知：服务端在运行状态变化、待办创建时通过 SignalR 广播（`InboxRunUpdated` / `InboxTodoCreated`）；页面同时使用轮询兜底。
@@ -322,11 +352,30 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 data/inboxes/                     # YAML 定义（运行时可编辑）
 data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
     input/                        # 触发时上传的种子文件（Phase 1）
-    attachments/                  # 邮件附件（Phase 2，可由 download_dir 改名）
-    extracted/                    # 解压结果（Phase 3）
+    attachments/                  # 邮件附件（可由 download_dir 改名）
+    extracted/                    # archive/extract 解压结果（可由 target 改名）
 ```
 
-文件访问通过 `InboxWorkspace` 统一做规范化与防路径穿越校验；从邮件附件名或上传文件名进入磁盘前，还会经过 `WorkspaceFileName.Sanitize`（剥离路径、替换非法字符、截断超长名）。运行目录当前不自动清理，后续可加保留策略。
+文件访问通过 `InboxWorkspace` 统一做规范化与防路径穿越校验；从邮件附件名、上传文件名或 ZIP 条目名进入磁盘前，还会经过 `WorkspaceFileName.Sanitize`（剥离路径、替换非法字符、去掉结尾点/空格）。解压还会对最终路径做目标根目录包含性检查，拒绝 `../` 越界条目。
+
+### 9.1 保留与清理
+
+```json
+{
+  "Inbox": {
+    "WorkspaceRetentionDays": 30,   // 0 表示不按天数清理
+    "WorkspaceMaxRuns": 200,        // 0 表示不按数量清理
+    "CleanupIntervalHours": 6       // 0 表示关闭自动清理
+  }
+}
+```
+
+- `InboxWorkflowWorker` 启动时先清理一次，之后每 `CleanupIntervalHours` 小时执行一次；
+- 处于 `Queued` / `Running` / `WaitingInput` 的运行目录永远保留；
+- 删除判定：目录最后写入时间早于 `UtcNow - WorkspaceRetentionDays`，或在非活动目录中超出最新 `WorkspaceMaxRuns` 个；
+- 单个目录删除失败只记录日志，不阻塞 Worker；
+- `/inbox` 的“预览清理”调用 `dryRun=true` 展示将删除的数量与占用，“立即清理”二次确认后执行；
+- 清理只删运行目录，不动数据库中的运行记录与导入批次，二者仍可在运行记录与账单明细中查看。
 
 ## 10. 分阶段计划
 
@@ -334,7 +383,7 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
 |------|------|------|
 | Phase 1 | YAML 解析、表达式、运行器、待办、Worker、`human/input`、`bill/import`、`bill/process`、API、UI、单测 | ✅ |
 | Phase 2 | `email/fetch-attachments`（MailKit IMAP）、邮箱连接配置、检索语法、只读账号 UI | ✅ |
-| Phase 3 | `archive/extract`（加密 ZIP）、`file/detect`（glob）、工作目录清理 | 待办 |
+| Phase 3 | `archive/extract`（加密 ZIP）、`file/detect`（glob）、工作目录保留策略与清理 API/UI | ✅ |
 | Phase 4 | Quartz `schedule` 触发、SignalR 前端实时订阅、失败重试策略 | 待办 |
 | Phase 5 | 安全增强：Secret 加密存储、敏感待办加密、审计与保留策略 | 待办 |
 
@@ -359,3 +408,12 @@ Phase 2：
 10. `mark_seen: true` 时重复运行不会再次命中同一封已读邮件；`limit`、`max_file_mb`、`include_inline` 生效；
 11. 账号缺失、检索语法错误、IMAP 连接/认证失败都会让步骤失败并给出可操作的错误信息；
 12. 使用本地 IMAP 服务（GreenMail）完成“取附件 → 人工确认 → 导入 → 清洗”端到端验证；`dotnet test` 覆盖检索语法、附件过滤与文件名清洗。
+
+Phase 3：
+
+13. 上传带密码的 ZIP 并输入正确密码后，`archive/extract` 解压出 CSV，`file/detect` 定位文件，`bill/import` + `bill/process` 完成导入与清洗；
+14. 密码错误时步骤失败并提示“密码错误或加密方式不支持”，不会留下半解压文件；缺密码时提示通过 `human/input` 提供 password；
+15. 解压具备防 zip-slip、单文件/总量/条目数限制与重名后缀；日志与输出中**不出现密码**；
+16. `GET /api/inbox/workspace` 返回目录数量、占用、活动运行与保留策略；`POST .../cleanup?dryRun=true` 只预览，真实清理会删除过期目录；
+17. 清理时 `Queued` / `Running` / `WaitingInput` 运行的目录不会被删除；`/inbox` 可预览并二次确认清理；
+18. `dotnet build` 与 `dotnet test` 通过，新增解压单测覆盖明文、ZipCrypto、AES、错误密码、路径穿越、重名、限额与缺文件。
