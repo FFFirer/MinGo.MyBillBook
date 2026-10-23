@@ -29,6 +29,9 @@ public class AppDbContext : DbContext
     public DbSet<PipelineRun> PipelineRuns => Set<PipelineRun>();
     public DbSet<PipelineStepRun> PipelineStepRuns => Set<PipelineStepRun>();
     public DbSet<PipelineJob> PipelineJobs => Set<PipelineJob>();
+    public DbSet<InboxRun> InboxRuns => Set<InboxRun>();
+    public DbSet<InboxStepRun> InboxStepRuns => Set<InboxStepRun>();
+    public DbSet<InboxTodo> InboxTodos => Set<InboxTodo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -249,6 +252,50 @@ public class AppDbContext : DbContext
             e.Property(x => x.Payload).IsRequired();
             e.Property(x => x.Error).HasMaxLength(2000);
             e.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<InboxRun>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.WorkflowName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.WorkflowYaml).IsRequired();
+            e.Property(x => x.TriggeredBy).HasMaxLength(100);
+            e.Property(x => x.InputsJson).IsRequired();
+            e.Property(x => x.Error).HasMaxLength(4000);
+            e.HasMany(x => x.Steps).WithOne(s => s.Run).HasForeignKey(s => s.RunId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.WorkflowName);
+            e.HasIndex(x => x.CreatedAt);
+        });
+
+        modelBuilder.Entity<InboxStepRun>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.JobName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.StepId).HasMaxLength(100).IsRequired();
+            e.Property(x => x.StepName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Action).HasMaxLength(100).IsRequired();
+            e.Property(x => x.InputsJson).IsRequired();
+            e.Property(x => x.OutputsJson).IsRequired();
+            e.Property(x => x.Error).HasMaxLength(4000);
+            e.HasIndex(x => x.RunId);
+            e.HasIndex(x => new { x.RunId, x.StepId }).IsUnique();
+            e.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<InboxTodo>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Prompt).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.InputType).HasMaxLength(20).IsRequired();
+            e.Property(x => x.InputValue).HasMaxLength(4000);
+            e.HasOne(x => x.Run).WithMany().HasForeignKey(x => x.RunId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => new { x.RunId, x.StepRunId });
+            e.HasIndex(x => x.CreatedAt);
         });
     }
 }

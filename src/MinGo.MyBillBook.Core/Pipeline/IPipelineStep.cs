@@ -12,6 +12,11 @@ public interface IPipelineStep<TContext> where TContext : IPipelineContext
     /// <summary>执行顺序，数值越小越先执行。</summary>
     int Order { get; }
 
+    /// <summary>
+    /// 当前上下文是否应执行本步骤。默认执行；用于按管道来源（导入/重建）跳过不适用步骤。
+    /// </summary>
+    bool ShouldExecute(TContext context) => true;
+
     /// <summary>执行步骤逻辑，返回本步骤的输入/输出/错误/告警计数。</summary>
     Task<StepResult> ExecuteAsync(TContext context, CancellationToken ct);
 }

@@ -103,12 +103,12 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Property<DateTime>("ImportDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("PlatformId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("OriginalFileKey")
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("PlatformId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
@@ -419,6 +419,189 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.HasIndex("PlatformId");
 
                     b.ToTable("FundAccounts");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.InboxRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InputsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TriggerType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TriggeredBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WorkflowName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WorkflowYaml")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WorkflowName");
+
+                    b.ToTable("InboxRuns");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.InboxStepRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InputsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("JobName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Log")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OutputsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RunId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("StepId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StepName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RunId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("RunId", "StepId")
+                        .IsUnique();
+
+                    b.ToTable("InboxStepRuns");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.InboxTodo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InputType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InputValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSensitive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Placeholder")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Prompt")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RunId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("StepRunId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("RunId", "StepRunId");
+
+                    b.ToTable("InboxTodos");
                 });
 
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Merchant", b =>
@@ -1027,6 +1210,28 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Navigation("Platform");
                 });
 
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.InboxStepRun", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.InboxRun", "Run")
+                        .WithMany("Steps")
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Run");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.InboxTodo", b =>
+                {
+                    b.HasOne("MinGo.MyBillBook.Core.Models.InboxRun", "Run")
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Run");
+                });
+
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Merchant", b =>
                 {
                     b.HasOne("MinGo.MyBillBook.Core.Models.BillCategory", "DefaultCategory")
@@ -1165,6 +1370,11 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.Navigation("ClassificationResults");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.InboxRun", b =>
+                {
+                    b.Navigation("Steps");
                 });
 
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.Merchant", b =>

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MinGo.MyBillBook.BackgroundJobs;
 using MinGo.MyBillBook.Components;
+using MinGo.MyBillBook.Core.Inbox;
 using MinGo.MyBillBook.Core.Interfaces;
 using MinGo.MyBillBook.Core.Pipeline;
 using MinGo.MyBillBook.Core.Parsing;
@@ -8,6 +9,8 @@ using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Data.DuckDb;
 using MinGo.MyBillBook.Hubs;
 using MinGo.MyBillBook.Services;
+using MinGo.MyBillBook.Services.Inbox;
+using MinGo.MyBillBook.Services.Inbox.Actions;
 using MinGo.MyBillBook.Services.Pipeline;
 using MinGo.MyBillBook.Services.Pipeline.Steps;
 using MinGo.MyBillBook.Services.Storage;
@@ -83,6 +86,15 @@ builder.Services.AddScoped<IPipelineStep<BillImportContext>, ReconcileStep>();
 builder.Services.AddScoped<IRebuildService, RebuildService>();
 builder.Services.AddScoped<ISourceCategoryImportService, SourceCategoryImportService>();
 builder.Services.AddHostedService<PipelineJobWorker>();
+
+// Inbox 工作流引擎：YAML 定义 + 待办驱动的人机协作（Phase 1）
+builder.Services.AddSingleton<InboxWorkspace>();
+builder.Services.AddSingleton<InboxWorkflowCatalog>();
+builder.Services.AddScoped<IInboxWorkflowRunner, InboxWorkflowRunner>();
+builder.Services.AddScoped<IInboxAction, HumanInputAction>();
+builder.Services.AddScoped<IInboxAction, BillImportAction>();
+builder.Services.AddScoped<IInboxAction, BillProcessAction>();
+builder.Services.AddHostedService<InboxWorkflowWorker>();
 
 // Add controllers for Web API
 builder.Services.AddControllers();

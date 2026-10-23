@@ -19,6 +19,9 @@ public class LocalObjectStorage : IObjectStorage, IDisposable
         if (!Path.IsPathRooted(_basePath))
             _basePath = Path.Combine(Directory.GetCurrentDirectory(), _basePath);
 
+        // 统一为本机原生分隔符，避免配置使用正斜杠时前缀校验误判
+        _basePath = Path.GetFullPath(_basePath);
+
         Directory.CreateDirectory(_basePath);
         _logger.LogInformation("LocalObjectStorage 初始化完成，根目录: {BasePath}", _basePath);
     }
@@ -35,9 +38,12 @@ public class LocalObjectStorage : IObjectStorage, IDisposable
         var tempPath = fullPath + ".tmp." + Guid.NewGuid().ToString("N")[..8];
         try
         {
-            await using var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-            await content.CopyToAsync(fs, ct);
-            await fs.FlushAsync(ct);
+            // 必须在 Move 前关闭写入流：Windows 上 FileShare.None 的打开文件无法被移动
+            await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+            {
+                await content.CopyToAsync(fs, ct);
+                await fs.FlushAsync(ct);
+            }
 
             // Windows 上 Move 目标已存在会抛异常，先删再移
             if (File.Exists(fullPath))
@@ -91,7 +97,11 @@ public class LocalObjectStorage : IObjectStorage, IDisposable
         var normalized = key.Replace('\\', '/').TrimStart('/');
         var fullPath = Path.GetFullPath(Path.Combine(_basePath, normalized));
 
-        if (!fullPath.StartsWith(_basePath, StringComparison.OrdinalIgnoreCase))
+        // 必须以「根目录 + 分隔符」开头，避免 storage 与 storage-evil 这类同前缀目录误判
+        var basePrefix = _basePath.EndsWith(Path.DirectorySeparatorChar)
+            ? _basePath
+            : _basePath + Path.DirectorySeparatorChar;
+        if (!fullPath.StartsWith(basePrefix, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException($"非法的 key（路径穿越）: {key}");
 
         return fullPath;

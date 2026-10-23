@@ -22,6 +22,10 @@ public class ReParseStep(
     public string Name => "ReParse";
     public int Order => 5;
 
+    /// <summary>仅重建管道（从对象存储重新解析）需要执行；普通导入直接使用刚解析的原始记录。</summary>
+    public bool ShouldExecute(BillImportContext context)
+        => string.Equals(context.Source, "rebuild", StringComparison.OrdinalIgnoreCase);
+
     public async Task<StepResult> ExecuteAsync(BillImportContext context, CancellationToken ct)
     {
         var batch = context.Batch;

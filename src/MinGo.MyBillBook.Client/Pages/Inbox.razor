@@ -1,0 +1,937 @@
+@page "/inbox"
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient Http
+@implements IDisposable
+
+<PageTitle>数据收件箱</PageTitle>
+
+<div class="space-y-4 sm:space-y-6">
+    <div class="page-header">
+        <h1>数据收件箱</h1>
+        <div class="actions">
+            <button @onclick="RefreshAsync" class="md-btn-outlined" disabled="@loading">
+                <span class="material-symbols-outlined mr-1">refresh</span>刷新
+            </button>
+        </div>
+    </div>
+
+    <p class="text-body-medium text-on-surface-variant -mt-2">
+        由 YAML 定义的数据接入工作流：邮件/文件 → 人工介入 → 标准导入。需要人工处理时会生成待办并发送通知，可在任意时间回来完成。
+    </p>
+
+    <Toast @ref="toastRef" />
+
+    @* ==================== 待办事项 ==================== *@
+    @if (todos.Count > 0)
+    {
+        <div class="md-card-elevated p-4 sm:p-6">
+            <div class="flex items-center gap-2 mb-1">
+                <h2 class="text-title-large text-on-surface">待处理事项</h2>
+                <span class="md-chip-assist md-chip-assist-warning">@todos.Count</span>
+            </div>
+            <p class="text-body-small text-on-surface-variant mb-4">
+                以下工作流已挂起，提交输入后将在数秒内自动继续。
+            </p>
+
+            <div class="space-y-3">
+                @foreach (var item in todos)
+                {
+                    <div class="p-3 sm:p-4 rounded-md bg-surface-container">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="md-chip-assist md-chip-assist-warning">等待输入</span>
+                            <span class="text-title-small text-on-surface break-all">@item.Dto.Title</span>
+                            <span class="text-body-small text-on-surface-variant">
+                                @item.Dto.WorkflowName · 运行 #@item.Dto.RunId
+                            </span>
+                        </div>
+                        <p class="text-body-medium text-on-surface-variant mt-1 break-words">@item.Dto.Prompt</p>
+
+                        <div class="mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div class="flex-1 min-w-0">
+                                <label for="todo-@item.Dto.Id" class="block text-label-large text-on-surface-variant mb-1">
+                                    @(item.Dto.InputType == "password" ? "密码（不会回显）" : "输入")
+                                </label>
+                                @if (item.Dto.InputType == "confirm")
+                                {
+                                    <input id="todo-@item.Dto.Id" type="text" @bind="item.Value"
+                                           placeholder="@(item.Dto.Placeholder ?? "输入任意内容表示确认")"
+                                           class="md-text-field-outlined w-full" />
+                                }
+                                else
+                                {
+                                    <input id="todo-@item.Dto.Id"
+                                           type="@(item.Dto.InputType == "password" ? "password" : "text")"
+                                           @bind="item.Value"
+                                           placeholder="@(item.Dto.Placeholder ?? "")"
+                                           autocomplete="@(item.Dto.InputType == "password" ? "new-password" : "off")"
+                                           class="md-text-field-outlined w-full" />
+                                }
+                            </div>
+                            <button @onclick="() => CompleteTodoAsync(item)"
+                                    disabled="@busyTodoIds.Contains(item.Dto.Id)"
+                                    class="md-btn-filled w-full sm:w-auto shrink-0">
+                                @if (busyTodoIds.Contains(item.Dto.Id))
+                                {
+                                    <span class="loading-spinner mr-1" style="width:16px;height:16px;border-width:2px;"></span>
+                                }
+                                <span>@(busyTodoIds.Contains(item.Dto.Id) ? "提交中…" : "提交")</span>
+                            </button>
+                        </div>
+
+                        @if (item.Dto.ExpiresAt.HasValue)
+                        {
+                            <p class="text-body-small text-on-surface-variant mt-2 tabular-nums">
+                                截止 @item.Dto.ExpiresAt.Value.ToString("yyyy-MM-dd HH:mm")
+                            </p>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* ==================== 工作流 ==================== *@
+    <div class="md-card-elevated p-4 sm:p-6">
+        <h2 class="text-title-large text-on-surface mb-1">工作流</h2>
+        <p class="text-body-small text-on-surface-variant mb-4">
+            定义文件位于 <code class="font-mono break-all">data/inboxes/*.yaml</code>。新增接入源只需新增 YAML。
+        </p>
+
+        @if (loading && workflows.Count == 0)
+        {
+            <p class="text-body-medium text-on-surface-variant flex items-center gap-2">
+                <span class="md-circular-progress"></span>加载中…
+            </p>
+        }
+        else if (workflows.Count == 0)
+        {
+            <div class="p-4 rounded-md bg-surface-container text-center">
+                <span class="material-symbols-outlined text-on-surface-variant block mb-2" style="font-size:2rem;">inbox</span>
+                <p class="text-body-medium text-on-surface-variant mb-3">还没有工作流定义。</p>
+                <button @onclick="CreateSampleAsync" disabled="@creatingSample" class="md-btn-filled w-full sm:w-auto">
+                    <span class="material-symbols-outlined mr-1">auto_awesome</span>
+                    <span>@(creatingSample ? "创建中…" : "创建示例工作流")</span>
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var wf in workflows)
+                {
+                    <div class="p-3 sm:p-4 rounded-md bg-surface-container">
+                        <div class="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-title-small text-on-surface break-all">@wf.Name</span>
+                                    @if (wf.Manual)
+                                    {
+                                        <span class="md-chip-assist md-chip-assist-info">手动</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(wf.Schedule))
+                                    {
+                                        <span class="md-chip-assist">定时 @wf.Schedule</span>
+                                    }
+                                    @if (wf.Error is not null)
+                                    {
+                                        <span class="md-chip-assist md-chip-assist-error">解析失败</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-body-small text-on-surface-variant">@wf.StepCount 个步骤</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(wf.Description))
+                                {
+                                    <p class="text-body-medium text-on-surface-variant mt-1 break-words">@wf.Description</p>
+                                }
+                                @if (wf.Error is not null)
+                                {
+                                    <p class="text-body-small text-error mt-1 break-words">@wf.Error</p>
+                                }
+                                <p class="text-body-small text-on-surface-variant mt-1 font-mono break-all">@wf.FileName</p>
+                            </div>
+
+                            <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                                <button @onclick="() => ToggleWorkflowDetailAsync(wf)" class="md-btn-text flex-1 sm:flex-none">
+                                    @(expandedWorkflowName == wf.Name ? "收起步骤" : "查看步骤")
+                                </button>
+                                <button @onclick="() => OpenTriggerDialog(wf)"
+                                        disabled="@(!wf.Manual || wf.Error is not null)"
+                                        class="md-btn-filled flex-1 sm:flex-none">
+                                    <span class="material-symbols-outlined mr-1">play_arrow</span>运行
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (expandedWorkflowName == wf.Name)
+                        {
+                            <div class="mt-3 border-t border-outline-variant pt-3">
+                                @if (workflowDetailLoading)
+                                {
+                                    <p class="text-body-small text-on-surface-variant flex items-center gap-2">
+                                        <span class="md-circular-progress"></span>加载步骤…
+                                    </p>
+                                }
+                                else if (workflowDetail is null || !string.Equals(workflowDetail.Name, wf.Name, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <p class="text-body-small text-error">无法加载工作流详情</p>
+                                }
+                                else
+                                {
+                                    @if (workflowDetail.Error is not null)
+                                    {
+                                        <p class="text-body-small text-error break-words mb-2">@workflowDetail.Error</p>
+                                    }
+                                    else
+                                    {
+                                        <div class="space-y-1.5">
+                                            @foreach (var step in workflowDetail.Steps)
+                                            {
+                                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-small">
+                                                    <span class="material-symbols-outlined text-on-surface-variant" style="font-size:1rem;">subdirectory_arrow_right</span>
+                                                    <span class="text-on-surface">@step.Name</span>
+                                                    <code class="text-on-surface-variant font-mono">@step.Uses</code>
+                                                    @foreach (var kv in step.With)
+                                                    {
+                                                        <span class="md-chip-assist">@kv.Key=@kv.Value</span>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    <details class="mt-3">
+                                        <summary class="text-body-small text-primary cursor-pointer select-none">查看 YAML</summary>
+                                        <pre class="mt-2 p-3 rounded-md bg-surface-container-high text-on-surface-variant text-body-small overflow-x-auto whitespace-pre-wrap break-words max-h-72 overflow-y-auto font-mono">@workflowDetail.Yaml</pre>
+                                    </details>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @* ==================== 运行记录 ==================== *@
+    <div class="md-card-elevated p-4 sm:p-6">
+        <div class="flex items-center gap-2 mb-4">
+            <h2 class="text-title-large text-on-surface">运行记录</h2>
+            @if (runs.Any(r => r.Status is "Queued" or "Running" or "WaitingInput"))
+            {
+                <span class="text-body-small text-on-surface-variant">（自动刷新中）</span>
+            }
+        </div>
+
+        @if (runs.Count == 0)
+        {
+            <p class="text-body-medium text-on-surface-variant">暂无运行记录。</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto -mx-4 sm:-mx-6">
+                <table class="md-table responsive-cards">
+                    <thead>
+                        <tr>
+                            <th class="text-left">运行</th>
+                            <th class="text-left">工作流</th>
+                            <th class="text-left">状态</th>
+                            <th class="text-left hide-mobile">步骤</th>
+                            <th class="text-left hide-mobile">创建时间</th>
+                            <th class="text-left hide-mobile">耗时</th>
+                            <th class="text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var run in runs)
+                        {
+                            <tr @key="run.Id">
+                                <td data-label="运行" class="tabular-nums">#@run.Id</td>
+                                <td data-label="工作流" class="wrap-cell"><span class="break-all">@run.WorkflowName</span></td>
+                                <td data-label="状态">
+                                    <span class="@RunStatusChip(run.Status)">@RunStatusText(run.Status)</span>
+                                </td>
+                                <td data-label="步骤" class="hide-mobile tabular-nums">
+                                    @run.Steps.Count(s => s.Status == "Completed") / @run.Steps.Count
+                                </td>
+                                <td data-label="创建时间" class="hide-mobile">@run.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td data-label="耗时" class="hide-mobile tabular-nums">@FormatDuration(run.StartedAt, run.CompletedAt)</td>
+                                <td data-label="操作" class="text-center">
+                                    <div class="inline-flex items-center justify-center gap-2">
+                                        <button @onclick="() => ToggleRunDetailAsync(run)" class="md-btn-text">
+                                            @(expandedRunId == run.Id ? "收起" : "详情")
+                                        </button>
+                                        @if (run.Status is "Queued" or "WaitingInput")
+                                        {
+                                            <button @onclick="() => OpenCancelDialog(run)" class="md-btn-text">取消</button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <Paginator TotalCount="runsTotal" PageSize="PageSize" Page="runsPage" PageChanged="OnRunsPageChanged" />
+
+            @if (expandedRunId.HasValue)
+            {
+                <div class="mt-5 border-t border-outline-variant pt-4">
+                    @if (runDetailLoading)
+                    {
+                        <p class="text-body-medium text-on-surface-variant flex items-center gap-2">
+                            <span class="md-circular-progress"></span>加载运行详情…
+                        </p>
+                    }
+                    else if (runDetail is null)
+                    {
+                        <p class="text-body-medium text-error">无法加载运行详情</p>
+                    }
+                    else
+                    {
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <h3 class="text-title-small text-on-surface">运行 #@runDetail.Id</h3>
+                            <span class="@RunStatusChip(runDetail.Status)">@RunStatusText(runDetail.Status)</span>
+                            <span class="text-body-small text-on-surface-variant break-all">
+                                @runDetail.WorkflowName · @runDetail.TriggerType · @runDetail.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                            </span>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(runDetail.Error))
+                        {
+                            <div class="p-3 rounded-md bg-error-container text-body-medium text-on-error-container mb-3 break-words" role="alert">
+                                @runDetail.Error
+                            </div>
+                        }
+
+                        <div class="space-y-2">
+                            @foreach (var step in runDetail.Steps)
+                            {
+                                <div class="p-3 rounded-md bg-surface-container">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="material-symbols-outlined @StepIconClass(step.Status)" style="font-size:1.125rem;">@StepIcon(step.Status)</span>
+                                        <span class="text-body-medium text-on-surface">@step.StepName</span>
+                                        <code class="text-body-small text-on-surface-variant font-mono">@step.Action</code>
+                                        <span class="@StepStatusChip(step.Status)">@StepStatusText(step.Status)</span>
+                                        <span class="text-body-small text-on-surface-variant tabular-nums">@FormatDuration(step.StartedAt, step.CompletedAt)</span>
+                                        @if (step.TodoStatus == "Pending")
+                                        {
+                                            <span class="md-chip-assist md-chip-assist-warning">待办待处理</span>
+                                        }
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(step.Error))
+                                    {
+                                        <p class="text-body-small text-error mt-1 break-words">@step.Error</p>
+                                    }
+
+                                    <details class="mt-2">
+                                        <summary class="text-body-small text-primary cursor-pointer select-none">输入 / 输出 / 日志</summary>
+                                        <div class="mt-2 space-y-2">
+                                            <div>
+                                                <p class="text-label-small text-on-surface-variant mb-1">输入</p>
+                                                <pre class="p-2 rounded-md bg-surface-container-high text-on-surface-variant text-body-small overflow-x-auto whitespace-pre-wrap break-words max-h-40 overflow-y-auto font-mono">@step.InputsJson</pre>
+                                            </div>
+                                            <div>
+                                                <p class="text-label-small text-on-surface-variant mb-1">输出</p>
+                                                <pre class="p-2 rounded-md bg-surface-container-high text-on-surface-variant text-body-small overflow-x-auto whitespace-pre-wrap break-words max-h-40 overflow-y-auto font-mono">@step.OutputsJson</pre>
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(step.Log))
+                                            {
+                                                <div>
+                                                    <p class="text-label-small text-on-surface-variant mb-1">日志</p>
+                                                    <pre class="p-2 rounded-md bg-surface-container-high text-on-surface-variant text-body-small overflow-x-auto whitespace-pre-wrap break-words max-h-56 overflow-y-auto font-mono">@step.Log</pre>
+                                                </div>
+                                            }
+                                        </div>
+                                    </details>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@* ==================== 触发运行对话框 ==================== *@
+<ModalDialog Visible="showTriggerDialog" OnClose="CloseTriggerDialog" AriaLabel="运行工作流">
+    <h3 class="text-title-medium text-on-surface mb-1">运行工作流</h3>
+    <p class="text-body-medium text-on-surface-variant mb-4 break-words">@pendingWorkflow?.Name</p>
+
+    <div class="space-y-3">
+        <div>
+            <label for="inboxTriggerFileInput" class="block text-label-large text-on-surface-variant mb-1">附加文件（可选）</label>
+            <InputFile id="inboxTriggerFileInput" OnChange="OnTriggerFileSelected"
+                       accept=".csv,.xls,.xlsx,.zip"
+                       class="block w-full text-body-medium text-on-surface-variant file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-primary-container file:text-on-primary-container" />
+            <p class="text-body-small text-on-surface-variant mt-1">
+                文件将写入本次运行目录的 <code class="font-mono">input/</code>，可由 YAML 步骤中的 file 参数引用。
+            </p>
+            @if (pendingWorkflowFile is not null)
+            {
+                <p class="text-body-small text-on-surface mt-1 break-all">
+                    已选择：@pendingWorkflowFile.Name（@(pendingWorkflowFile.Size / 1024) KB）
+                </p>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(triggerError))
+        {
+            <div class="p-3 rounded-md bg-error-container text-body-medium text-on-error-container break-words" role="alert">@triggerError</div>
+        }
+    </div>
+
+    <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
+        <button @onclick="CloseTriggerDialog" disabled="@triggering" class="md-btn-outlined w-full sm:w-auto">取消</button>
+        <button @onclick="TriggerRunAsync" disabled="@triggering" class="md-btn-filled w-full sm:w-auto">
+            @if (triggering)
+            {
+                <span class="loading-spinner mr-1" style="width:16px;height:16px;border-width:2px;"></span>
+            }
+            <span>@(triggering ? "触发中…" : "开始运行")</span>
+        </button>
+    </div>
+</ModalDialog>
+
+@* ==================== 取消运行确认 ==================== *@
+<ModalDialog Visible="cancelRun is not null" OnClose="CloseCancelDialog" AriaLabel="取消运行" Role="alertdialog" Size="sm">
+    <h3 class="text-title-medium text-error mb-2">确认取消运行</h3>
+    <p class="text-body-medium text-on-surface-variant mb-4 break-words">
+        运行 #@cancelRun?.Id（@cancelRun?.WorkflowName）将被标记为已取消，未完成的步骤与待办将失效。
+    </p>
+    <div class="flex justify-end gap-2">
+        <button @onclick="CloseCancelDialog" class="md-btn-outlined">返回</button>
+        <button @onclick="ConfirmCancelAsync" disabled="@cancelling" class="md-btn-danger">
+            @(cancelling ? "取消中…" : "确认取消")
+        </button>
+    </div>
+</ModalDialog>
+
+@code {
+    private const int PageSize = 10;
+
+    private List<WorkflowDto> workflows = [];
+    private List<TodoItem> todos = [];
+    private List<RunDto> runs = [];
+    private int runsTotal;
+    private int runsPage = 1;
+
+    private bool loading = true;
+    private bool creatingSample;
+    private bool triggering;
+    private bool runDetailLoading;
+    private bool workflowDetailLoading;
+    private bool cancelling;
+
+    private WorkflowDto? pendingWorkflow;
+    private IBrowserFile? pendingWorkflowFile;
+    private bool showTriggerDialog;
+    private string? triggerError;
+
+    private RunDto? cancelRun;
+
+    private int? expandedRunId;
+    private RunDetailDto? runDetail;
+
+    private string? expandedWorkflowName;
+    private WorkflowDetailDto? workflowDetail;
+
+    private readonly HashSet<int> busyTodoIds = [];
+    private readonly Dictionary<int, string?> todoValueCache = [];
+
+    private Toast? toastRef;
+    private CancellationTokenSource? cts;
+    private Task? pollTask;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWorkflowsAsync();
+        await LoadTodosAsync();
+        await LoadRunsAsync();
+        loading = false;
+
+        cts = new CancellationTokenSource();
+        pollTask = PollLoopAsync(cts.Token);
+    }
+
+    private async Task PollLoopAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(3000, ct);
+                await LoadTodosAsync(silent: true);
+                await LoadRunsAsync(silent: true);
+                if (expandedRunId.HasValue)
+                    await LoadRunDetailAsync(expandedRunId.Value, silent: true);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task RefreshAsync()
+    {
+        loading = true;
+        await LoadWorkflowsAsync();
+        await LoadTodosAsync();
+        await LoadRunsAsync();
+        if (expandedRunId.HasValue)
+            await LoadRunDetailAsync(expandedRunId.Value, silent: true);
+        loading = false;
+    }
+
+    private async Task LoadWorkflowsAsync()
+    {
+        try
+        {
+            workflows = await Http.GetFromJsonAsync<List<WorkflowDto>>("api/inbox/workflows") ?? [];
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"加载工作流失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task LoadTodosAsync(bool silent = false)
+    {
+        try
+        {
+            var list = await Http.GetFromJsonAsync<List<TodoDto>>("api/inbox/todos?status=Pending") ?? [];
+
+            // 保留已输入但尚未提交的内容，避免轮询覆盖用户输入。
+            foreach (var item in todos)
+                todoValueCache[item.Dto.Id] = item.Value;
+
+            todos = list.Select(dto => new TodoItem
+            {
+                Dto = dto,
+                Value = todoValueCache.TryGetValue(dto.Id, out var cached) ? cached : null
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            if (!silent)
+                ShowToast($"加载待办失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task LoadRunsAsync(bool silent = false)
+    {
+        try
+        {
+            var result = await Http.GetFromJsonAsync<PagedRunsDto>(
+                $"api/inbox/runs?page={runsPage}&pageSize={PageSize}");
+            if (result is null)
+                return;
+
+            runs = result.Items;
+            runsTotal = result.TotalCount;
+
+            if (runs.Count == 0 && runsPage > 1)
+            {
+                runsPage--;
+                await LoadRunsAsync(silent);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!silent)
+                ShowToast($"加载运行记录失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task LoadRunDetailAsync(int runId, bool silent = false)
+    {
+        if (!silent)
+            runDetailLoading = true;
+
+        try
+        {
+            runDetail = await Http.GetFromJsonAsync<RunDetailDto>($"api/inbox/runs/{runId}");
+        }
+        catch (Exception ex)
+        {
+            runDetail = null;
+            if (!silent)
+                ShowToast($"加载运行详情失败：{ex.Message}", true);
+        }
+        finally
+        {
+            runDetailLoading = false;
+        }
+    }
+
+    private async Task OnRunsPageChanged(int page)
+    {
+        runsPage = page;
+        expandedRunId = null;
+        runDetail = null;
+        await LoadRunsAsync();
+    }
+
+    private async Task CreateSampleAsync()
+    {
+        creatingSample = true;
+        try
+        {
+            var resp = await Http.PostAsync("api/inbox/workflows/sample", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                ShowToast("示例工作流已创建");
+                await LoadWorkflowsAsync();
+            }
+            else
+            {
+                ShowToast($"创建失败：{await ReadErrorAsync(resp)}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"创建异常：{ex.Message}", true);
+        }
+        finally
+        {
+            creatingSample = false;
+        }
+    }
+
+    private void OpenTriggerDialog(WorkflowDto workflow)
+    {
+        pendingWorkflow = workflow;
+        pendingWorkflowFile = null;
+        triggerError = null;
+        showTriggerDialog = true;
+    }
+
+    private void CloseTriggerDialog()
+    {
+        if (triggering)
+            return;
+        showTriggerDialog = false;
+        pendingWorkflow = null;
+        pendingWorkflowFile = null;
+        triggerError = null;
+    }
+
+    private void OnTriggerFileSelected(InputFileChangeEventArgs e)
+    {
+        pendingWorkflowFile = e.File;
+        triggerError = null;
+    }
+
+    private async Task TriggerRunAsync()
+    {
+        if (pendingWorkflow is null)
+            return;
+
+        triggering = true;
+        triggerError = null;
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            if (pendingWorkflowFile is not null)
+            {
+                var stream = pendingWorkflowFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
+                var fileContent = new StreamContent(stream);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                content.Add(fileContent, "file", pendingWorkflowFile.Name);
+            }
+
+            var url = $"api/inbox/workflows/{Uri.EscapeDataString(pendingWorkflow.Name)}/runs";
+            var resp = await Http.PostAsync(url, content);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                showTriggerDialog = false;
+                pendingWorkflow = null;
+                pendingWorkflowFile = null;
+                ShowToast("已触发运行，后台将自动推进");
+                runsPage = 1;
+                await LoadRunsAsync();
+                await LoadTodosAsync();
+            }
+            else
+            {
+                triggerError = await ReadErrorAsync(resp);
+            }
+        }
+        catch (Exception ex)
+        {
+            triggerError = $"触发异常：{ex.Message}";
+        }
+        finally
+        {
+            triggering = false;
+        }
+    }
+
+    private async Task ToggleWorkflowDetailAsync(WorkflowDto workflow)
+    {
+        if (expandedWorkflowName == workflow.Name)
+        {
+            expandedWorkflowName = null;
+            workflowDetail = null;
+            return;
+        }
+
+        expandedWorkflowName = workflow.Name;
+        workflowDetail = null;
+        workflowDetailLoading = true;
+
+        try
+        {
+            workflowDetail = await Http.GetFromJsonAsync<WorkflowDetailDto>(
+                $"api/inbox/workflows/{Uri.EscapeDataString(workflow.Name)}");
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"加载工作流详情失败：{ex.Message}", true);
+        }
+        finally
+        {
+            workflowDetailLoading = false;
+        }
+    }
+
+    private async Task ToggleRunDetailAsync(RunDto run)
+    {
+        if (expandedRunId == run.Id)
+        {
+            expandedRunId = null;
+            runDetail = null;
+            return;
+        }
+
+        expandedRunId = run.Id;
+        runDetail = null;
+        await LoadRunDetailAsync(run.Id);
+    }
+
+    private async Task CompleteTodoAsync(TodoItem item)
+    {
+        if (busyTodoIds.Contains(item.Dto.Id))
+            return;
+
+        var value = item.Value;
+        if (item.Dto.InputType == "confirm" && string.IsNullOrWhiteSpace(value))
+            value = "已确认";
+
+        busyTodoIds.Add(item.Dto.Id);
+        try
+        {
+            var resp = await Http.PostAsJsonAsync(
+                $"api/inbox/todos/{item.Dto.Id}/complete", new { value });
+
+            if (resp.IsSuccessStatusCode)
+            {
+                todoValueCache.Remove(item.Dto.Id);
+                ShowToast("已提交，工作流将在数秒内继续");
+                await LoadTodosAsync();
+                await LoadRunsAsync(silent: true);
+                if (expandedRunId == item.Dto.RunId)
+                    await LoadRunDetailAsync(item.Dto.RunId, silent: true);
+            }
+            else
+            {
+                ShowToast($"提交失败：{await ReadErrorAsync(resp)}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"提交异常：{ex.Message}", true);
+        }
+        finally
+        {
+            busyTodoIds.Remove(item.Dto.Id);
+        }
+    }
+
+    private void OpenCancelDialog(RunDto run) => cancelRun = run;
+
+    private void CloseCancelDialog()
+    {
+        if (!cancelling)
+            cancelRun = null;
+    }
+
+    private async Task ConfirmCancelAsync()
+    {
+        if (cancelRun is null)
+            return;
+
+        cancelling = true;
+        try
+        {
+            var resp = await Http.PostAsync($"api/inbox/runs/{cancelRun.Id}/cancel", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                ShowToast("运行已取消");
+                cancelRun = null;
+                await LoadRunsAsync();
+                await LoadTodosAsync();
+                if (expandedRunId.HasValue)
+                    await LoadRunDetailAsync(expandedRunId.Value, silent: true);
+            }
+            else
+            {
+                ShowToast($"取消失败：{await ReadErrorAsync(resp)}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"取消异常：{ex.Message}", true);
+        }
+        finally
+        {
+            cancelling = false;
+        }
+    }
+
+    private void ShowToast(string message, bool isError = false)
+    {
+        _ = toastRef?.Show(message, isError);
+    }
+
+    private static async Task<string> ReadErrorAsync(HttpResponseMessage resp)
+    {
+        try
+        {
+            var body = await resp.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("message", out var message))
+                return message.GetString() ?? $"HTTP {(int)resp.StatusCode}";
+            return body.Length > 0 ? body : $"HTTP {(int)resp.StatusCode}";
+        }
+        catch
+        {
+            return $"HTTP {(int)resp.StatusCode}";
+        }
+    }
+
+    private static string RunStatusText(string status) => status switch
+    {
+        "Queued" => "排队中",
+        "Running" => "执行中",
+        "WaitingInput" => "等待输入",
+        "Completed" => "已完成",
+        "Failed" => "失败",
+        "Cancelled" => "已取消",
+        _ => status
+    };
+
+    private static string RunStatusChip(string status) => status switch
+    {
+        "Completed" => "md-chip-assist md-chip-assist-success",
+        "Failed" => "md-chip-assist md-chip-assist-error",
+        "Running" => "md-chip-assist md-chip-assist-primary",
+        "WaitingInput" => "md-chip-assist md-chip-assist-warning",
+        "Queued" => "md-chip-assist md-chip-assist-info",
+        _ => "md-chip-assist"
+    };
+
+    private static string StepStatusText(string status) => status switch
+    {
+        "Pending" => "待执行",
+        "Running" => "执行中",
+        "WaitingInput" => "等待输入",
+        "Completed" => "完成",
+        "Failed" => "失败",
+        "Skipped" => "跳过",
+        _ => status
+    };
+
+    private static string StepStatusChip(string status) => status switch
+    {
+        "Completed" => "md-chip-assist md-chip-assist-success",
+        "Failed" => "md-chip-assist md-chip-assist-error",
+        "Running" => "md-chip-assist md-chip-assist-primary",
+        "WaitingInput" => "md-chip-assist md-chip-assist-warning",
+        _ => "md-chip-assist md-chip-assist-info"
+    };
+
+    private static string StepIcon(string status) => status switch
+    {
+        "Completed" => "check_circle",
+        "Failed" => "error",
+        "Running" => "progress_activity",
+        "WaitingInput" => "pan_tool_alt",
+        "Skipped" => "skip_next",
+        _ => "schedule"
+    };
+
+    private static string StepIconClass(string status) => status switch
+    {
+        "Completed" => "text-success",
+        "Failed" => "text-error",
+        "Running" => "text-primary",
+        "WaitingInput" => "text-warning",
+        _ => "text-on-surface-variant"
+    };
+
+    private static string FormatDuration(DateTime? start, DateTime? end)
+    {
+        if (start is null)
+            return "—";
+
+        var span = (end ?? DateTime.Now) - start.Value;
+        if (span.TotalMinutes >= 1)
+            return $"{(int)span.TotalMinutes}m{span.Seconds}s";
+        return $"{Math.Max(0, span.TotalSeconds):0.#}s";
+    }
+
+    public void Dispose()
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+    }
+
+    private sealed class TodoItem
+    {
+        public TodoDto Dto { get; set; } = null!;
+        public string? Value { get; set; }
+    }
+
+    private record WorkflowDto(
+        string Name, string FileName, string? Description, bool Manual,
+        string? Schedule, int StepCount, string? Error);
+
+    private record WorkflowDetailDto(
+        string Name, string FileName, string? Description, bool Manual,
+        string? Schedule, string Yaml, List<WorkflowStepDto> Steps, string? Error);
+
+    private record WorkflowStepDto(
+        string JobName, string Id, string Name, string Uses, Dictionary<string, string> With);
+
+    private record RunDto(
+        int Id, string WorkflowName, string Status, string TriggerType, string TriggeredBy,
+        DateTime CreatedAt, DateTime? StartedAt, DateTime? CompletedAt, string? Error,
+        List<StepSummaryDto> Steps);
+
+    private record StepSummaryDto(
+        string StepId, string StepName, string Action, string Status,
+        DateTime? StartedAt, DateTime? CompletedAt, string? Error);
+
+    private record PagedRunsDto(List<RunDto> Items, int TotalCount, int Page, int PageSize);
+
+    private record TodoDto(
+        int Id, int RunId, string WorkflowName, int StepRunId, string Title, string Prompt,
+        string InputType, string? Placeholder, string Status, string? Value, bool IsSensitive,
+        DateTime CreatedAt, DateTime? CompletedAt, DateTime? ExpiresAt, string RunStatus);
+
+    private record RunDetailDto(
+        int Id, string WorkflowName, string Status, string TriggerType, string TriggeredBy,
+        DateTime CreatedAt, DateTime? StartedAt, DateTime? CompletedAt, string? Error,
+        string WorkflowYaml, List<StepDetailDto> Steps, List<TodoDto> Todos);
+
+    private record StepDetailDto(
+        int Id, string JobName, string StepId, string StepName, string Action, string Status,
+        string InputsJson, string OutputsJson, string Log, string? Error,
+        DateTime? StartedAt, DateTime? CompletedAt, int? TodoId, string? TodoStatus);
+}

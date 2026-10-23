@@ -28,7 +28,8 @@ public class WechatCsvParser : IBillParser
     /// <summary>CSV 文本路径：定位表头行后用 CsvHelper 逐行映射。</summary>
     private static ParseResult ParseCsv(Stream fileStream, ParseResult result)
     {
-        using var reader = new StreamReader(fileStream, System.Text.Encoding.UTF8);
+        // leaveOpen: 调用方可能在解析后继续读取该流（如对象存储原始文件保留）
+        using var reader = new StreamReader(fileStream, System.Text.Encoding.UTF8, leaveOpen: true);
         var content = reader.ReadToEnd();
         var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
@@ -75,10 +76,11 @@ public class WechatCsvParser : IBillParser
                 columnMap[headerFields[i]] = i;
         }
 
-        using var csvReader = new StringReader(headerLine + "\n" + string.Join("\n", lines.Skip(headerIndex + 1)));
+        // 表头已单独解析，这里只喂数据行，避免表头被当作一条数据记录
+        using var csvReader = new StringReader(string.Join("\n", lines.Skip(headerIndex + 1)));
         var config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            HasHeaderRecord = true,
+            HasHeaderRecord = false,
             Delimiter = ",",
             MissingFieldFound = null,
             BadDataFound = _ => { },

@@ -56,7 +56,7 @@ public class PipelineRunner(AppDbContext db, ILogger<PipelineRunner> logger) : I
             };
 
             // 起点之前的步骤：跳过（不执行、记为 Skipped），保留追踪可见性。
-            if (step.Order < startOrder)
+            if (step.Order < startOrder || !step.ShouldExecute(context))
             {
                 stepRun.Status = PipelineStepStatus.Skipped;
                 stepRun.CompletedAt = DateTime.Now;

@@ -15,7 +15,8 @@ public class AlipayCsvParser : IBillParser
         // 检测文件编码（支付宝账单通常为 GBK，但也可能是 UTF-8）
         var encoding = EncodingDetector.Detect(fileStream);
 
-        using var reader = new StreamReader(fileStream, encoding);
+        // leaveOpen: 调用方可能在解析后继续读取该流（如对象存储原始文件保留）
+        using var reader = new StreamReader(fileStream, encoding, leaveOpen: true);
         var content = reader.ReadToEnd();
         var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
@@ -58,10 +59,11 @@ public class AlipayCsvParser : IBillParser
                 .ToArray();
         }
 
-        using var csvReader = new StringReader(headerLine + "\n" + string.Join("\n", lines.Skip(headerIndex + 1)));
+        // 表头已单独解析，这里只喂数据行，避免表头被当作一条数据记录
+        using var csvReader = new StringReader(string.Join("\n", lines.Skip(headerIndex + 1)));
         var config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            HasHeaderRecord = true,
+            HasHeaderRecord = false,
             Delimiter = ",",
             MissingFieldFound = null,
             BadDataFound = _ => { },

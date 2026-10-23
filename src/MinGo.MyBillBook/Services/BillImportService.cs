@@ -21,7 +21,11 @@ public class BillImportService(AppDbContext db, IBillParserFactory parserFactory
         await fileStream.CopyToAsync(buffer, ct);
         buffer.Position = 0;
 
-        var result = parser.Parse(buffer, fileName);
+        // 解析器可能自行关闭传入的流；用共享底层缓冲区的只读视图解析，
+        // 即使解析器 Dispose 也只影响视图，buffer 仍可被对象存储读取。
+        using var parseView = new MemoryStream(
+            buffer.GetBuffer(), 0, (int)buffer.Length, writable: false, publiclyVisible: true);
+        var result = parser.Parse(parseView, fileName);
         var errors = new List<string>(result.Errors);
 
         var batch = new BillImportBatch
