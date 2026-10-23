@@ -11,6 +11,7 @@ using MinGo.MyBillBook.Hubs;
 using MinGo.MyBillBook.Services;
 using MinGo.MyBillBook.Services.Inbox;
 using MinGo.MyBillBook.Services.Inbox.Actions;
+using MinGo.MyBillBook.Services.Inbox.Email;
 using MinGo.MyBillBook.Services.Pipeline;
 using MinGo.MyBillBook.Services.Pipeline.Steps;
 using MinGo.MyBillBook.Services.Storage;
@@ -90,10 +91,12 @@ builder.Services.AddHostedService<PipelineJobWorker>();
 // Inbox 工作流引擎：YAML 定义 + 待办驱动的人机协作（Phase 1）
 builder.Services.AddSingleton<InboxWorkspace>();
 builder.Services.AddSingleton<InboxWorkflowCatalog>();
+builder.Services.AddSingleton<InboxEmailAccounts>();
 builder.Services.AddScoped<IInboxWorkflowRunner, InboxWorkflowRunner>();
 builder.Services.AddScoped<IInboxAction, HumanInputAction>();
 builder.Services.AddScoped<IInboxAction, BillImportAction>();
 builder.Services.AddScoped<IInboxAction, BillProcessAction>();
+builder.Services.AddScoped<IInboxAction, EmailFetchAttachmentsAction>();
 builder.Services.AddHostedService<InboxWorkflowWorker>();
 
 // Add controllers for Web API

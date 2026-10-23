@@ -91,6 +91,58 @@
         </div>
     }
 
+    @* ==================== 邮箱连接 ==================== *@
+    <div class="md-card-elevated p-4 sm:p-6">
+        <div class="flex items-center gap-2 mb-1">
+            <h2 class="text-title-large text-on-surface">邮箱连接</h2>
+            <span class="md-chip-assist">@emailAccounts.Count(a => a.Configured) / @emailAccounts.Count</span>
+        </div>
+        <p class="text-body-small text-on-surface-variant mb-4">
+            账号在 <code class="font-mono break-all">Inbox:EmailAccounts</code> 配置（appsettings 或环境变量），密码建议通过
+            <code class="font-mono break-all">Inbox:Secrets</code> 引用。此处只读展示，不会显示密码；修改配置后需重启应用生效。
+        </p>
+
+        @if (emailAccounts.Count == 0)
+        {
+            <div class="p-4 rounded-md bg-surface-container">
+                <p class="text-body-medium text-on-surface-variant mb-2">还没有配置邮箱账号，使用邮件接入前需要先添加：</p>
+                <pre class="p-3 rounded-md bg-surface-container-high text-on-surface-variant text-body-small overflow-x-auto font-mono">@EmailAccountConfigSample</pre>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var account in emailAccounts)
+                {
+                    <div class="p-3 sm:p-4 rounded-md bg-surface-container">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-title-small text-on-surface break-all">@account.Name</span>
+                            @if (account.Configured)
+                            {
+                                <span class="md-chip-assist md-chip-assist-success">可用</span>
+                            }
+                            else
+                            {
+                                <span class="md-chip-assist md-chip-assist-error">配置不完整</span>
+                            }
+                            <span class="text-body-small text-on-surface-variant font-mono break-all">
+                                @(string.IsNullOrWhiteSpace(account.Host) ? "未配置主机" : $"{account.Host}:{account.Port}") · @account.Security
+                            </span>
+                        </div>
+                        <p class="text-body-small text-on-surface-variant mt-1 break-all">
+                            @(string.IsNullOrWhiteSpace(account.Username) ? "未配置用户名" : account.Username)
+                            · 文件夹 @account.Folder · 密码来源 @account.PasswordSource
+                        </p>
+                        @if (account.Error is not null)
+                        {
+                            <p class="text-body-small text-error mt-1 break-words">@account.Error</p>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
     @* ==================== 工作流 ==================== *@
     <div class="md-card-elevated p-4 sm:p-6">
         <h2 class="text-title-large text-on-surface mb-1">工作流</h2>
@@ -415,6 +467,7 @@
     private const int PageSize = 10;
 
     private List<WorkflowDto> workflows = [];
+    private List<EmailAccountDto> emailAccounts = [];
     private List<TodoItem> todos = [];
     private List<RunDto> runs = [];
     private int runsTotal;
@@ -450,6 +503,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadWorkflowsAsync();
+        await LoadEmailAccountsAsync();
         await LoadTodosAsync();
         await LoadRunsAsync();
         loading = false;
@@ -479,6 +533,7 @@
     {
         loading = true;
         await LoadWorkflowsAsync();
+        await LoadEmailAccountsAsync();
         await LoadTodosAsync();
         await LoadRunsAsync();
         if (expandedRunId.HasValue)
@@ -495,6 +550,19 @@
         catch (Exception ex)
         {
             ShowToast($"加载工作流失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task LoadEmailAccountsAsync(bool silent = false)
+    {
+        try
+        {
+            emailAccounts = await Http.GetFromJsonAsync<List<EmailAccountDto>>("api/inbox/email-accounts") ?? [];
+        }
+        catch (Exception ex)
+        {
+            if (!silent)
+                ShowToast($"加载邮箱账号失败：{ex.Message}", true);
         }
     }
 
@@ -901,6 +969,28 @@
     private record WorkflowDto(
         string Name, string FileName, string? Description, bool Manual,
         string? Schedule, int StepCount, string? Error);
+
+    private record EmailAccountDto(
+        string Name, string Host, int Port, string Security, string Username, string Folder,
+        bool Configured, bool HasPassword, string PasswordSource, string? Error);
+
+    private const string EmailAccountConfigSample = """
+        "Inbox": {
+          "EmailAccounts": {
+            "inbox": {
+              "Host": "imap.example.com",
+              "Port": 993,
+              "Security": "ssl",
+              "Username": "me@example.com",
+              "PasswordSecret": "inbox-password",
+              "Folder": "INBOX"
+            }
+          },
+          "Secrets": {
+            "inbox-password": "应用专用密码或授权码"
+          }
+        }
+        """;
 
     private record WorkflowDetailDto(
         string Name, string FileName, string? Description, bool Manual,

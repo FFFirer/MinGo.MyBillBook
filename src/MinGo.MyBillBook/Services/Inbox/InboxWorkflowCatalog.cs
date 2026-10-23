@@ -53,18 +53,28 @@ public sealed class InboxWorkflowCatalog
         => LoadAll().FirstOrDefault(f =>
             string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>在目录中创建演示工作流（已存在则不覆盖），返回文件名。</summary>
-    public string CreateSampleWorkflow()
+    /// <summary>在目录中创建演示工作流（已存在则不覆盖），返回本次新建的文件名。</summary>
+    public IReadOnlyList<string> CreateSampleWorkflows()
     {
         Directory.CreateDirectory(_workflowsPath);
-        var path = Path.Combine(_workflowsPath, "sample-manual-import.yaml");
+        var created = new List<string>();
+
+        created.Add(WriteIfMissing("sample-manual-import.yaml", SampleWorkflowYaml));
+        created.Add(WriteIfMissing("sample-email-import.yaml", SampleEmailWorkflowYaml));
+
+        return created;
+    }
+
+    private string WriteIfMissing(string fileName, string yaml)
+    {
+        var path = Path.Combine(_workflowsPath, fileName);
         if (!File.Exists(path))
         {
-            File.WriteAllText(path, SampleWorkflowYaml);
+            File.WriteAllText(path, yaml);
             _logger.LogInformation("已创建演示工作流: {Path}", path);
         }
 
-        return Path.GetFileName(path);
+        return fileName;
     }
 
     private InboxWorkflowFile LoadFile(string filePath)
@@ -120,6 +130,48 @@ public sealed class InboxWorkflowCatalog
                 uses: bill/import
                 with:
                   file: input/*
+                  platform: auto
+
+              - id: process
+                name: 运行清洗管道
+                uses: bill/process
+                with:
+                  batch_id: ${{ steps.import.outputs.batch_id }}
+        """;
+
+    private const string SampleEmailWorkflowYaml = """
+        name: 示例：从邮箱导入 CSV 账单
+        description: 从配置的 IMAP 邮箱下载 CSV 账单附件，人工确认后导入并运行清洗管道。带密码的 ZIP 需等 Phase 3 解压能力。
+
+        on:
+          manual: true
+
+        jobs:
+          - name: import
+            steps:
+              - id: fetch
+                name: 下载邮件附件
+                uses: email/fetch-attachments
+                with:
+                  account: inbox
+                  search: subject:账单 since:60d unseen
+                  attachments: "*.csv,*.xlsx"
+                  mark_seen: true
+
+              - id: confirm
+                name: 确认导入
+                uses: human/input
+                with:
+                  title: 确认导入邮件账单
+                  prompt: 附件已下载到本次运行目录，请在待办中输入“确认”后继续。
+                  input_type: text
+                  expires_hours: 72
+
+              - id: import
+                name: 导入账单
+                uses: bill/import
+                with:
+                  file: attachments/*.csv
                   platform: auto
 
               - id: process

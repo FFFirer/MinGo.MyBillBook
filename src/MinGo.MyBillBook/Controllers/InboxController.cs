@@ -6,6 +6,7 @@ using MinGo.MyBillBook.Core.Inbox;
 using MinGo.MyBillBook.Core.Models;
 using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Services.Inbox;
+using MinGo.MyBillBook.Services.Inbox.Email;
 
 namespace MinGo.MyBillBook.Controllers;
 
@@ -17,6 +18,7 @@ namespace MinGo.MyBillBook.Controllers;
 [Route("api/inbox")]
 public class InboxController(
     InboxWorkflowCatalog catalog,
+    InboxEmailAccounts emailAccounts,
     IInboxWorkflowRunner runner,
     AppDbContext db,
     ILogger<InboxController> logger) : ControllerBase
@@ -69,10 +71,24 @@ public class InboxController(
 
     /// <summary>创建演示工作流文件（已存在则不覆盖）。</summary>
     [HttpPost("workflows/sample")]
-    public ActionResult CreateSampleWorkflow()
+    public ActionResult CreateSampleWorkflows()
     {
-        var fileName = catalog.CreateSampleWorkflow();
-        return Ok(new { fileName, workflowsPath = catalog.WorkflowsPath });
+        var files = catalog.CreateSampleWorkflows();
+        return Ok(new { files, workflowsPath = catalog.WorkflowsPath });
+    }
+
+    // ---------- 邮箱连接（只读） ----------
+
+    /// <summary>列出配置中的 IMAP 账号（绝不返回密码）。</summary>
+    [HttpGet("email-accounts")]
+    public ActionResult<List<InboxEmailAccountDto>> GetEmailAccounts()
+    {
+        var result = emailAccounts.List()
+            .Select(a => new InboxEmailAccountDto(
+                a.Name, a.Host, a.Port, a.Security, a.Username, a.Folder,
+                a.Configured, a.HasPassword, a.PasswordSource, a.Error))
+            .ToList();
+        return Ok(result);
     }
 
     /// <summary>手动触发一次运行；可选上传一个种子文件到运行目录 input/。</summary>
@@ -282,6 +298,8 @@ public class InboxController(
             workflowsPath = catalog.WorkflowsPath,
             workflowCount = workflows.Count,
             workflowErrors = workflows.Count(w => w.Error is not null),
+            emailAccountCount = emailAccounts.List().Count,
+            emailAccountsConfigured = emailAccounts.List().Count(a => a.Configured),
             pendingTodos,
             activeRuns
         });
@@ -454,3 +472,16 @@ public record InboxTodoDto(
     DateTime? CompletedAt,
     DateTime? ExpiresAt,
     string RunStatus);
+
+/// <summary>邮箱账号只读视图：只暴露连接所需元信息，密码永不返回。</summary>
+public record InboxEmailAccountDto(
+    string Name,
+    string Host,
+    int Port,
+    string Security,
+    string Username,
+    string Folder,
+    bool Configured,
+    bool HasPassword,
+    string PasswordSource,
+    string? Error);

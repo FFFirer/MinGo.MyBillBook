@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
+using MinGo.MyBillBook.Core.Inbox;
 
 namespace MinGo.MyBillBook.Services.Inbox;
 
@@ -43,7 +44,7 @@ public sealed class InboxWorkspace
     public async Task<string> SaveTriggerFileAsync(int runId, Stream content, string fileName, CancellationToken ct)
     {
         var runPath = EnsureRunWorkspace(runId);
-        var safeName = SanitizeFileName(fileName);
+        var safeName = WorkspaceFileName.Sanitize(fileName, "input");
         var relative = $"input/{safeName}";
         var fullPath = ResolvePath(runPath, relative);
 
@@ -92,16 +93,5 @@ public sealed class InboxWorkspace
             throw new ArgumentException($"非法的路径（越出运行目录）: {relative}");
 
         return fullPath;
-    }
-
-    private static string SanitizeFileName(string fileName)
-    {
-        var name = Path.GetFileName(fileName ?? string.Empty);
-        foreach (var invalid in Path.GetInvalidFileNameChars())
-            name = name.Replace(invalid, '_');
-        name = name.Trim();
-        return string.IsNullOrEmpty(name)
-            ? $"input-{DateTime.Now:yyyyMMddHHmmss}.bin"
-            : name;
     }
 }
