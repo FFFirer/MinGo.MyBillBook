@@ -228,6 +228,16 @@ public class InboxController(
             : Conflict(new { message = "运行不存在或已结束" });
     }
 
+    /// <summary>重试失败的运行：从失败步骤恢复，保留已完成步骤与运行目录。</summary>
+    [HttpPost("runs/{id:int}/retry")]
+    public async Task<ActionResult> RetryRun(int id, CancellationToken ct)
+    {
+        var retried = await runner.RetryRunAsync(id, ct);
+        return retried
+            ? Accepted(new { retried = id })
+            : Conflict(new { message = "只有包含失败步骤的运行可以重试" });
+    }
+
     // ---------- 人工待办 ----------
 
     [HttpGet("todos")]

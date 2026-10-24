@@ -1,7 +1,7 @@
 # Inbox：邮件驱动的账单数据接入工作流
 
-> 状态：Phase 1（手动触发 + 待办介入 + 标准导入衔接）、Phase 2（IMAP 取附件）与 Phase 3（加密解压、文件识别、工作目录清理）已实现。
-> 本文档描述整体设计；Phase 4+（定时调度、安全增强）按文末计划推进。
+> 状态：Phase 1–4 已实现（手动触发 + 待办介入 + 标准导入、IMAP 取附件、加密解压与工作目录清理、Quartz 定时与失败重试、SignalR 实时刷新）。
+> 本文档描述整体设计；Phase 5（安全增强）按文末计划推进。
 
 ## 1. 背景与目标
 
@@ -24,7 +24,8 @@
 ## 2. 非目标
 
 - 不做 7z / RAR 等非 ZIP 归档格式（`archive/extract` 仅支持 ZIP，含 ZipCrypto 与 AES）；
-- 不做 Quartz 定时触发（Phase 4）；
+- 不做多实例/集群调度：Quartz 使用内存 JobStore，进程启动后由目录同步器重建定时任务；
+- 不做错过触发的补跑（沿用 Quartz 默认 misfire 策略）；
 - 不做 Secret 落盘加密与金库管理（Phase 5）；Phase 2 采用配置引用 + 只读展示 + API 掩码；
 - 不做多 Job 并行、`needs` 依赖图、条件表达式（`if`）、矩阵构建；
 - 不做多用户权限体系（当前应用为单用户本地部署）。
@@ -32,6 +33,7 @@
 Phase 1 交付的是**可运行的引擎骨架**：手动触发 → 可选上传种子文件 → `human/input` 生成待办并挂起 → 用户完成待办 → 自动恢复 → `bill/import` → `bill/process` → 完成。
 Phase 2 在此基础上加入 `email/fetch-attachments`，打通“邮件 → 附件 → 导入”链路；账号与密码仍来自配置，不引入数据库 CRUD。
 Phase 3 补齐账单 ZIP 常见的加密场景：`archive/extract` 解压、`file/detect` 定位，并加入运行目录保留策略与清理入口。
+Phase 4 加入 `on.schedule`（Quartz cron，服务器本地时区）、步骤级失败重试与“从失败步骤恢复”的手动重试，并把页面刷新切换为 SignalR 实时事件（轮询仅作断线兜底）。
 
 ## 3. 总体架构
 
@@ -51,8 +53,11 @@ Phase 3 补齐账单 ZIP 常见的加密场景：`archive/extract` 解压、`fil
 │                                                           │
 │  InboxWorkflowWorker (BackgroundService, 2s 轮询)          │
 │    ├─ 恢复 WaitingInput 且待办已完成的运行                   │
-│    ├─ 领取 Queued 运行，顺序执行 steps                      │
+│    ├─ 领取 Queued 运行，顺序执行 steps（含失败重试）         │
 │    └─ 按计划运行 InboxWorkspaceCleaner（清理历史运行目录）    │
+│                                                           │
+│  InboxScheduleSynchronizer (BackgroundService, 30s 扫描)   │
+│    └─ on.schedule → Quartz Job/Trigger（增删改自动同步）     │
 │                                                           │
 │  Actions                                                  │
 │    human/input   → 创建 InboxTodo + 通知 + 挂起             │
@@ -78,7 +83,7 @@ description: 下载邮件附件，人工输入解压密码后导入
 
 on:
   manual: true
-  # schedule: "0 0 9 1 * ?"   # Quartz cron，Phase 4 生效
+  schedule: "0 0 9 1 * ?"   # Quartz cron：每月 1 日 09:00（服务器本地时区）
 
 jobs:
   - name: import
@@ -113,6 +118,10 @@ jobs:
         with:
           file: ${{ steps.detect.outputs.first_file }}
           platform: alipay
+        retry:
+          attempts: 3        # 最多执行 3 次（含首次）
+          delay_seconds: 5   # 首次重试前等待 5 秒
+          backoff: 2         # 后续等待翻倍：5s、10s
 
       - id: process
         name: 运行清洗管道
@@ -215,11 +224,12 @@ jobs:
 |------|------|
 | `name` | 工作流唯一名称（必填） |
 | `on.manual` | 是否允许手动触发，默认 `true` |
-| `on.schedule` | Quartz cron，Phase 4 生效 |
+| `on.schedule` | Quartz cron（6/7 段），服务器本地时区；每 30 秒同步为定时任务 |
 | `jobs[].name` | Job 名称，按声明顺序串行执行 |
 | `steps[].id` | 步骤唯一标识（全工作流内唯一），用于 `steps.<id>` 引用 |
 | `steps[].uses` | Action 名称，如 `bill/import` |
 | `steps[].with` | Action 参数，值支持表达式 |
+| `steps[].retry` | 失败重试：`attempts`（1–5）、`delay_seconds`（0–300）、`backoff`（1–10） |
 
 表达式（`${{ ... }}`）当前支持：
 
@@ -231,6 +241,24 @@ jobs:
 - `${{ inputs.<key> }}` → 触发参数（预留给后续扩展）。
 
 未知路径解析为空字符串并记入日志，与 GitHub Actions 的宽容行为一致。
+
+### 4.3 定时触发与失败重试
+
+定时触发：
+
+- cron 使用 Quartz 格式（秒 分 时 日 月 周 [年]），按**服务器本地时区**计算；`on.schedule` 语法错误会作为工作流解析错误显示在列表/详情中，不影响其他工作流；
+- `InboxScheduleSynchronizer` 启动 3 秒后首次扫描，之后每 `Inbox:ScheduleSyncSeconds`（默认 30 秒）对比目录与 Quartz 任务：新增 YAML、修改 cron、删除文件都会自动生效，无需重启；
+- 定时触发的运行 `TriggerType=Schedule`、`TriggeredBy=schedule`，输入中带有 `trigger=schedule` 与 `scheduled_at`（本地时间 ISO 8601）；
+- 若同名工作流已有 `Queued` / `Running` / `WaitingInput` 的运行，本次触发直接跳过并记录日志，避免重复下载/导入；需要“补跑”时手动触发即可；
+- 定时任务与工作流名称一一对应；同名 YAML 只保留第一个并记录警告。
+
+失败重试：
+
+- 仅为**步骤返回 Failed 或抛出异常**时重试；`human/input` 挂起、运行取消不触发重试；
+- 未配置 `retry` 时等价于 `attempts: 1`（不重试）；配置为空块时默认 `attempts=2`、`delay_seconds=5`、`backoff=2`；
+- 第 n 次失败后的等待时间为 `delay_seconds × backoff^(n-1)`，上限 300 秒；等待期间 Worker 不阻塞其他运行（当前 Worker 串行，等待只阻塞当前步骤）；
+- 每次失败都会写入步骤日志（`第 1/3 次尝试失败: ...；5 秒后重试`），最终失败时保留最后一次错误；
+- 运行失败后可在 `/inbox` 或 `POST /api/inbox/runs/{id}/retry` 手动重试：从**第一个失败步骤**恢复，已完成步骤与运行目录产物保留；若失败步骤是 `human/input`（例如待办过期），过期待办会被移除并在恢复时重新创建。
 
 ## 5. 领域模型
 
@@ -303,6 +331,8 @@ Todo:  Pending → Completed
 - `required: true`（默认）时找不到匹配文件即失败，避免导入步骤拿到空输入；
 - 输出 `files` JSON 数组与 `first_file`，后者适合直接传给 `bill/import`。
 
+失败重试由运行器统一处理，Action 无需感知：抛出异常与返回 `Failed` 走同一套重试逻辑，重试耗尽后才把运行标记为失败。
+
 Action 抽象：
 
 ```csharp
@@ -331,6 +361,7 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 | GET | `/api/inbox/runs` | 运行记录（状态/工作流筛选 + 分页） |
 | GET | `/api/inbox/runs/{id}` | 运行详情：步骤输入输出、日志、关联待办 |
 | POST | `/api/inbox/runs/{id}/cancel` | 取消 Queued/WaitingInput 运行，相关待办置 Expired |
+| POST | `/api/inbox/runs/{id}/retry` | 从首个失败步骤恢复执行；仅 Failed 运行可用，已完成步骤与工作目录保留 |
 | GET | `/api/inbox/todos` | 待办列表（默认 Pending） |
 | POST | `/api/inbox/todos/{id}/complete` | 提交待办输入 |
 | GET | `/api/inbox/health` | 引擎自检（工作流目录、邮箱账号数量、保留策略、待处理数、活动运行数） |
@@ -342,9 +373,9 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 - **待办事项**：页面顶部展示 Pending 待办，直接内联输入并提交（密码框 / 文本框）；提交后提示“已提交，工作流将在数秒内继续”。
 - **邮箱连接**：只读卡片展示 `Inbox:EmailAccounts` 中的账号（可用 / 配置不完整、主机端口、文件夹、密码来源）；未配置时给出 JSON 示例。
 - **工作目录**：展示运行目录数量、占用空间、活动运行与保留策略；提供“预览清理”（dry run）与“立即清理”（二次确认）。清理活动运行目录会被跳过。
-- **工作流**：卡片列表，展示描述、触发方式、步骤链；点击“运行”弹出确认框，可附加一个种子文件（Phase 1 演示用），提交后轮询运行状态。
-- **运行记录**：表格 + 分页；状态徽标；展开显示每个步骤的状态、耗时、错误与日志；运行中每 3 秒自动刷新。
-- 通知：服务端在运行状态变化、待办创建时通过 SignalR 广播（`InboxRunUpdated` / `InboxTodoCreated`）；页面同时使用轮询兜底。
+- **工作流**：卡片列表，展示描述、触发方式（手动 / `on.schedule` cron）、步骤链；点击“运行”弹出确认框，可附加一个种子文件（Phase 1 演示用）。
+- **运行记录**：表格 + 分页；状态徽标；展开显示每个步骤的状态、耗时、错误与日志；失败运行提供“重试”（二次确认，说明从失败步骤继续）；定时触发的运行在详情标题中显示 `Schedule`。
+- 通知：服务端在运行状态变化、待办创建时通过 SignalR 广播（`InboxRunUpdated` / `InboxTodoCreated`）；`/inbox` 订阅这两个事件并立即刷新待办、运行列表与展开中的详情，同时弹出简短提示。断线时自动重连，并以 10 秒轮询兜底；SignalR 连接失败不影响页面其他功能。
 
 ## 9. 工作目录
 
@@ -365,7 +396,8 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
   "Inbox": {
     "WorkspaceRetentionDays": 30,   // 0 表示不按天数清理
     "WorkspaceMaxRuns": 200,        // 0 表示不按数量清理
-    "CleanupIntervalHours": 6       // 0 表示关闭自动清理
+    "CleanupIntervalHours": 6,      // 0 表示关闭自动清理
+    "ScheduleSyncSeconds": 30       // 定时任务目录扫描间隔，最小 5 秒
   }
 }
 ```
@@ -384,7 +416,7 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
 | Phase 1 | YAML 解析、表达式、运行器、待办、Worker、`human/input`、`bill/import`、`bill/process`、API、UI、单测 | ✅ |
 | Phase 2 | `email/fetch-attachments`（MailKit IMAP）、邮箱连接配置、检索语法、只读账号 UI | ✅ |
 | Phase 3 | `archive/extract`（加密 ZIP）、`file/detect`（glob）、工作目录保留策略与清理 API/UI | ✅ |
-| Phase 4 | Quartz `schedule` 触发、SignalR 前端实时订阅、失败重试策略 | 待办 |
+| Phase 4 | Quartz `schedule` 触发、SignalR 前端实时订阅、失败重试策略 | ✅ |
 | Phase 5 | 安全增强：Secret 加密存储、敏感待办加密、审计与保留策略 | 待办 |
 
 Secret 加密（Phase 2 原计划项）已拆分到 Phase 5：本阶段先实现 `PasswordSecret` 间接引用、账号只读展示与 API 掩码，避免把明文密码暴露给前端；落盘加密与密钥管理在 Phase 5 统一处理。
@@ -417,3 +449,12 @@ Phase 3：
 16. `GET /api/inbox/workspace` 返回目录数量、占用、活动运行与保留策略；`POST .../cleanup?dryRun=true` 只预览，真实清理会删除过期目录；
 17. 清理时 `Queued` / `Running` / `WaitingInput` 运行的目录不会被删除；`/inbox` 可预览并二次确认清理；
 18. `dotnet build` 与 `dotnet test` 通过，新增解压单测覆盖明文、ZipCrypto、AES、错误密码、路径穿越、重名、限额与缺文件。
+
+Phase 4：
+
+19. 带 `on.schedule` 的 YAML 在启动后（或修改后 30 秒内）被同步为 Quartz 任务；修改 cron、删除文件会同步更新/移除任务，无需重启；
+20. 定时触发创建 `TriggerType=Schedule` 的运行并正常推进；同名工作流已有活动运行时跳过本次触发，不会重复创建运行；
+21. 非法 cron 在工作流列表/详情中显示明确错误，且不会注册到 Quartz；
+22. 配置 `retry` 的步骤失败后按 `attempts` / `delay_seconds` / `backoff` 重试，日志记录每次失败与等待时间；耗尽后运行失败；
+23. `POST /api/inbox/runs/{id}/retry` 从失败步骤恢复，已完成步骤不重复执行、运行目录文件保留；补齐缺失输入后可重试成功；
+24. `/inbox` 通过 SignalR 在 1 秒级刷新运行状态与待办并提示，断线后自动重连；10 秒轮询可兜底；`dotnet build` 与 `dotnet test` 通过。

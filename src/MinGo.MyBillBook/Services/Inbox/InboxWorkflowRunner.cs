@@ -180,6 +180,67 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         return true;
     }
 
+    public async Task<bool> RetryRunAsync(int runId, CancellationToken ct)
+    {
+        var run = await _db.InboxRuns
+            .Include(r => r.Steps)
+            .FirstOrDefaultAsync(r => r.Id == runId, ct);
+
+        if (run is null || run.Status != InboxRunStatus.Failed)
+            return false;
+
+        var failedStep = run.Steps
+            .Where(s => s.Status == InboxStepStatus.Failed)
+            .OrderBy(s => s.Order)
+            .FirstOrDefault();
+
+        if (failedStep is null)
+            return false;
+
+        failedStep.Status = InboxStepStatus.Pending;
+        failedStep.Error = null;
+        failedStep.CompletedAt = null;
+        failedStep.Log = AppendLog(failedStep.Log, "手动重试：从该步骤恢复执行");
+
+        // 失败步骤之后的步骤理论上均为 Pending；若存在遗留状态一并复位，避免恢复后卡住。
+        foreach (var step in run.Steps.Where(s =>
+                     s.Order > failedStep.Order
+                     && s.Status is InboxStepStatus.Running or InboxStepStatus.WaitingInput))
+        {
+            step.Status = InboxStepStatus.Pending;
+            step.Error = null;
+            step.CompletedAt = null;
+        }
+
+        // human/input 过期导致的失败：移除过期待办，恢复时会重新创建待办。
+        if (string.Equals(failedStep.Action, "human/input", StringComparison.OrdinalIgnoreCase))
+        {
+            var expired = await _db.InboxTodos
+                .Where(t => t.StepRunId == failedStep.Id && t.Status == InboxTodoStatus.Expired)
+                .ToListAsync(ct);
+            if (expired.Count > 0)
+                _db.InboxTodos.RemoveRange(expired);
+        }
+
+        run.Status = InboxRunStatus.Queued;
+        run.Error = null;
+        run.CompletedAt = null;
+
+        await _db.SaveChangesAsync(ct);
+        await NotifyRunAsync(run, ct);
+        _logger.LogInformation("手动重试运行 #{RunId}（{Workflow}），从步骤 {StepId} 恢复",
+            run.Id, run.WorkflowName, failedStep.StepId);
+        return true;
+    }
+
+    public Task<bool> HasActiveRunAsync(string workflowName, CancellationToken ct)
+        => _db.InboxRuns.AnyAsync(
+            r => r.WorkflowName == workflowName
+                 && (r.Status == InboxRunStatus.Queued
+                     || r.Status == InboxRunStatus.Running
+                     || r.Status == InboxRunStatus.WaitingInput),
+            ct);
+
     private async Task<bool> ResumeWaitingRunsAsync(CancellationToken ct)
     {
         var runs = await _db.InboxRuns
@@ -282,6 +343,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         {
             var inputs = DeserializeMap(run.InputsJson);
             var orderedSteps = run.Steps.OrderBy(s => s.Order).ToList();
+            var retryPolicies = LoadRetryPolicies(run.WorkflowYaml);
 
             foreach (var stepRun in orderedSteps)
             {
@@ -344,22 +406,42 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                     }
                 };
 
+                var retryPolicy = retryPolicies.GetValueOrDefault(stepRun.StepId);
+                var maxAttempts = retryPolicy?.Attempts ?? 1;
                 InboxActionResult result;
-                try
-                {
-                    result = await action.ExecuteAsync(actionContext, ct);
-                }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "步骤 {StepId} 执行失败 (RunId={RunId})", stepRun.StepId, run.Id);
-                    result = InboxActionResult.Failed(ex.Message);
-                }
 
-                stepRun.Log = TrimLog(logBuilder.ToString());
+                for (var attempt = 1; ; attempt++)
+                {
+                    try
+                    {
+                        result = await action.ExecuteAsync(actionContext, ct);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "步骤 {StepId} 执行失败 (RunId={RunId}, Attempt={Attempt})",
+                            stepRun.StepId, run.Id, attempt);
+                        result = InboxActionResult.Failed(ex.Message);
+                    }
+
+                    stepRun.Log = TrimLog(logBuilder.ToString());
+
+                    if (result.Outcome != InboxActionOutcome.Failed || attempt >= maxAttempts)
+                        break;
+
+                    var delay = retryPolicy!.GetDelay(attempt);
+                    actionContext.Log($"第 {attempt}/{maxAttempts} 次尝试失败: {result.Error ?? "未知错误"}；" +
+                                      $"{FormatDelay(delay)}后重试");
+                    stepRun.Log = TrimLog(logBuilder.ToString());
+                    await _db.SaveChangesAsync(ct);
+                    await NotifyRunAsync(run, ct);
+
+                    if (delay > TimeSpan.Zero)
+                        await Task.Delay(delay, ct);
+                }
 
                 switch (result.Outcome)
                 {
@@ -468,6 +550,25 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
             step.CompletedAt = DateTime.Now;
         }
     }
+
+    /// <summary>从运行快照中读取步骤重试策略；快照解析失败时视为不重试。</summary>
+    private static Dictionary<string, WorkflowRetryDefinition> LoadRetryPolicies(string workflowYaml)
+    {
+        try
+        {
+            var definition = WorkflowYamlParser.Parse(workflowYaml);
+            return WorkflowYamlParser.FlattenSteps(definition)
+                .Where(s => s.Retry is not null)
+                .ToDictionary(s => s.Id, s => s.Retry!, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (WorkflowParseException)
+        {
+            return new Dictionary<string, WorkflowRetryDefinition>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static string FormatDelay(TimeSpan delay)
+        => delay <= TimeSpan.Zero ? "立即" : $"{delay.TotalSeconds:0.#} 秒";
 
     private static Dictionary<string, string> DeserializeMap(string? json)
     {

@@ -56,6 +56,9 @@ public static class WorkflowYamlParser
     {
         definition.Name = definition.Name?.Trim() ?? string.Empty;
         definition.On ??= new WorkflowTriggerDefinition();
+        definition.On.Schedule = string.IsNullOrWhiteSpace(definition.On.Schedule)
+            ? null
+            : definition.On.Schedule.Trim();
         definition.Jobs ??= [];
 
         for (var i = 0; i < definition.Jobs.Count; i++)
@@ -113,6 +116,16 @@ public static class WorkflowYamlParser
                     errors.Add($"step id '{step.Id}' 重复（全工作流内必须唯一）");
                 if (string.IsNullOrWhiteSpace(step.Uses))
                     errors.Add($"step '{step.Id}' 缺少 uses");
+
+                if (step.Retry is { } retry)
+                {
+                    if (retry.Attempts is < 1 or > WorkflowRetryDefinition.MaxAttempts)
+                        errors.Add($"step '{step.Id}' retry.attempts 必须在 1–{WorkflowRetryDefinition.MaxAttempts} 之间");
+                    if (retry.DelaySeconds is < 0 or > WorkflowRetryDefinition.MaxDelaySeconds)
+                        errors.Add($"step '{step.Id}' retry.delay_seconds 必须在 0–{WorkflowRetryDefinition.MaxDelaySeconds} 之间");
+                    if (double.IsNaN(retry.Backoff) || retry.Backoff is < 1 or > 10)
+                        errors.Add($"step '{step.Id}' retry.backoff 必须在 1–10 之间");
+                }
             }
         }
 

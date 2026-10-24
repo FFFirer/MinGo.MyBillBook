@@ -12,6 +12,7 @@ using MinGo.MyBillBook.Services;
 using MinGo.MyBillBook.Services.Inbox;
 using MinGo.MyBillBook.Services.Inbox.Actions;
 using MinGo.MyBillBook.Services.Inbox.Email;
+using MinGo.MyBillBook.Services.Inbox.Scheduling;
 using MinGo.MyBillBook.Services.Pipeline;
 using MinGo.MyBillBook.Services.Pipeline.Steps;
 using MinGo.MyBillBook.Services.Storage;
@@ -101,6 +102,8 @@ builder.Services.AddScoped<IInboxAction, EmailFetchAttachmentsAction>();
 builder.Services.AddScoped<IInboxAction, ArchiveExtractAction>();
 builder.Services.AddScoped<IInboxAction, FileDetectAction>();
 builder.Services.AddHostedService<InboxWorkflowWorker>();
+// 周期把 YAML 的 on.schedule 同步为 Quartz cron 任务
+builder.Services.AddHostedService<InboxScheduleSynchronizer>();
 
 // Add controllers for Web API
 builder.Services.AddControllers();

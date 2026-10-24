@@ -1,4 +1,5 @@
 using MinGo.MyBillBook.Core.Inbox;
+using Quartz;
 
 namespace MinGo.MyBillBook.Services.Inbox;
 
@@ -85,6 +86,11 @@ public sealed class InboxWorkflowCatalog
         {
             var yaml = File.ReadAllText(filePath);
             var definition = WorkflowYamlParser.Parse(yaml);
+
+            // cron 由 Quartz 执行，语法校验放到服务端（Core 不依赖 Quartz）。
+            if (definition.On.Schedule is { } cron && !CronExpression.TryParse(cron, out _))
+                throw new WorkflowParseException($"on.schedule 不是有效的 Quartz cron 表达式: {cron}");
+
             return new InboxWorkflowFile
             {
                 FileName = fileName,

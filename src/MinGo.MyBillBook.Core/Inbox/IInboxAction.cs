@@ -86,4 +86,10 @@ public interface IInboxWorkflowRunner
 
     /// <summary>取消运行；Queued / WaitingInput 可取消，关联 Pending 待办置为 Expired。</summary>
     Task<bool> CancelRunAsync(int runId, CancellationToken ct);
+
+    /// <summary>从失败步骤恢复一次 Failed 运行；已完成步骤保留，工作目录保留。</summary>
+    Task<bool> RetryRunAsync(int runId, CancellationToken ct);
+
+    /// <summary>是否存在同工作流的活动运行（Queued / Running / WaitingInput），用于定时触发去重。</summary>
+    Task<bool> HasActiveRunAsync(string workflowName, CancellationToken ct);
 }
