@@ -220,6 +220,134 @@
         }
     </div>
 
+    @* ==================== 安全与审计 ==================== *@
+    <div class="md-card-elevated p-4 sm:p-6">
+        <div class="flex items-center gap-2 mb-1">
+            <h2 class="text-title-large text-on-surface">安全与审计</h2>
+            @if (security is not null)
+            {
+                <span class="@(security.Encryption.Operational ? "md-chip-assist md-chip-assist-success" : "md-chip-assist md-chip-assist-error")">
+                    @(security.Encryption.Operational ? "加密正常" : "加密异常")
+                </span>
+            }
+        </div>
+        <p class="text-body-small text-on-surface-variant mb-4">
+            敏感待办、步骤参数与密码输出使用 Data Protection 加密后落库；密钥环必须与数据库一同备份。
+            审计事件只记录操作与结果，不保存密码、Secret 或待办输入值。
+        </p>
+
+        @if (security is null)
+        {
+            <p class="text-body-medium text-on-surface-variant flex items-center gap-2">
+                <span class="md-circular-progress"></span>加载中…
+            </p>
+        }
+        else
+        {
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div class="p-3 rounded-md bg-surface-container">
+                    <p class="text-label-small text-on-surface-variant">Secret 总数</p>
+                    <p class="text-title-small text-on-surface tabular-nums">@security.Secrets.Total</p>
+                </div>
+                <div class="p-3 rounded-md bg-surface-container">
+                    <p class="text-label-small text-on-surface-variant">Secret 已加密</p>
+                    <p class="text-title-small text-on-surface tabular-nums">
+                        @security.Secrets.Encrypted
+                        @if (security.Secrets.Plaintext > 0)
+                        {
+                            <span class="text-body-small text-warning"> / @security.Secrets.Plaintext 明文</span>
+                        }
+                    </p>
+                </div>
+                <div class="p-3 rounded-md bg-surface-container">
+                    <p class="text-label-small text-on-surface-variant">敏感待办（待处理）</p>
+                    <p class="text-title-small text-on-surface tabular-nums">@security.SensitiveTodosPending</p>
+                </div>
+                <div class="p-3 rounded-md bg-surface-container">
+                    <p class="text-label-small text-on-surface-variant">历史保留</p>
+                    <p class="text-title-small text-on-surface tabular-nums">
+                        @(security.History.RetentionDays > 0 ? $"{security.History.RetentionDays} 天" : "不限")
+                    </p>
+                </div>
+            </div>
+
+            <p class="text-body-small text-on-surface-variant break-all font-mono mb-1">@security.Encryption.KeysPath</p>
+            <p class="text-body-small text-on-surface-variant mb-3">
+                密钥 @security.Encryption.Keys 个 · @security.Encryption.Provider ·
+                敏感待办已加密 @security.SensitiveTodosEncrypted 条
+                @if (security.SensitiveTodosPlaintext > 0)
+                {
+                    <span class="text-warning">，仍有 @security.SensitiveTodosPlaintext 条明文（启动时自动回填）</span>
+                }
+                · 审计事件 @security.AuditEvents 条
+            </p>
+
+            @if (security.Encryption.Error is not null)
+            {
+                <p class="text-body-small text-error mb-3 break-words">@security.Encryption.Error</p>
+            }
+
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
+                <button @onclick="PreviewHistoryCleanupAsync" class="md-btn-outlined w-full sm:w-auto">
+                    <span class="material-symbols-outlined mr-1">visibility</span>预览历史清理
+                </button>
+                <button @onclick="() => showHistoryDialog = true" class="md-btn-filled w-full sm:w-auto">
+                    <span class="material-symbols-outlined mr-1">auto_delete</span>清理历史数据
+                </button>
+                <button @onclick="RefreshSecurityAsync" class="md-btn-text w-full sm:w-auto">
+                    <span class="material-symbols-outlined mr-1">refresh</span>刷新安全状态
+                </button>
+            </div>
+
+            @if (historyPreview is not null)
+            {
+                <div class="p-3 rounded-md bg-surface-container mb-3">
+                    <p class="text-body-medium text-on-surface">
+                        预览：将删除 @historyPreview.Runs 个运行、@historyPreview.Steps 个步骤、@historyPreview.Todos 个待办与
+                        @historyPreview.AuditEvents 条审计事件。
+                    </p>
+                    <p class="text-body-small text-on-surface-variant mt-1 tabular-nums">
+                        清理截止 @HistoryCutoffText(historyPreview.Cutoff)（保留 @historyPreview.RetentionDays 天）
+                    </p>
+                </div>
+            }
+
+            <h3 class="text-title-small text-on-surface mb-2">最近审计事件</h3>
+            @if (auditEvents.Count == 0)
+            {
+                <p class="text-body-small text-on-surface-variant">暂无审计事件。</p>
+            }
+            else
+            {
+                <div class="space-y-1.5 max-h-64 overflow-y-auto">
+                    @foreach (var item in auditEvents)
+                    {
+                        <div @key="item.Id" class="p-2 rounded-md bg-surface-container flex flex-wrap items-center gap-x-2 gap-y-1 text-body-small">
+                            <span class="text-on-surface-variant tabular-nums font-mono">@item.OccurredAt.ToString("MM-dd HH:mm:ss")</span>
+                            <span class="md-chip-assist">@AuditEventText(item.EventType)</span>
+                            @if (item.RunId.HasValue)
+                            {
+                                <span class="text-on-surface-variant">运行 #@item.RunId</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.WorkflowName))
+                            {
+                                <span class="text-on-surface break-all">@item.WorkflowName</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Actor))
+                            {
+                                <span class="text-on-surface-variant">@item.Actor</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Detail))
+                            {
+                                <span class="text-on-surface-variant break-all">@item.Detail</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
     @* ==================== 工作流 ==================== *@
     <div class="md-card-elevated p-4 sm:p-6">
         <h2 class="text-title-large text-on-surface mb-1">工作流</h2>
@@ -582,6 +710,31 @@
     </div>
 </ModalDialog>
 
+@* ==================== 清理历史数据确认 ==================== *@
+<ModalDialog Visible="showHistoryDialog" OnClose="CloseHistoryDialog" AriaLabel="清理历史数据" Role="alertdialog" Size="sm">
+    <h3 class="text-title-medium text-error mb-2">确认清理历史数据</h3>
+    <p class="text-body-medium text-on-surface-variant mb-4">
+        将删除超过保留天数的已结束运行及其步骤、待办，并清理同一时间段内的审计事件。
+        排队、执行中与等待输入的运行不会被删除，此操作不可撤销。
+    </p>
+    @if (historyPreview is not null)
+    {
+        <p class="text-body-small text-on-surface-variant mb-4">
+            预计删除：运行 @historyPreview.Runs、步骤 @historyPreview.Steps、待办 @historyPreview.Todos、审计 @historyPreview.AuditEvents。
+        </p>
+    }
+    <div class="flex justify-end gap-2">
+        <button @onclick="CloseHistoryDialog" class="md-btn-outlined" disabled="@cleaningHistory">返回</button>
+        <button @onclick="ConfirmHistoryCleanupAsync" disabled="@cleaningHistory" class="md-btn-danger">
+            @if (cleaningHistory)
+            {
+                <span class="loading-spinner mr-1" style="width:16px;height:16px;border-width:2px;"></span>
+            }
+            <span>@(cleaningHistory ? "清理中…" : "确认清理")</span>
+        </button>
+    </div>
+</ModalDialog>
+
 @code {
     private const int PageSize = 10;
 
@@ -589,6 +742,12 @@
     private CleanupResultDto? cleanupPreview;
     private bool showCleanupDialog;
     private bool cleaningWorkspace;
+
+    private SecurityStatusDto? security;
+    private List<AuditEventDto> auditEvents = [];
+    private HistoryCleanupResultDto? historyPreview;
+    private bool showHistoryDialog;
+    private bool cleaningHistory;
 
     private List<WorkflowDto> workflows = [];
     private List<EmailAccountDto> emailAccounts = [];
@@ -635,6 +794,7 @@
         await LoadWorkflowsAsync();
         await LoadEmailAccountsAsync();
         await LoadWorkspaceAsync();
+        await LoadSecurityAsync();
         await LoadTodosAsync();
         await LoadRunsAsync();
         loading = false;
@@ -731,6 +891,7 @@
         await LoadWorkflowsAsync();
         await LoadEmailAccountsAsync();
         await LoadWorkspaceAsync();
+        await LoadSecurityAsync();
         await LoadTodosAsync();
         await LoadRunsAsync();
         if (expandedRunId.HasValue)
@@ -773,6 +934,83 @@
         {
             workspace = null;
             ShowToast($"加载工作目录信息失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task LoadSecurityAsync(bool silent = false)
+    {
+        try
+        {
+            security = await Http.GetFromJsonAsync<SecurityStatusDto>("api/inbox/security");
+            auditEvents = await Http.GetFromJsonAsync<List<AuditEventDto>>("api/inbox/audit?take=20") ?? [];
+        }
+        catch (Exception ex)
+        {
+            security = null;
+            if (!silent)
+                ShowToast($"加载安全状态失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task RefreshSecurityAsync()
+    {
+        await LoadSecurityAsync();
+        ShowToast("安全状态已刷新");
+    }
+
+    private async Task PreviewHistoryCleanupAsync()
+    {
+        try
+        {
+            var resp = await Http.PostAsync("api/inbox/history/cleanup?dryRun=true", null);
+            if (resp.IsSuccessStatusCode)
+                historyPreview = await resp.Content.ReadFromJsonAsync<HistoryCleanupResultDto>();
+            else
+                ShowToast($"预览历史清理失败：{await ReadErrorAsync(resp)}", true);
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"预览历史清理异常：{ex.Message}", true);
+        }
+    }
+
+    private void CloseHistoryDialog()
+    {
+        if (cleaningHistory)
+            return;
+        showHistoryDialog = false;
+    }
+
+    private async Task ConfirmHistoryCleanupAsync()
+    {
+        cleaningHistory = true;
+        try
+        {
+            var resp = await Http.PostAsync("api/inbox/history/cleanup", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var result = await resp.Content.ReadFromJsonAsync<HistoryCleanupResultDto>();
+                showHistoryDialog = false;
+                historyPreview = null;
+                ShowToast(result is null
+                    ? "历史数据已清理"
+                    : $"已删除 {result.Runs} 个运行、{result.AuditEvents} 条审计事件");
+                await LoadSecurityAsync(silent: true);
+                await LoadRunsAsync(silent: true);
+                await LoadTodosAsync(silent: true);
+            }
+            else
+            {
+                ShowToast($"清理历史失败：{await ReadErrorAsync(resp)}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast($"清理历史异常：{ex.Message}", true);
+        }
+        finally
+        {
+            cleaningHistory = false;
         }
     }
 
@@ -827,6 +1065,7 @@
                 ShowToast(result is null
                     ? "清理完成"
                     : $"已删除 {result.Deleted} 个运行目录（{FormatBytes(result.DeletedBytes)}）");
+                await LoadSecurityAsync(silent: true);
                 await LoadWorkspaceAsync();
                 await PreviewCleanupAsync();
             }
@@ -1080,6 +1319,7 @@
             {
                 todoValueCache.Remove(item.Dto.Id);
                 ShowToast("已提交，工作流将在数秒内继续");
+                await LoadSecurityAsync(silent: true);
                 await LoadTodosAsync();
                 await LoadRunsAsync(silent: true);
                 if (expandedRunId == item.Dto.RunId)
@@ -1121,6 +1361,7 @@
             {
                 ShowToast("运行已取消");
                 cancelRun = null;
+                await LoadSecurityAsync(silent: true);
                 await LoadRunsAsync();
                 await LoadTodosAsync();
                 if (expandedRunId.HasValue)
@@ -1178,6 +1419,7 @@
                 retryRunId = null;
                 retryRunWorkflow = null;
                 ShowToast("已重新排队，将从失败步骤继续");
+                await LoadSecurityAsync(silent: true);
                 await LoadRunsAsync();
                 await LoadTodosAsync();
                 if (expandedRunId == runId)
@@ -1279,6 +1521,22 @@
         _ => "text-on-surface-variant"
     };
 
+    private static string AuditEventText(string eventType) => eventType switch
+    {
+        "RunCreated" => "创建运行",
+        "RunCompleted" => "运行完成",
+        "RunFailed" => "运行失败",
+        "RunCancelled" => "运行取消",
+        "RunRetried" => "运行重试",
+        "TodoCompleted" => "待办提交",
+        "WorkspaceCleanup" => "目录清理",
+        "HistoryCleanup" => "历史清理",
+        _ => eventType
+    };
+
+    private static string HistoryCutoffText(DateTime cutoff)
+        => cutoff == DateTime.MinValue ? "未启用" : cutoff.ToString("yyyy-MM-dd HH:mm");
+
     private static string FormatBytes(long bytes)
     {
         if (bytes < 1024)
@@ -1348,6 +1606,26 @@
     private record CleanupResultDto(
         bool DryRun, DateTime Cutoff, int RetentionDays, int MaxRuns, int Scanned,
         int Deleted, long DeletedBytes, int Kept, int SkippedActive, List<string> Failures);
+
+    private record SecurityStatusDto(
+        EncryptionStatusDto Encryption, SecretsStatusDto Secrets,
+        int SensitiveTodosPending, int SensitiveTodosEncrypted, int SensitiveTodosPlaintext,
+        int ActiveRuns, int AuditEvents, HistoryStatusDto History);
+
+    private record EncryptionStatusDto(
+        string Provider, string Purpose, string KeysPath, int Keys, bool Operational, string? Error);
+
+    private record SecretsStatusDto(int Total, int Encrypted, int Plaintext);
+
+    private record HistoryStatusDto(int RetentionDays, DateTime Cutoff, int CandidateRuns);
+
+    private record HistoryCleanupResultDto(
+        bool DryRun, DateTime Cutoff, int RetentionDays,
+        int Runs, int Steps, int Todos, int AuditEvents);
+
+    private record AuditEventDto(
+        int Id, DateTime OccurredAt, string EventType, int? RunId, int? TodoId,
+        string? WorkflowName, string? Actor, string? Detail);
 
     private record WorkflowDetailDto(
         string Name, string FileName, string? Description, bool Manual,

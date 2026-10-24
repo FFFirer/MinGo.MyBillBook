@@ -1,4 +1,5 @@
 using MailKit.Security;
+using MinGo.MyBillBook.Services.Inbox.Security;
 
 namespace MinGo.MyBillBook.Services.Inbox.Email;
 
@@ -53,7 +54,10 @@ public sealed class InboxEmailAccounts
     private readonly IReadOnlyDictionary<string, ResolvedEmailAccount> _accounts;
     private readonly IReadOnlyList<InboxEmailAccountInfo> _infos;
 
-    public InboxEmailAccounts(IConfiguration configuration, ILogger<InboxEmailAccounts> logger)
+    public InboxEmailAccounts(
+        IConfiguration configuration,
+        InboxSecrets secrets,
+        ILogger<InboxEmailAccounts> logger)
     {
         var accounts = new Dictionary<string, ResolvedEmailAccount>(StringComparer.OrdinalIgnoreCase);
         var infos = new List<InboxEmailAccountInfo>();
@@ -71,16 +75,27 @@ public sealed class InboxEmailAccounts
             var (security, securityText) = ParseSecurity(options.Security, port);
             var passwordSource = "missing";
             var password = string.Empty;
+            string? passwordError = null;
 
-            if (!string.IsNullOrWhiteSpace(options.PasswordSecret))
+            try
             {
-                password = configuration[$"Inbox:Secrets:{options.PasswordSecret}"] ?? string.Empty;
-                passwordSource = $"secret:{options.PasswordSecret}";
+                if (!string.IsNullOrWhiteSpace(options.PasswordSecret))
+                {
+                    password = secrets.Get(options.PasswordSecret) ?? string.Empty;
+                    passwordSource = $"secret:{options.PasswordSecret}";
+                }
+                else if (!string.IsNullOrWhiteSpace(options.Password))
+                {
+                    password = secrets.Unprotect(
+                        options.Password,
+                        $"Inbox:EmailAccounts:{name}:Password");
+                    passwordSource = "config";
+                }
             }
-            else if (!string.IsNullOrWhiteSpace(options.Password))
+            catch (Exception ex)
             {
-                password = options.Password;
-                passwordSource = "config";
+                // 解密失败按配置不完整处理，避免带着空密码连接并给出误导性错误。
+                passwordError = ex.Message;
             }
 
             var errors = new List<string>();
@@ -90,7 +105,9 @@ public sealed class InboxEmailAccounts
                 errors.Add($"Security 无效: {options.Security}（可选 ssl / starttls / auto / none）");
             if (string.IsNullOrWhiteSpace(options.Username))
                 errors.Add("缺少 Username");
-            if (string.IsNullOrWhiteSpace(password))
+            if (passwordError is not null)
+                errors.Add(passwordError);
+            else if (string.IsNullOrWhiteSpace(password))
                 errors.Add(string.IsNullOrWhiteSpace(options.PasswordSecret)
                     ? "缺少 Password 或 PasswordSecret"
                     : $"未找到 Secret: {options.PasswordSecret}");

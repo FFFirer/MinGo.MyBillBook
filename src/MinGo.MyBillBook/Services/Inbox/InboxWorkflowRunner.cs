@@ -6,6 +6,7 @@ using MinGo.MyBillBook.Core.Inbox;
 using MinGo.MyBillBook.Core.Models;
 using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Hubs;
+using MinGo.MyBillBook.Services.Inbox.Security;
 
 namespace MinGo.MyBillBook.Services.Inbox;
 
@@ -28,7 +29,9 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
     private readonly IReadOnlyDictionary<string, IInboxAction> _actions;
     private readonly IHubContext<NotificationHub> _hub;
     private readonly IServiceProvider _services;
-    private readonly IConfiguration _configuration;
+    private readonly IInboxSensitiveDataProtector _protector;
+    private readonly InboxSecrets _secrets;
+    private readonly InboxAuditLog _audit;
     private readonly ILogger<InboxWorkflowRunner> _logger;
 
     public InboxWorkflowRunner(
@@ -37,7 +40,9 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         IEnumerable<IInboxAction> actions,
         IHubContext<NotificationHub> hub,
         IServiceProvider services,
-        IConfiguration configuration,
+        IInboxSensitiveDataProtector protector,
+        InboxSecrets secrets,
+        InboxAuditLog audit,
         ILogger<InboxWorkflowRunner> logger)
     {
         _db = db;
@@ -45,7 +50,9 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         _actions = actions.ToDictionary(a => a.Uses, StringComparer.OrdinalIgnoreCase);
         _hub = hub;
         _services = services;
-        _configuration = configuration;
+        _protector = protector;
+        _secrets = secrets;
+        _audit = audit;
         _logger = logger;
     }
 
@@ -61,13 +68,15 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
+        var runInputs = inputs ?? new Dictionary<string, string>();
         var run = new InboxRun
         {
             WorkflowName = definition.Name,
             WorkflowYaml = workflowYaml,
             TriggerType = triggerType,
             TriggeredBy = triggeredBy,
-            InputsJson = JsonSerializer.Serialize(inputs ?? new Dictionary<string, string>()),
+            InputsJson = JsonSerializer.Serialize(
+                InboxSensitiveData.ProtectValues(runInputs, _protector)),
             Status = InboxRunStatus.Queued,
             CreatedAt = DateTime.Now
         };
@@ -95,6 +104,14 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
 
         await _db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
+
+        await _audit.RecordAsync(
+            "RunCreated",
+            run.Id,
+            workflowName: run.WorkflowName,
+            actor: triggeredBy,
+            detail: $"{triggerType} · {definition.Jobs.Sum(j => j.Steps.Count)} 个步骤",
+            ct: ct);
 
         _workspace.EnsureRunWorkspace(run.Id);
         if (triggerFile is not null && !string.IsNullOrWhiteSpace(triggerFileName))
@@ -176,6 +193,13 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         }
 
         await _db.SaveChangesAsync(ct);
+        await _audit.RecordAsync(
+            "RunCancelled",
+            run.Id,
+            workflowName: run.WorkflowName,
+            actor: "manual",
+            detail: "用户取消运行",
+            ct: ct);
         await NotifyRunAsync(run, ct);
         return true;
     }
@@ -227,6 +251,13 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         run.CompletedAt = null;
 
         await _db.SaveChangesAsync(ct);
+        await _audit.RecordAsync(
+            "RunRetried",
+            run.Id,
+            workflowName: run.WorkflowName,
+            actor: "manual",
+            detail: $"从步骤 {failedStep.StepId} 恢复",
+            ct: ct);
         await NotifyRunAsync(run, ct);
         _logger.LogInformation("手动重试运行 #{RunId}（{Workflow}），从步骤 {StepId} 恢复",
             run.Id, run.WorkflowName, failedStep.StepId);
@@ -253,6 +284,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
             return false;
 
         var changed = false;
+        var failures = new List<(InboxRun Run, string Reason)>();
 
         foreach (var run in runs)
         {
@@ -262,6 +294,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                 if (step is null)
                 {
                     FailRun(run, null, "运行处于等待输入状态，但未找到等待中的步骤");
+                    failures.Add((run, "等待中的步骤缺失"));
                     changed = true;
                     await NotifyRunAsync(run, ct);
                     continue;
@@ -271,6 +304,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                 if (todo is null)
                 {
                     FailRun(run, step, "等待中的步骤缺少待办记录");
+                    failures.Add((run, "等待中的步骤缺少待办记录"));
                     changed = true;
                     await NotifyRunAsync(run, ct);
                     continue;
@@ -282,6 +316,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                 {
                     todo.Status = InboxTodoStatus.Expired;
                     FailRun(run, step, $"待办 #{todo.Id} 已过期：{todo.Title}");
+                    failures.Add((run, $"待办 #{todo.Id} 已过期"));
                     changed = true;
                     await NotifyRunAsync(run, ct);
                     continue;
@@ -290,6 +325,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                 if (todo.Status == InboxTodoStatus.Expired)
                 {
                     FailRun(run, step, $"待办 #{todo.Id} 已过期：{todo.Title}");
+                    failures.Add((run, $"待办 #{todo.Id} 已过期"));
                     changed = true;
                     await NotifyRunAsync(run, ct);
                     continue;
@@ -319,6 +355,17 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         if (changed)
             await _db.SaveChangesAsync(ct);
 
+        foreach (var (failedRun, reason) in failures)
+        {
+            await _audit.RecordAsync(
+                "RunFailed",
+                failedRun.Id,
+                workflowName: failedRun.WorkflowName,
+                actor: "system",
+                detail: reason,
+                ct: ct);
+        }
+
         return changed;
     }
 
@@ -341,7 +388,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
 
         try
         {
-            var inputs = DeserializeMap(run.InputsJson);
+            var inputs = InboxSensitiveData.UnprotectValues(DeserializeMap(run.InputsJson), _protector);
             var orderedSteps = run.Steps.OrderBy(s => s.Order).ToList();
             var retryPolicies = LoadRetryPolicies(run.WorkflowYaml);
 
@@ -362,15 +409,18 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                 {
                     FailRun(run, stepRun, $"未知 Action: {stepRun.Action}");
                     await _db.SaveChangesAsync(ct);
+                    await RecordRunFailedAsync(run, stepRun, "未知 Action", ct);
                     await NotifyRunAsync(run, ct);
                     return true;
                 }
 
                 var evaluation = BuildEvaluationContext(run, orderedSteps, inputs);
-                var resolvedInputs = ExpressionEvaluator.EvaluateDictionary(
-                    DeserializeMap(stepRun.InputsJson), evaluation);
+                var storedInputs = InboxSensitiveData.UnprotectValues(
+                    DeserializeMap(stepRun.InputsJson), _protector);
+                var resolvedInputs = ExpressionEvaluator.EvaluateDictionary(storedInputs, evaluation);
 
-                stepRun.InputsJson = JsonSerializer.Serialize(resolvedInputs);
+                stepRun.InputsJson = JsonSerializer.Serialize(
+                    InboxSensitiveData.ProtectValues(resolvedInputs, _protector));
                 stepRun.Status = InboxStepStatus.Running;
                 stepRun.StartedAt = DateTime.Now;
                 stepRun.Error = null;
@@ -447,7 +497,8 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                 {
                     case InboxActionOutcome.Completed:
                         stepRun.Status = InboxStepStatus.Completed;
-                        stepRun.OutputsJson = JsonSerializer.Serialize(result.Outputs);
+                        stepRun.OutputsJson = SerializeStepOutputs(
+                            stepRun.Action, resolvedInputs, result.Outputs);
                         stepRun.CompletedAt = DateTime.Now;
                         stepRun.Log = AppendLog(stepRun.Log, "步骤完成");
                         await _db.SaveChangesAsync(ct);
@@ -467,6 +518,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                         FailRun(run, stepRun, result.Error ?? "步骤执行失败");
                         stepRun.Log = AppendLog(stepRun.Log, $"步骤失败: {stepRun.Error}");
                         await _db.SaveChangesAsync(ct);
+                        await RecordRunFailedAsync(run, stepRun, "步骤执行失败", ct);
                         await NotifyRunAsync(run, ct);
                         return true;
                 }
@@ -475,6 +527,13 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
             run.Status = InboxRunStatus.Completed;
             run.CompletedAt = DateTime.Now;
             await _db.SaveChangesAsync(ct);
+            await _audit.RecordAsync(
+                "RunCompleted",
+                run.Id,
+                workflowName: run.WorkflowName,
+                actor: run.TriggeredBy,
+                detail: $"{orderedSteps.Count} 个步骤完成",
+                ct: ct);
             await NotifyRunAsync(run, ct);
             _logger.LogInformation("运行 #{RunId}（{Workflow}）完成", run.Id, run.WorkflowName);
             return true;
@@ -489,6 +548,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
             var runningStep = run.Steps.FirstOrDefault(s => s.Status == InboxStepStatus.Running);
             FailRun(run, runningStep, ex.Message);
             await _db.SaveChangesAsync(ct);
+            await RecordRunFailedAsync(run, runningStep, "运行异常", ct);
             await NotifyRunAsync(run, ct);
             return true;
         }
@@ -505,7 +565,8 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
             stepMap[step.StepId] = new StepEvaluation
             {
                 Status = step.Status.ToString(),
-                Outputs = DeserializeMap(step.OutputsJson)
+                Outputs = DeserializeMap(
+                    InboxSensitiveData.UnprotectJson(step.OutputsJson, _protector))
             };
         }
 
@@ -519,9 +580,39 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         };
     }
 
-    private IReadOnlyDictionary<string, string> GetSecrets()
-        => _configuration.GetSection("Inbox:Secrets").GetChildren()
-            .ToDictionary(c => c.Key, c => c.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, string> GetSecrets() => _secrets.All();
+
+    /// <summary>
+    /// human/input 且 input_type=password 的输出整段加密；其余步骤输出按原样保存。
+    /// 下游通过 steps.&lt;id&gt;.outputs 引用时会在 BuildEvaluationContext 中透明解密。
+    /// </summary>
+    private string SerializeStepOutputs(
+        string action,
+        IReadOnlyDictionary<string, string> resolvedInputs,
+        IReadOnlyDictionary<string, string> outputs)
+    {
+        var json = JsonSerializer.Serialize(outputs);
+        var sensitive = action.Equals("human/input", StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(
+                            resolvedInputs.GetValueOrDefault("input_type"),
+                            "password",
+                            StringComparison.OrdinalIgnoreCase);
+
+        return sensitive ? InboxSensitiveData.ProtectJson(json, _protector) : json;
+    }
+
+    private Task RecordRunFailedAsync(
+        InboxRun run,
+        InboxStepRun? step,
+        string reason,
+        CancellationToken ct)
+        => _audit.RecordAsync(
+            "RunFailed",
+            run.Id,
+            workflowName: run.WorkflowName,
+            actor: run.TriggeredBy,
+            detail: step is null ? reason : $"{reason}（步骤 {step.StepId}）",
+            ct: ct);
 
     private async Task NotifyRunAsync(InboxRun run, CancellationToken ct)
     {

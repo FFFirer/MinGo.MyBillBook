@@ -32,6 +32,7 @@ public class AppDbContext : DbContext
     public DbSet<InboxRun> InboxRuns => Set<InboxRun>();
     public DbSet<InboxStepRun> InboxStepRuns => Set<InboxStepRun>();
     public DbSet<InboxTodo> InboxTodos => Set<InboxTodo>();
+    public DbSet<InboxAuditEvent> InboxAuditEvents => Set<InboxAuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -290,12 +291,24 @@ public class AppDbContext : DbContext
             e.Property(x => x.Title).HasMaxLength(200).IsRequired();
             e.Property(x => x.Prompt).HasMaxLength(2000).IsRequired();
             e.Property(x => x.InputType).HasMaxLength(20).IsRequired();
-            e.Property(x => x.InputValue).HasMaxLength(4000);
+            e.Property(x => x.InputValue).HasMaxLength(8000);
             e.HasOne(x => x.Run).WithMany().HasForeignKey(x => x.RunId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => new { x.RunId, x.StepRunId });
             e.HasIndex(x => x.CreatedAt);
+        });
+
+        modelBuilder.Entity<InboxAuditEvent>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(50).IsRequired();
+            e.Property(x => x.WorkflowName).HasMaxLength(200);
+            e.Property(x => x.Actor).HasMaxLength(100);
+            e.Property(x => x.Detail).HasMaxLength(500);
+            e.HasIndex(x => x.OccurredAt);
+            e.HasIndex(x => x.EventType);
+            e.HasIndex(x => x.RunId);
         });
     }
 }

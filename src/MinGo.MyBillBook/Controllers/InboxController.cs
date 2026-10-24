@@ -7,6 +7,7 @@ using MinGo.MyBillBook.Core.Models;
 using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Services.Inbox;
 using MinGo.MyBillBook.Services.Inbox.Email;
+using MinGo.MyBillBook.Services.Inbox.Security;
 
 namespace MinGo.MyBillBook.Controllers;
 
@@ -20,6 +21,10 @@ public class InboxController(
     InboxWorkflowCatalog catalog,
     InboxEmailAccounts emailAccounts,
     InboxWorkspaceCleaner workspaceCleaner,
+    InboxHistoryCleaner historyCleaner,
+    InboxSecurityStatusProvider securityStatus,
+    IInboxSensitiveDataProtector protector,
+    InboxAuditLog audit,
     IInboxWorkflowRunner runner,
     AppDbContext db,
     ILogger<InboxController> logger) : ControllerBase
@@ -203,9 +208,7 @@ public class InboxController(
         var steps = run.Steps.OrderBy(s => s.Order).Select(s =>
         {
             todoByStep.TryGetValue(s.Id, out var todo);
-            var outputs = s.Action.Equals("human/input", StringComparison.OrdinalIgnoreCase)
-                ? MaskHumanOutputs(s.OutputsJson)
-                : s.OutputsJson;
+            var outputs = PrepareStepOutputs(s);
 
             return new InboxStepDetailDto(
                 s.Id, s.JobName, s.StepId, s.StepName, s.Action, s.Status.ToString(),
@@ -283,10 +286,21 @@ public class InboxController(
         if (request.Value is { Length: > 4000 })
             return BadRequest(new { message = "输入内容过长（最多 4000 字符）" });
 
-        todo.InputValue = request.Value;
+        todo.InputValue = todo.IsSensitive && !string.IsNullOrEmpty(request.Value)
+            ? protector.Protect(request.Value)
+            : request.Value;
         todo.Status = InboxTodoStatus.Completed;
         todo.CompletedAt = DateTime.Now;
         await db.SaveChangesAsync(ct);
+
+        await audit.RecordAsync(
+            "TodoCompleted",
+            todo.RunId,
+            todo.Id,
+            todo.Run.WorkflowName,
+            actor: "manual",
+            detail: $"{todo.InputType}{(todo.IsSensitive ? " · 加密存储" : string.Empty)}",
+            ct: ct);
 
         logger.LogInformation("待办 #{TodoId} 已提交，运行 #{RunId} 将被恢复", todo.Id, todo.RunId);
         return Accepted(new { todoId = todo.Id, runId = todo.RunId, message = "已提交，工作流将在数秒内继续" });
@@ -307,8 +321,64 @@ public class InboxController(
     {
         var result = await workspaceCleaner.CleanupAsync(dryRun, ct);
         if (!dryRun && result.Deleted > 0)
+        {
             logger.LogInformation("手动清理运行目录：删除 {Count} 个", result.Deleted);
+            await audit.RecordAsync(
+                "WorkspaceCleanup",
+                actor: "manual",
+                detail: $"删除 {result.Deleted} 个运行目录（{result.DeletedBytes} 字节）",
+                ct: ct);
+        }
         return Ok(result);
+    }
+
+    /// <summary>按历史保留策略清理已结束的运行、步骤、待办与审计事件；dryRun=true 只预览。</summary>
+    [HttpPost("history/cleanup")]
+    public async Task<ActionResult<InboxHistoryCleanupResult>> CleanupHistory(
+        [FromQuery] bool dryRun = false,
+        CancellationToken ct = default)
+    {
+        var result = await historyCleaner.CleanupAsync(dryRun, ct);
+        if (!dryRun && (result.Runs > 0 || result.AuditEvents > 0))
+        {
+            logger.LogInformation("手动清理历史数据：运行 {Runs}，审计 {AuditEvents}", result.Runs, result.AuditEvents);
+            await audit.RecordAsync(
+                "HistoryCleanup",
+                actor: "manual",
+                detail: $"运行 {result.Runs}，步骤 {result.Steps}，待办 {result.Todos}，审计 {result.AuditEvents}",
+                ct: ct);
+        }
+        return Ok(result);
+    }
+
+    // ---------- 安全与审计 ----------
+
+    /// <summary>只读安全状态：加密组件、Secret 加密比例、敏感待办与历史保留。</summary>
+    [HttpGet("security")]
+    public async Task<ActionResult<InboxSecurityStatus>> GetSecurity(CancellationToken ct)
+        => Ok(await securityStatus.GetAsync(ct));
+
+    /// <summary>最近的安全审计事件。Detail 不含密码、Secret 或待办输入值。</summary>
+    [HttpGet("audit")]
+    public async Task<ActionResult<List<InboxAuditEventDto>>> GetAudit(
+        [FromQuery] int take = 50,
+        [FromQuery] string? eventType = null,
+        CancellationToken ct = default)
+    {
+        take = take is < 1 or > 200 ? 50 : take;
+        var query = db.InboxAuditEvents.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(eventType))
+            query = query.Where(e => e.EventType == eventType);
+
+        var events = await query
+            .OrderByDescending(e => e.Id)
+            .Take(take)
+            .Select(e => new InboxAuditEventDto(
+                e.Id, e.OccurredAt, e.EventType, e.RunId, e.TodoId,
+                e.WorkflowName, e.Actor, e.Detail))
+            .ToListAsync(ct);
+
+        return Ok(events);
     }
 
     // ---------- 自检 ----------
@@ -332,6 +402,7 @@ public class InboxController(
             emailAccountsConfigured = emailAccounts.List().Count(a => a.Configured),
             workspaceRetentionDays = workspaceCleaner.RetentionDays,
             workspaceMaxRuns = workspaceCleaner.MaxRuns,
+            historyRetentionDays = historyCleaner.RetentionDays,
             pendingTodos,
             activeRuns
         });
@@ -350,6 +421,24 @@ public class InboxController(
             todo.Title, todo.Prompt, todo.InputType, todo.Placeholder,
             todo.Status.ToString(), value, todo.IsSensitive,
             todo.CreatedAt, todo.CompletedAt, todo.ExpiresAt, run.Status.ToString());
+    }
+
+    /// <summary>human/input 输出整体敏感：先透明解密（如有），再掩码，绝不下发密文。</summary>
+    private string PrepareStepOutputs(InboxStepRun step)
+    {
+        if (!step.Action.Equals("human/input", StringComparison.OrdinalIgnoreCase))
+            return step.OutputsJson;
+
+        try
+        {
+            return MaskHumanOutputs(
+                InboxSensitiveData.UnprotectJson(step.OutputsJson, protector));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "解密步骤输出失败: StepRunId={StepRunId}", step.Id);
+            return "{\"value\":\"******\"}";
+        }
     }
 
     private static string MaskHumanOutputs(string json)
@@ -392,12 +481,7 @@ public class InboxController(
         }
     }
 
-    private static bool IsSensitiveKey(string key)
-        => key.Contains("password", StringComparison.OrdinalIgnoreCase)
-           || key.Contains("secret", StringComparison.OrdinalIgnoreCase)
-           || key.Contains("token", StringComparison.OrdinalIgnoreCase)
-           || key.Contains("apikey", StringComparison.OrdinalIgnoreCase)
-           || key.Contains("api_key", StringComparison.OrdinalIgnoreCase);
+    private static bool IsSensitiveKey(string key) => InboxSensitiveKeys.IsSensitive(key);
 
     private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum
     {
@@ -517,3 +601,14 @@ public record InboxEmailAccountDto(
     bool HasPassword,
     string PasswordSource,
     string? Error);
+
+/// <summary>审计事件只读视图。</summary>
+public record InboxAuditEventDto(
+    int Id,
+    DateTime OccurredAt,
+    string EventType,
+    int? RunId,
+    int? TodoId,
+    string? WorkflowName,
+    string? Actor,
+    string? Detail);

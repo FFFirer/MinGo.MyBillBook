@@ -421,6 +421,49 @@ namespace MinGo.MyBillBook.Data.Migrations
                     b.ToTable("FundAccounts");
                 });
 
+            modelBuilder.Entity("MinGo.MyBillBook.Core.Models.InboxAuditEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Actor")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RunId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TodoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("WorkflowName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventType");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("RunId");
+
+                    b.ToTable("InboxAuditEvents");
+                });
+
             modelBuilder.Entity("MinGo.MyBillBook.Core.Models.InboxRun", b =>
                 {
                     b.Property<int>("Id")
@@ -565,7 +608,7 @@ namespace MinGo.MyBillBook.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("InputValue")
-                        .HasMaxLength(4000)
+                        .HasMaxLength(8000)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsSensitive")

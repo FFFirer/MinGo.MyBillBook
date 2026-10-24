@@ -16,6 +16,7 @@ namespace MinGo.MyBillBook.Services.Inbox.Actions;
 public sealed class HumanInputAction(
     AppDbContext db,
     IHubContext<NotificationHub> hub,
+    IInboxSensitiveDataProtector protector,
     ILogger<HumanInputAction> logger) : IInboxAction
 {
     public string Uses => "human/input";
@@ -30,8 +31,13 @@ public sealed class HumanInputAction(
             switch (existing.Status)
             {
                 case InboxTodoStatus.Completed:
+                {
                     context.Log($"待办 #{existing.Id} 已完成，读取用户输入");
-                    return InboxActionResult.Completed(("value", existing.InputValue ?? string.Empty));
+                    var value = existing.InputValue ?? string.Empty;
+                    if (existing.IsSensitive)
+                        value = protector.Unprotect(value);
+                    return InboxActionResult.Completed(("value", value));
+                }
 
                 case InboxTodoStatus.Expired:
                     return InboxActionResult.Failed($"待办 #{existing.Id} 已过期：{existing.Title}");

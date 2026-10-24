@@ -1,3 +1,5 @@
+using MinGo.MyBillBook.Services.Inbox.Security;
+
 namespace MinGo.MyBillBook.Services.Inbox;
 
 /// <summary>
@@ -72,14 +74,35 @@ public sealed class InboxWorkflowWorker(
         return await runner.ProcessOnceAsync(ct);
     }
 
-    /// <summary>按保留策略回收已结束运行的目录；活动运行永远保留。</summary>
+    /// <summary>按保留策略回收已结束运行的目录与历史记录；活动运行永远保留。</summary>
     private async Task RunCleanupAsync(CancellationToken ct)
     {
         try
         {
             using var scope = scopeFactory.CreateScope();
             var cleaner = scope.ServiceProvider.GetRequiredService<InboxWorkspaceCleaner>();
-            await cleaner.CleanupAsync(dryRun: false, ct);
+            var historyCleaner = scope.ServiceProvider.GetRequiredService<InboxHistoryCleaner>();
+            var audit = scope.ServiceProvider.GetRequiredService<InboxAuditLog>();
+
+            var workspace = await cleaner.CleanupAsync(dryRun: false, ct);
+            if (workspace.Deleted > 0)
+            {
+                await audit.RecordAsync(
+                    "WorkspaceCleanup",
+                    actor: "system",
+                    detail: $"删除 {workspace.Deleted} 个运行目录（{workspace.DeletedBytes} 字节）",
+                    ct: ct);
+            }
+
+            var history = await historyCleaner.CleanupAsync(dryRun: false, ct);
+            if (history.Runs > 0 || history.AuditEvents > 0)
+            {
+                await audit.RecordAsync(
+                    "HistoryCleanup",
+                    actor: "system",
+                    detail: $"运行 {history.Runs}，步骤 {history.Steps}，待办 {history.Todos}，审计 {history.AuditEvents}",
+                    ct: ct);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -87,7 +110,7 @@ public sealed class InboxWorkflowWorker(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Inbox 运行目录清理失败");
+            logger.LogError(ex, "Inbox 定期清理失败");
         }
     }
 }

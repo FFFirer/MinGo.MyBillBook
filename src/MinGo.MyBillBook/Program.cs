@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using MinGo.MyBillBook.BackgroundJobs;
 using MinGo.MyBillBook.Components;
@@ -13,6 +14,7 @@ using MinGo.MyBillBook.Services.Inbox;
 using MinGo.MyBillBook.Services.Inbox.Actions;
 using MinGo.MyBillBook.Services.Inbox.Email;
 using MinGo.MyBillBook.Services.Inbox.Scheduling;
+using MinGo.MyBillBook.Services.Inbox.Security;
 using MinGo.MyBillBook.Services.Pipeline;
 using MinGo.MyBillBook.Services.Pipeline.Steps;
 using MinGo.MyBillBook.Services.Storage;
@@ -27,6 +29,36 @@ builder.Logging.AddSimpleConsole(options =>
     options.SingleLine = true;
     options.TimestampFormat = "HH:mm:ss ";
 });
+
+// 敏感数据加密密钥环：必须与数据库一同备份；放在数据目录下便于容器挂载。
+var inboxKeysPath = Path.GetFullPath(Path.Combine(
+    builder.Environment.ContentRootPath,
+    builder.Configuration["Inbox:DataProtectionKeysPath"] ?? "data/keys"));
+Directory.CreateDirectory(inboxKeysPath);
+
+// 命令行工具：dotnet run --project src/MinGo.MyBillBook -- --protect-secret "值"
+// 输出可直接写入 Inbox:Secrets 的加密串（enc:v1:...），避免配置中出现明文。
+var protectSecretIndex = Array.IndexOf(args, "--protect-secret");
+if (protectSecretIndex >= 0)
+{
+    if (protectSecretIndex >= args.Length - 1 || string.IsNullOrEmpty(args[protectSecretIndex + 1]))
+    {
+        Console.Error.WriteLine("用法: dotnet run --project src/MinGo.MyBillBook -- --protect-secret <值>");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    var cliProvider = DataProtectionProvider.Create(
+        new DirectoryInfo(inboxKeysPath),
+        dp => dp.SetApplicationName("MinGo.MyBillBook"));
+    var cliProtector = cliProvider.CreateProtector(InboxDataProtection.Purpose);
+    Console.WriteLine(InboxSensitiveData.Prefix + cliProtector.Protect(args[protectSecretIndex + 1]));
+    return;
+}
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(inboxKeysPath))
+    .SetApplicationName("MinGo.MyBillBook");
 
 // EF Core + SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -92,7 +124,13 @@ builder.Services.AddHostedService<PipelineJobWorker>();
 // Inbox 工作流引擎：YAML 定义 + 待办驱动的人机协作（Phase 1）
 builder.Services.AddSingleton<InboxWorkspace>();
 builder.Services.AddSingleton<InboxWorkflowCatalog>();
+builder.Services.AddSingleton<IInboxSensitiveDataProtector, InboxDataProtection>();
+builder.Services.AddSingleton<InboxSecrets>();
 builder.Services.AddSingleton<InboxEmailAccounts>();
+builder.Services.AddScoped<InboxAuditLog>();
+builder.Services.AddScoped<InboxHistoryCleaner>();
+builder.Services.AddScoped<InboxSensitiveDataBackfill>();
+builder.Services.AddScoped<InboxSecurityStatusProvider>();
 builder.Services.AddScoped<InboxWorkspaceCleaner>();
 builder.Services.AddScoped<IInboxWorkflowRunner, InboxWorkflowRunner>();
 builder.Services.AddScoped<IInboxAction, HumanInputAction>();
@@ -121,6 +159,10 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
     SeedData.Initialize(db);
+
+    // Phase 5：把历史明文敏感数据原地加密（幂等）。
+    var backfill = scope.ServiceProvider.GetRequiredService<InboxSensitiveDataBackfill>();
+    await backfill.RunAsync(CancellationToken.None);
 }
 
 if (!app.Environment.IsDevelopment())

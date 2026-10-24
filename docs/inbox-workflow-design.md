@@ -1,7 +1,7 @@
 # Inbox：邮件驱动的账单数据接入工作流
 
-> 状态：Phase 1–4 已实现（手动触发 + 待办介入 + 标准导入、IMAP 取附件、加密解压与工作目录清理、Quartz 定时与失败重试、SignalR 实时刷新）。
-> 本文档描述整体设计；Phase 5（安全增强）按文末计划推进。
+> 状态：Phase 1–5 已实现（手动触发 + 待办介入 + 标准导入、IMAP 取附件、加密解压与工作目录清理、Quartz 定时与失败重试、SignalR 实时刷新、敏感数据加密与审计/历史保留）。
+> 本文档描述整体设计。
 
 ## 1. 背景与目标
 
@@ -26,7 +26,7 @@
 - 不做 7z / RAR 等非 ZIP 归档格式（`archive/extract` 仅支持 ZIP，含 ZipCrypto 与 AES）；
 - 不做多实例/集群调度：Quartz 使用内存 JobStore，进程启动后由目录同步器重建定时任务；
 - 不做错过触发的补跑（沿用 Quartz 默认 misfire 策略）；
-- 不做 Secret 落盘加密与金库管理（Phase 5）；Phase 2 采用配置引用 + 只读展示 + API 掩码；
+- 不做外部金库（Vault/KMS）集成或多实例密钥共享：Secret 使用 ASP.NET Core Data Protection 落盘加密，密钥环保存在本地 `data/keys`，需随数据库一并备份；
 - 不做多 Job 并行、`needs` 依赖图、条件表达式（`if`）、矩阵构建；
 - 不做多用户权限体系（当前应用为单用户本地部署）。
 
@@ -34,6 +34,7 @@ Phase 1 交付的是**可运行的引擎骨架**：手动触发 → 可选上传
 Phase 2 在此基础上加入 `email/fetch-attachments`，打通“邮件 → 附件 → 导入”链路；账号与密码仍来自配置，不引入数据库 CRUD。
 Phase 3 补齐账单 ZIP 常见的加密场景：`archive/extract` 解压、`file/detect` 定位，并加入运行目录保留策略与清理入口。
 Phase 4 加入 `on.schedule`（Quartz cron，服务器本地时区）、步骤级失败重试与“从失败步骤恢复”的手动重试，并把页面刷新切换为 SignalR 实时事件（轮询仅作断线兜底）。
+Phase 5 做安全收口：Secret 与密码类待办/步骤数据落盘加密、启动时自动回填历史明文、审计事件与数据库历史保留策略，并在 `/inbox` 提供安全状态与审计视图。
 
 ## 3. 总体架构
 
@@ -58,6 +59,12 @@ Phase 4 加入 `on.schedule`（Quartz cron，服务器本地时区）、步骤�
 │                                                           │
 │  InboxScheduleSynchronizer (BackgroundService, 30s 扫描)   │
 │    └─ on.schedule → Quartz Job/Trigger（增删改自动同步）     │
+│                                                           │
+│  Security                                                 │
+│    InboxDataProtection   (enc:v1: 敏感值加解密)             │
+│    InboxSecrets          (Inbox:Secrets 透明解密)           │
+│    InboxAuditLog         (运行/待办/清理审计事件)            │
+│    InboxHistoryCleaner   (数据库历史保留与清理)              │
 │                                                           │
 │  Actions                                                  │
 │    human/input   → 创建 InboxTodo + 通知 + 挂起             │
@@ -260,6 +267,45 @@ jobs:
 - 每次失败都会写入步骤日志（`第 1/3 次尝试失败: ...；5 秒后重试`），最终失败时保留最后一次错误；
 - 运行失败后可在 `/inbox` 或 `POST /api/inbox/runs/{id}/retry` 手动重试：从**第一个失败步骤**恢复，已完成步骤与运行目录产物保留；若失败步骤是 `human/input`（例如待办过期），过期待办会被移除并在恢复时重新创建。
 
+### 4.4 敏感数据与 Secret 加密
+
+落盘加密统一走 ASP.NET Core Data Protection（应用名 `MinGo.MyBillBook`，Purpose `MinGo.MyBillBook.Inbox.Sensitive.v1`），密文以 `enc:v1:` 前缀标识；密钥环保存在 `Inbox:DataProtectionKeysPath`（默认 `data/keys`）。读取历史明文时直接兼容，写入时幂等（已加密的值不会重复加密）。
+
+覆盖范围：
+
+| 位置 | 处理方式 |
+|------|----------|
+| `Inbox:Secrets:*` | 可用明文，也可写 `enc:v1:` 密文；使用时透明解密，单个 Secret 解密失败只记录日志并跳过 |
+| `InboxTodo.InputValue` | `IsSensitive`（`input_type=password`）的待办加密存储；`human/input` 读回时解密 |
+| `InboxRun.InputsJson` | 键名命中敏感片段（`password` / `passphrase` / `secret` / `token` / `apikey` / `api_key` / `credential` / `private_key`）的值加密 |
+| `InboxStepRun.InputsJson` | 同上；解析表达式前先解密，写入已解析参数时再按敏感键加密 |
+| `InboxStepRun.OutputsJson` | `human/input` 且待办敏感的步骤整体加密，避免密码出现在步骤输出中 |
+
+- 应用启动时执行一次回填（`InboxSensitiveDataBackfill`）：扫描历史待办、运行参数、步骤输入输出，把尚未加密的敏感值就地加密；日志只输出各表处理条数，不输出值；
+- 回填跳过表达式（`${{ ... }}`）与已加密值，可重复执行；
+- 生成密文可离线完成，新机器首次配置时用 CLI 输出后写入配置：
+
+```bash
+dotnet run --project src/MinGo.MyBillBook -- --protect-secret "<应用专用密码>"
+# enc:v1:CfDJ8...
+```
+
+- **备份要求**：`data/keys` 与数据库必须一起备份/迁移，丢失密钥环后已加密的 Secret、待办输入与步骤数据将无法解密；
+- API 与日志永不返回 Secret 或敏感值；运行详情中密码类待办与 `human/input` 输出统一掩码为 `******`。
+
+### 4.5 审计事件
+
+`InboxAuditEvents` 表记录关键操作，只保存操作类型、对象 ID、触发者与不含敏感值的说明：
+
+| 事件 | 触发点 |
+|------|--------|
+| `RunCreated` | 手动/定时创建运行（Detail 含触发方式与步骤数） |
+| `RunCompleted` / `RunFailed` / `RunCancelled` / `RunRetried` | 运行终态、取消与手动重试 |
+| `TodoCompleted` | 提交待办（Detail 含输入类型与是否加密存储） |
+| `WorkspaceCleanup` / `HistoryCleanup` | 运行目录清理与数据库历史清理 |
+
+审计写入失败不会影响工作流执行（仅记录日志）；`GET /api/inbox/audit` 按时间倒序返回最近事件，`/inbox` 的“安全与审计”卡片展示最近 20 条。
+
 ## 5. 领域模型
 
 ```csharp
@@ -279,7 +325,12 @@ InboxTodo           // 人工介入待办
   Id, RunId, StepRunId, Title, Prompt, InputType(text/password/confirm),
   Placeholder, IsSensitive, Status(Pending/Completed/Expired),
   InputValue, CreatedAt, CompletedAt, ExpiresAt
+
+InboxAuditEvent     // 安全审计
+  Id, OccurredAt, EventType, RunId?, TodoId?, WorkflowName?, Actor?, Detail?
 ```
+
+`InputsJson` / `OutputsJson` / `InputValue` 中的敏感值以 `enc:v1:` 密文存储（见 4.4），序列化边界之外统一为明文；`InboxAuditEvent` 不保存任何密码或待办输入值。
 
 「待办驱动」的关键点：`human/input` 不在内存里阻塞等待。它创建 `InboxTodo` 后直接返回 `WaitingInput`，Worker 结束本轮。用户提交待办后只改数据库；Worker 下一次轮询发现待办已完成，就把步骤重置为 `Pending`、运行重置为 `Queued`，重新执行该步骤（Action 检测到待办已完成，直接读取值并返回输出），随后继续后续步骤。
 
@@ -363,16 +414,20 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 | POST | `/api/inbox/runs/{id}/cancel` | 取消 Queued/WaitingInput 运行，相关待办置 Expired |
 | POST | `/api/inbox/runs/{id}/retry` | 从首个失败步骤恢复执行；仅 Failed 运行可用，已完成步骤与工作目录保留 |
 | GET | `/api/inbox/todos` | 待办列表（默认 Pending） |
-| POST | `/api/inbox/todos/{id}/complete` | 提交待办输入 |
+| POST | `/api/inbox/todos/{id}/complete` | 提交待办输入；敏感值加密后落盘 |
+| GET | `/api/inbox/security` | 安全状态：加密可用性、密钥数量、Secret 加密统计、敏感待办、历史保留与审计数量 |
+| GET | `/api/inbox/audit?take=&eventType=` | 最近审计事件（`take` 1–200，默认 50） |
+| POST | `/api/inbox/history/cleanup?dryRun=` | 按 `HistoryRetentionDays` 清理已完成/失败/取消的运行、步骤、待办与审计事件；`dryRun=true` 仅预览 |
 | GET | `/api/inbox/health` | 引擎自检（工作流目录、邮箱账号数量、保留策略、待处理数、活动运行数） |
 
-敏感值处理：`input_type=password` 的待办在 API 返回中掩码为 `******`；数据库中保留原值供后续步骤使用（本地单用户部署；后续可接入加密存储）。
+敏感值处理：`input_type=password` 的待办在 API 返回中掩码为 `******`，步骤输出中的密码同样掩码；数据库以 Data Protection 密文保存（`enc:v1:`），仅在工作流执行时于内存中解密。历史明文由启动回填自动加密。
 
 ## 8. UI（/inbox）
 
 - **待办事项**：页面顶部展示 Pending 待办，直接内联输入并提交（密码框 / 文本框）；提交后提示“已提交，工作流将在数秒内继续”。
 - **邮箱连接**：只读卡片展示 `Inbox:EmailAccounts` 中的账号（可用 / 配置不完整、主机端口、文件夹、密码来源）；未配置时给出 JSON 示例。
 - **工作目录**：展示运行目录数量、占用空间、活动运行与保留策略；提供“预览清理”（dry run）与“立即清理”（二次确认）。清理活动运行目录会被跳过。
+- **安全与审计**：展示加密是否可用、Secret 总数与已加密数、待加密的敏感待办、数据库历史保留天数、密钥目录与审计事件数；提供“预览清理历史”与“立即清理历史”（二次确认，说明只清理已完成/失败/取消的运行及其步骤、待办和审计事件），并列出最近 20 条审计事件。
 - **工作流**：卡片列表，展示描述、触发方式（手动 / `on.schedule` cron）、步骤链；点击“运行”弹出确认框，可附加一个种子文件（Phase 1 演示用）。
 - **运行记录**：表格 + 分页；状态徽标；展开显示每个步骤的状态、耗时、错误与日志；失败运行提供“重试”（二次确认，说明从失败步骤继续）；定时触发的运行在详情标题中显示 `Schedule`。
 - 通知：服务端在运行状态变化、待办创建时通过 SignalR 广播（`InboxRunUpdated` / `InboxTodoCreated`）；`/inbox` 订阅这两个事件并立即刷新待办、运行列表与展开中的详情，同时弹出简短提示。断线时自动重连，并以 10 秒轮询兜底；SignalR 连接失败不影响页面其他功能。
@@ -397,7 +452,9 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
     "WorkspaceRetentionDays": 30,   // 0 表示不按天数清理
     "WorkspaceMaxRuns": 200,        // 0 表示不按数量清理
     "CleanupIntervalHours": 6,      // 0 表示关闭自动清理
-    "ScheduleSyncSeconds": 30       // 定时任务目录扫描间隔，最小 5 秒
+    "ScheduleSyncSeconds": 30,      // 定时任务目录扫描间隔，最小 5 秒
+    "HistoryRetentionDays": 180,    // 数据库历史保留天数，0 表示不清理
+    "DataProtectionKeysPath": "data/keys"  // 加密密钥环目录，需与数据库一起备份
   }
 }
 ```
@@ -409,6 +466,14 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
 - `/inbox` 的“预览清理”调用 `dryRun=true` 展示将删除的数量与占用，“立即清理”二次确认后执行；
 - 清理只删运行目录，不动数据库中的运行记录与导入批次，二者仍可在运行记录与账单明细中查看。
 
+### 9.2 数据库历史保留
+
+- `Inbox:HistoryRetentionDays`（默认 180）：Worker 每个清理周期删除 `Completed` / `Failed` / `Cancelled` 且 `CompletedAt ?? CreatedAt` 早于截止时间的运行，及其步骤、待办和超过截止时间的审计事件；`0` 表示关闭；
+- 活动运行（`Queued` / `Running` / `WaitingInput`）与其待办永不删除；
+- 清理按待办 → 步骤 → 运行 → 审计事件逐表 `ExecuteDeleteAsync`，避免外键残留；批量删除失败只记录日志，下个周期重试；
+- 手动入口：`POST /api/inbox/history/cleanup?dryRun=true` 预览数量，真实执行会写入 `HistoryCleanup` 审计事件；
+- 与 9.1 的区别：9.1 清理的是**磁盘运行目录**，历史保留清理的是**数据库记录**；二者互不影响，可分别配置。
+
 ## 10. 分阶段计划
 
 | 阶段 | 内容 | 状态 |
@@ -417,9 +482,9 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
 | Phase 2 | `email/fetch-attachments`（MailKit IMAP）、邮箱连接配置、检索语法、只读账号 UI | ✅ |
 | Phase 3 | `archive/extract`（加密 ZIP）、`file/detect`（glob）、工作目录保留策略与清理 API/UI | ✅ |
 | Phase 4 | Quartz `schedule` 触发、SignalR 前端实时订阅、失败重试策略 | ✅ |
-| Phase 5 | 安全增强：Secret 加密存储、敏感待办加密、审计与保留策略 | 待办 |
+| Phase 5 | 安全增强：Secret 与敏感待办/步骤数据落盘加密、启动回填、审计事件、数据库历史保留与安全状态 UI | ✅ |
 
-Secret 加密（Phase 2 原计划项）已拆分到 Phase 5：本阶段先实现 `PasswordSecret` 间接引用、账号只读展示与 API 掩码，避免把明文密码暴露给前端；落盘加密与密钥管理在 Phase 5 统一处理。
+Secret 加密（Phase 2 原计划项）已在 Phase 5 完成：`PasswordSecret` 仍作为配置间接引用，但 `Inbox:Secrets` 中的值可用 CLI 生成 `enc:v1:` 密文；账号只读展示与 API 掩码保持不变，明文配置继续兼容。
 
 ## 11. 验收标准
 
@@ -458,3 +523,13 @@ Phase 4：
 22. 配置 `retry` 的步骤失败后按 `attempts` / `delay_seconds` / `backoff` 重试，日志记录每次失败与等待时间；耗尽后运行失败；
 23. `POST /api/inbox/runs/{id}/retry` 从失败步骤恢复，已完成步骤不重复执行、运行目录文件保留；补齐缺失输入后可重试成功；
 24. `/inbox` 通过 SignalR 在 1 秒级刷新运行状态与待办并提示，断线后自动重连；10 秒轮询可兜底；`dotnet build` 与 `dotnet test` 通过。
+
+Phase 5：
+
+25. `input_type=password` 的待办输入、运行参数与步骤输入中命中敏感键的值，以及密码类 `human/input` 的步骤输出，均以 `enc:v1:` 密文落盘；API 仍只返回 `******`；
+26. 应用启动时自动回填历史明文（待办、运行参数、步骤输入输出），回填幂等、跳过表达式，日志不包含任何敏感值；全新克隆数据库后旧运行仍可正常重试与继续；
+27. `--protect-secret` 能输出可直接写入 `Inbox:Secrets` 的密文；`PasswordSecret` / `Password` 指向密文时邮箱账号显示可用，密码来源正确且接口不返回密码；
+28. 丢失或更换 `data/keys` 时，加密探针报告不可用，敏感数据解密给出明确错误而不是静默失败；
+29. 运行创建/完成/失败/取消/重试、待办提交、工作目录清理与历史清理都会产生审计事件，事件中不含密码或待办输入值；
+30. `Inbox:HistoryRetentionDays` 到期后自动删除终态运行及其步骤/待办/审计事件，活动运行不受影响；`POST /api/inbox/history/cleanup?dryRun=true` 只预览，真实清理写入 `HistoryCleanup` 审计；`/inbox` 可预览并二次确认；
+31. `GET /api/inbox/security` 返回加密状态、密钥环路径、Secret 加密统计、敏感待办统计、历史保留与审计数量；`dotnet build` 与 `dotnet test` 通过（当前 120 个测试）。
