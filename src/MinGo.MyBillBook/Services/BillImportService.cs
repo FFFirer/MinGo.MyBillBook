@@ -64,13 +64,25 @@ public class BillImportService(AppDbContext db, IBillParserFactory parserFactory
 
             if (existingRaw is not null)
             {
-                // 重复导入：更新 RawPayload 及标量字段，重置处理标记，删除下游 BillRecord 让管道重新生成。
+                // 重复导入：更新 RawPayload 及标量字段，并把 Raw 归属到当前批次。
+                // 清洗管道按批次处理 Raw，若仍留在旧批次，新批次执行 bill/process 时不会重建下游记录，
+                // 导致刚删除的 BillRecord 永久丢失。
                 existingRaw.RawPayload = JsonSerializer.Serialize(row);
                 existingRaw.SourceTransactionId = row.TransactionId;
                 existingRaw.SourcePaymentTransactionId = row.PaymentTransactionId;
+                existingRaw.ImportBatchId = batch.Id;
+                existingRaw.RowNumber = rowNumber;
+                existingRaw.PlatformId = platformId;
                 existingRaw.IsProcessed = false;
                 existingRaw.DuplicateStatus = DuplicateStatus.Unique;
                 existingRaw.DuplicateScore = 0;
+
+                // 旧的标准化记录同样需要清理，否则重新 Normalize 会为同一 Raw 追加重复行。
+                var oldNormalized = await db.NormalizedTransactions
+                    .Where(n => n.RawRecordId == existingRaw.Id)
+                    .ToListAsync(ct);
+                db.NormalizedTransactions.RemoveRange(oldNormalized);
+
                 await DeleteBillRecordCascadeAsync(existingRaw.Id, ct);
                 updated++;
                 continue;
