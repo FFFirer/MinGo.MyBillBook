@@ -33,6 +33,7 @@ public class AppDbContext : DbContext
     public DbSet<InboxStepRun> InboxStepRuns => Set<InboxStepRun>();
     public DbSet<InboxTodo> InboxTodos => Set<InboxTodo>();
     public DbSet<InboxAuditEvent> InboxAuditEvents => Set<InboxAuditEvent>();
+    public DbSet<InboxNotification> InboxNotifications => Set<InboxNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -308,6 +309,19 @@ public class AppDbContext : DbContext
             e.Property(x => x.Detail).HasMaxLength(500);
             e.HasIndex(x => x.OccurredAt);
             e.HasIndex(x => x.EventType);
+            e.HasIndex(x => x.RunId);
+        });
+
+        modelBuilder.Entity<InboxNotification>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Type).HasMaxLength(30).IsRequired();
+            e.Property(x => x.Level).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Message).HasMaxLength(1000).IsRequired();
+            e.Property(x => x.WorkflowName).HasMaxLength(200);
+            e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.IsRead);
             e.HasIndex(x => x.RunId);
         });
     }

@@ -303,8 +303,8 @@
             {
                 <div class="p-3 rounded-md bg-surface-container mb-3">
                     <p class="text-body-medium text-on-surface">
-                        预览：将删除 @historyPreview.Runs 个运行、@historyPreview.Steps 个步骤、@historyPreview.Todos 个待办与
-                        @historyPreview.AuditEvents 条审计事件。
+                        预览：将删除 @historyPreview.Runs 个运行、@historyPreview.Steps 个步骤、@historyPreview.Todos 个待办、
+                        @historyPreview.AuditEvents 条审计事件与 @historyPreview.Notifications 条通知。
                     </p>
                     <p class="text-body-small text-on-surface-variant mt-1 tabular-nums">
                         清理截止 @HistoryCutoffText(historyPreview.Cutoff)（保留 @historyPreview.RetentionDays 天）
@@ -714,13 +714,13 @@
 <ModalDialog Visible="showHistoryDialog" OnClose="CloseHistoryDialog" AriaLabel="清理历史数据" Role="alertdialog" Size="sm">
     <h3 class="text-title-medium text-error mb-2">确认清理历史数据</h3>
     <p class="text-body-medium text-on-surface-variant mb-4">
-        将删除超过保留天数的已结束运行及其步骤、待办，并清理同一时间段内的审计事件。
+        将删除超过保留天数的已结束运行及其步骤、待办，并清理同一时间段内的审计事件与通知。
         排队、执行中与等待输入的运行不会被删除，此操作不可撤销。
     </p>
     @if (historyPreview is not null)
     {
         <p class="text-body-small text-on-surface-variant mb-4">
-            预计删除：运行 @historyPreview.Runs、步骤 @historyPreview.Steps、待办 @historyPreview.Todos、审计 @historyPreview.AuditEvents。
+            预计删除：运行 @historyPreview.Runs、步骤 @historyPreview.Steps、待办 @historyPreview.Todos、审计 @historyPreview.AuditEvents、通知 @historyPreview.Notifications。
         </p>
     }
     <div class="flex justify-end gap-2">
@@ -776,6 +776,7 @@
 
     private int? expandedRunId;
     private RunDetailDto? runDetail;
+    private int? handledRunQuery;
 
     private string? expandedWorkflowName;
     private WorkflowDetailDto? workflowDetail;
@@ -788,6 +789,10 @@
     private Task? pollTask;
     private HubConnection? hubConnection;
     private int realtimeRefreshing;
+
+    /// <summary>通知中心跳转参数：/inbox?run=123 自动展开对应运行详情。</summary>
+    [SupplyParameterFromQuery(Name = "run")]
+    public int? RunQuery { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -803,6 +808,17 @@
 
         cts = new CancellationTokenSource();
         pollTask = PollLoopAsync(cts.Token);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (RunQuery is not { } runId || handledRunQuery == runId)
+            return;
+
+        handledRunQuery = runId;
+        expandedRunId = runId;
+        await LoadRunDetailAsync(runId, silent: true);
+        await InvokeAsync(StateHasChanged);
     }
 
     /// <summary>订阅服务端运行状态与待办事件；连接失败时仍由轮询兜底。</summary>
@@ -994,7 +1010,7 @@
                 historyPreview = null;
                 ShowToast(result is null
                     ? "历史数据已清理"
-                    : $"已删除 {result.Runs} 个运行、{result.AuditEvents} 条审计事件");
+                    : $"已删除 {result.Runs} 个运行、{result.AuditEvents} 条审计事件、{result.Notifications} 条通知");
                 await LoadSecurityAsync(silent: true);
                 await LoadRunsAsync(silent: true);
                 await LoadTodosAsync(silent: true);
@@ -1621,7 +1637,7 @@
 
     private record HistoryCleanupResultDto(
         bool DryRun, DateTime Cutoff, int RetentionDays,
-        int Runs, int Steps, int Todos, int AuditEvents);
+        int Runs, int Steps, int Todos, int AuditEvents, int Notifications);
 
     private record AuditEventDto(
         int Id, DateTime OccurredAt, string EventType, int? RunId, int? TodoId,

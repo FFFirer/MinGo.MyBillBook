@@ -1,0 +1,169 @@
+@using MinGo.MyBillBook.Core.DTOs
+@inject NotificationStore Notifications
+@implements IDisposable
+
+<ModalDialog Visible="Notifications.PanelOpen"
+             OnClose="Notifications.ClosePanel"
+             AriaLabel="通知中心">
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2">
+                <h2 class="text-title-large text-on-surface">通知中心</h2>
+                @if (Notifications.UnreadCount > 0)
+                {
+                    <span class="md-chip-assist md-chip-assist-error">@Notifications.UnreadCount 未读</span>
+                }
+            </div>
+            <p class="text-body-small text-on-surface-variant mt-1">
+                待办提醒与工作流失败告警；未读数量会同步到浏览器标签页。
+            </p>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+            <button class="md-btn-text"
+                    disabled="@(Notifications.UnreadCount == 0)"
+                    @onclick="Notifications.MarkAllReadAsync">
+                全部已读
+            </button>
+            <button class="md-icon-btn" aria-label="关闭通知中心" @onclick="Notifications.ClosePanel">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+    </div>
+
+    @if (Notifications.BrowserPermission == "default")
+    {
+        <div class="p-3 rounded-md bg-primary-container text-on-primary-container mb-3">
+            <p class="text-body-medium">开启桌面通知后，页面在后台时也能收到待办与失败告警。</p>
+            <button class="md-btn-tonal mt-2" @onclick="Notifications.EnableBrowserNotificationsAsync">
+                <span class="material-symbols-outlined mr-1">notifications_active</span>
+                开启桌面通知
+            </button>
+        </div>
+    }
+    else if (Notifications.BrowserPermission == "granted")
+    {
+        <p class="text-body-small text-success mb-3">桌面通知已开启；页面在后台时会弹出系统通知。</p>
+    }
+    else if (Notifications.BrowserPermission == "denied")
+    {
+        <p class="text-body-small text-warning-container mb-3">
+            浏览器已拒绝通知权限，可在站点设置中重新允许后刷新页面。
+        </p>
+    }
+
+    @if (!string.IsNullOrEmpty(Notifications.ActionError))
+    {
+        <div class="p-3 rounded-md bg-error-container text-on-error-container text-body-small mb-3" role="alert">
+            @Notifications.ActionError
+        </div>
+    }
+
+    @if (Notifications.Loading && Notifications.Items.Count == 0)
+    {
+        <div class="flex items-center justify-center py-8">
+            <span class="loading-spinner mr-2"></span>
+            <span class="text-body-medium text-on-surface-variant">加载中…</span>
+        </div>
+    }
+    else if (Notifications.Items.Count == 0)
+    {
+        <div class="text-center py-8">
+            <span class="material-symbols-outlined text-on-surface-variant" style="font-size:2.5rem;">notifications_off</span>
+            <p class="text-body-medium text-on-surface-variant mt-2">暂无通知</p>
+            <p class="text-body-small text-on-surface-variant mt-1">新的待办或运行失败会出现在这里。</p>
+        </div>
+    }
+    else
+    {
+        <div class="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+            @foreach (var item in Notifications.Items)
+            {
+                <div class="p-3 rounded-md border border-outline-variant @(item.IsRead ? "bg-surface-container" : "bg-surface-container-high")">
+                    <div class="flex gap-2">
+                        <span class="material-symbols-outlined shrink-0 @LevelClass(item.Level)">
+                            @LevelIcon(item.Level)
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="text-title-small break-words @(item.IsRead ? "text-on-surface-variant" : "text-on-surface")">
+                                    @item.Title
+                                </p>
+                                @if (!item.IsRead)
+                                {
+                                    <span class="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5" aria-label="未读"></span>
+                                }
+                            </div>
+                            <p class="text-body-small text-on-surface-variant mt-0.5 break-words whitespace-pre-line">@item.Message</p>
+
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-body-small text-on-surface-variant">
+                                <span class="tabular-nums">@RelativeTime(item.CreatedAt)</span>
+                                @if (!string.IsNullOrWhiteSpace(item.WorkflowName))
+                                {
+                                    <span class="truncate">@item.WorkflowName</span>
+                                }
+                                @if (item.RunId is not null)
+                                {
+                                    <span>运行 #@item.RunId</span>
+                                }
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-1 mt-1 -mb-1">
+                                @if (item.RunId is not null)
+                                {
+                                    <button class="md-btn-text" @onclick="() => Notifications.OpenRunAsync(item)">查看运行</button>
+                                }
+                                @if (item.Type == "RunFailed" && item.RunId is not null)
+                                {
+                                    <button class="md-btn-text" @onclick="() => Notifications.RetryRunAsync(item)">重试</button>
+                                }
+                                @if (!item.IsRead)
+                                {
+                                    <button class="md-btn-text" @onclick="() => Notifications.MarkReadAsync(item)">标为已读</button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</ModalDialog>
+
+@code {
+    protected override void OnInitialized()
+        => Notifications.Changed += OnChanged;
+
+    private void OnChanged()
+        => _ = InvokeAsync(StateHasChanged);
+
+    private static string LevelIcon(string level) => level switch
+    {
+        "Error" => "error",
+        "Warning" => "warning",
+        _ => "info"
+    };
+
+    private static string LevelClass(string level) => level switch
+    {
+        "Error" => "text-error",
+        "Warning" => "text-warning-container",
+        _ => "text-primary"
+    };
+
+    private static string RelativeTime(DateTime time)
+    {
+        var span = DateTime.Now - time;
+        if (span.TotalMinutes < 1)
+            return "刚刚";
+        if (span.TotalHours < 1)
+            return $"{(int)span.TotalMinutes} 分钟前";
+        if (span.TotalDays < 1)
+            return $"{(int)span.TotalHours} 小时前";
+        if (span.TotalDays < 7)
+            return $"{(int)span.TotalDays} 天前";
+        return time.ToString("MM-dd HH:mm");
+    }
+
+    public void Dispose()
+        => Notifications.Changed -= OnChanged;
+}

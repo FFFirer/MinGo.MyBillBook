@@ -1,3 +1,4 @@
+using MinGo.MyBillBook.Services.Inbox.Notifications;
 using MinGo.MyBillBook.Services.Inbox.Security;
 
 namespace MinGo.MyBillBook.Services.Inbox;
@@ -82,6 +83,7 @@ public sealed class InboxWorkflowWorker(
             using var scope = scopeFactory.CreateScope();
             var cleaner = scope.ServiceProvider.GetRequiredService<InboxWorkspaceCleaner>();
             var historyCleaner = scope.ServiceProvider.GetRequiredService<InboxHistoryCleaner>();
+            var notifications = scope.ServiceProvider.GetRequiredService<InboxNotificationService>();
             var audit = scope.ServiceProvider.GetRequiredService<InboxAuditLog>();
 
             var workspace = await cleaner.CleanupAsync(dryRun: false, ct);
@@ -95,12 +97,15 @@ public sealed class InboxWorkflowWorker(
             }
 
             var history = await historyCleaner.CleanupAsync(dryRun: false, ct);
-            if (history.Runs > 0 || history.AuditEvents > 0)
+            var notificationDays = configuration.GetValue("Inbox:NotificationRetentionDays", 90);
+            var expiredNotifications = await notifications.CleanupAsync(notificationDays, ct);
+            var deletedNotifications = history.Notifications + expiredNotifications;
+            if (history.Runs > 0 || history.AuditEvents > 0 || deletedNotifications > 0)
             {
                 await audit.RecordAsync(
                     "HistoryCleanup",
                     actor: "system",
-                    detail: $"运行 {history.Runs}，步骤 {history.Steps}，待办 {history.Todos}，审计 {history.AuditEvents}",
+                    detail: $"运行 {history.Runs}，步骤 {history.Steps}，待办 {history.Todos}，审计 {history.AuditEvents}，通知 {deletedNotifications}",
                     ct: ct);
             }
         }

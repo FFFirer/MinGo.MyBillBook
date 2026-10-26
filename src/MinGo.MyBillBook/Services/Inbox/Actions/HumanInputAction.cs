@@ -5,6 +5,7 @@ using MinGo.MyBillBook.Core.Inbox;
 using MinGo.MyBillBook.Core.Models;
 using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Hubs;
+using MinGo.MyBillBook.Services.Inbox.Notifications;
 
 namespace MinGo.MyBillBook.Services.Inbox.Actions;
 
@@ -16,6 +17,7 @@ namespace MinGo.MyBillBook.Services.Inbox.Actions;
 public sealed class HumanInputAction(
     AppDbContext db,
     IHubContext<NotificationHub> hub,
+    InboxNotificationService notifications,
     IInboxSensitiveDataProtector protector,
     ILogger<HumanInputAction> logger) : IInboxAction
 {
@@ -85,6 +87,7 @@ public sealed class HumanInputAction(
         logger.LogInformation("运行 #{RunId} 创建待办 #{TodoId}: {Title}", context.RunId, todo.Id, todo.Title);
 
         await NotifyTodoCreatedAsync(todo, ct);
+        await notifications.NotifyTodoAsync(todo, context.WorkflowName, ct);
         return InboxActionResult.Waiting();
     }
 

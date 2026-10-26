@@ -14,12 +14,15 @@
             <span class="text-title-large text-on-surface truncate">个人财务分析</span>
         </div>
         @* 移动端关闭按钮 *@
-        <button type="button"
-                class="md-icon-btn drawer-close shrink-0"
-                aria-label="关闭导航菜单"
-                @onclick="OnClose">
-            <span class="material-symbols-outlined">close</span>
-        </button>
+        <div class="flex items-center gap-1 shrink-0">
+            <NotificationBell />
+            <button type="button"
+                    class="md-icon-btn drawer-close shrink-0"
+                    aria-label="关闭导航菜单"
+                    @onclick="OnClose">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
     </div>
 
     <nav class="flex-1 overflow-y-auto overscroll-contain mt-2 px-3 pb-4"

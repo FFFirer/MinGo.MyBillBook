@@ -7,6 +7,7 @@ using MinGo.MyBillBook.Core.Models;
 using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Services.Inbox;
 using MinGo.MyBillBook.Services.Inbox.Email;
+using MinGo.MyBillBook.Services.Inbox.Notifications;
 using MinGo.MyBillBook.Services.Inbox.Security;
 
 namespace MinGo.MyBillBook.Controllers;
@@ -23,6 +24,7 @@ public class InboxController(
     InboxWorkspaceCleaner workspaceCleaner,
     InboxHistoryCleaner historyCleaner,
     InboxSecurityStatusProvider securityStatus,
+    InboxNotificationService notifications,
     IInboxSensitiveDataProtector protector,
     InboxAuditLog audit,
     IInboxWorkflowRunner runner,
@@ -306,6 +308,37 @@ public class InboxController(
         return Accepted(new { todoId = todo.Id, runId = todo.RunId, message = "已提交，工作流将在数秒内继续" });
     }
 
+    // ---------- 通知中心 ----------
+
+    /// <summary>通知列表与未读数；unreadOnly=true 只看未读。</summary>
+    [HttpGet("notifications")]
+    public async Task<ActionResult<InboxNotificationListDto>> GetNotifications(
+        [FromQuery] bool unreadOnly = false,
+        [FromQuery] int take = 50,
+        CancellationToken ct = default)
+    {
+        take = take is < 1 or > 200 ? 50 : take;
+        return Ok(await notifications.ListAsync(unreadOnly, take, ct));
+    }
+
+    /// <summary>标记单条通知已读；返回剩余未读数。</summary>
+    [HttpPost("notifications/{id:int}/read")]
+    public async Task<ActionResult> MarkNotificationRead(int id, CancellationToken ct)
+    {
+        var unread = await notifications.MarkReadAsync(id, ct);
+        return unread is null
+            ? NotFound(new { message = $"通知不存在: {id}" })
+            : Ok(new { unreadCount = unread.Value });
+    }
+
+    /// <summary>全部标记已读。</summary>
+    [HttpPost("notifications/read-all")]
+    public async Task<ActionResult> MarkAllNotificationsRead(CancellationToken ct)
+    {
+        var updated = await notifications.MarkAllReadAsync(ct);
+        return Ok(new { updated, unreadCount = 0 });
+    }
+
     // ---------- 工作目录 ----------
 
     /// <summary>运行目录概况（数量、占用、保留策略）。</summary>
@@ -339,13 +372,14 @@ public class InboxController(
         CancellationToken ct = default)
     {
         var result = await historyCleaner.CleanupAsync(dryRun, ct);
-        if (!dryRun && (result.Runs > 0 || result.AuditEvents > 0))
+        if (!dryRun && (result.Runs > 0 || result.AuditEvents > 0 || result.Notifications > 0))
         {
-            logger.LogInformation("手动清理历史数据：运行 {Runs}，审计 {AuditEvents}", result.Runs, result.AuditEvents);
+            logger.LogInformation("手动清理历史数据：运行 {Runs}，审计 {AuditEvents}，通知 {Notifications}",
+                result.Runs, result.AuditEvents, result.Notifications);
             await audit.RecordAsync(
                 "HistoryCleanup",
                 actor: "manual",
-                detail: $"运行 {result.Runs}，步骤 {result.Steps}，待办 {result.Todos}，审计 {result.AuditEvents}",
+                detail: $"运行 {result.Runs}，步骤 {result.Steps}，待办 {result.Todos}，审计 {result.AuditEvents}，通知 {result.Notifications}",
                 ct: ct);
         }
         return Ok(result);
@@ -392,6 +426,7 @@ public class InboxController(
             r.Status == InboxRunStatus.Queued
             || r.Status == InboxRunStatus.Running
             || r.Status == InboxRunStatus.WaitingInput, ct);
+        var unreadNotifications = await notifications.UnreadCountAsync(ct);
 
         return Ok(new
         {
@@ -404,7 +439,8 @@ public class InboxController(
             workspaceMaxRuns = workspaceCleaner.MaxRuns,
             historyRetentionDays = historyCleaner.RetentionDays,
             pendingTodos,
-            activeRuns
+            activeRuns,
+            unreadNotifications
         });
     }
 

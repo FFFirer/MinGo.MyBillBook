@@ -1,6 +1,6 @@
 # Inbox：邮件驱动的账单数据接入工作流
 
-> 状态：Phase 1–5 已实现（手动触发 + 待办介入 + 标准导入、IMAP 取附件、加密解压与工作目录清理、Quartz 定时与失败重试、SignalR 实时刷新、敏感数据加密与审计/历史保留）。
+> 状态：Phase 1–6 已实现（手动触发 + 待办介入 + 标准导入、IMAP 取附件、加密解压与工作目录清理、Quartz 定时与失败重试、SignalR 实时刷新、敏感数据加密与审计/历史保留、持久化通知中心与浏览器告警）。
 > 本文档描述整体设计。
 
 ## 1. 背景与目标
@@ -35,6 +35,7 @@ Phase 2 在此基础上加入 `email/fetch-attachments`，打通“邮件 → �
 Phase 3 补齐账单 ZIP 常见的加密场景：`archive/extract` 解压、`file/detect` 定位，并加入运行目录保留策略与清理入口。
 Phase 4 加入 `on.schedule`（Quartz cron，服务器本地时区）、步骤级失败重试与“从失败步骤恢复”的手动重试，并把页面刷新切换为 SignalR 实时事件（轮询仅作断线兜底）。
 Phase 5 做安全收口：Secret 与密码类待办/步骤数据落盘加密、启动时自动回填历史明文、审计事件与数据库历史保留策略，并在 `/inbox` 提供安全状态与审计视图。
+Phase 6 加入通知与告警中心：待办创建与运行失败持久化为站内通知，全局铃铛展示未读数，SignalR 实时推送，可跳转运行、一键重试，并支持浏览器通知与标签页角标。
 
 ## 3. 总体架构
 
@@ -42,20 +43,25 @@ Phase 5 做安全收口：Secret 与密码类待办/步骤数据落盘加密、�
 ┌───────────────────────────────────────────────────────────┐
 │ Blazor WASM Client                                        │
 │  /inbox  待办输入 · 工作流触发 · 运行记录 · 步骤日志         │
+│  全局铃铛 NotificationStore  未读数 · 通知面板 · 浏览器告警   │
 └───────────────┬───────────────────────────────────────────┘
-                │ REST (/api/inbox/*) + SignalR 通知
+                │ REST (/api/inbox/*) + SignalR (/hubs/notifications)
 ┌───────────────▼───────────────────────────────────────────┐
 │ Server                                                    │
 │                                                           │
 │  InboxController                                          │
 │    ├─ InboxWorkflowCatalog   (读取/解析 data/inboxes/*.yaml)│
 │    ├─ InboxEmailAccounts     (Inbox:EmailAccounts 只读配置)  │
+│    ├─ InboxNotificationService (通知落库/已读/清理 + 广播)    │
 │    └─ IInboxWorkflowRunner   (创建运行、推进步骤)            │
+│                                                           │
+│  NotificationHub (/hubs/notifications)                    │
+│    └─ 运行/待办变化 + 通知创建/已读事件推送                   │
 │                                                           │
 │  InboxWorkflowWorker (BackgroundService, 2s 轮询)          │
 │    ├─ 恢复 WaitingInput 且待办已完成的运行                   │
 │    ├─ 领取 Queued 运行，顺序执行 steps（含失败重试）         │
-│    └─ 按计划运行 InboxWorkspaceCleaner（清理历史运行目录）    │
+│    └─ 按计划清理运行目录、数据库历史与过期通知                │
 │                                                           │
 │  InboxScheduleSynchronizer (BackgroundService, 30s 扫描)   │
 │    └─ on.schedule → Quartz Job/Trigger（增删改自动同步）     │
@@ -306,6 +312,22 @@ dotnet run --project src/MinGo.MyBillBook -- --protect-secret "<应用专用密�
 
 审计写入失败不会影响工作流执行（仅记录日志）；`GET /api/inbox/audit` 按时间倒序返回最近事件，`/inbox` 的“安全与审计”卡片展示最近 20 条。
 
+### 4.6 通知中心
+
+待办与失败告警除了页面内提示外，还会写入 `InboxNotifications` 表，形成跨页面可见的持久化通知中心：
+
+| 类型 | 级别 | 触发点 | 跳转/操作 |
+|------|------|--------|-----------|
+| `TodoPending` | `Warning` | `human/input` 创建待办 | 打开运行详情；待办本身在 `/inbox` 顶部处理 |
+| `RunFailed` | `Error` | 运行进入 `Failed`（含待办过期、重试耗尽） | 打开运行详情；失败运行可一键重试 |
+
+- 通知只保存标题、消息、工作流名、`RunId` / `TodoId` 与已读状态，**不包含密码、Secret 或待办输入值**；标题/消息长度分别截断到 200 / 1000 字符；
+- 通知与运行/待办**无外键**：历史清理删除运行后，通知仍保留（其 `RunId` 仅用于展示和跳转），直到超过通知保留期或被历史清理一并删除；
+- 创建与已读都会通过 `NotificationHub` 广播：`InboxNotificationCreated(dto, unreadCount)`、`InboxNotificationsRead(notificationId, unreadCount)`（`id=0` 表示全部已读）；
+- 前端 `NotificationStore`（WASM Scoped）在 `MainLayout` 初始化一次：加载列表与未读数、订阅 SignalR、30 秒轮询兜底；页面隐藏且已授权时调用 `window.mbbNotifications.show` 弹出浏览器通知，并更新标签页标题角标 `(N)` 与 `navigator.setAppBadge`；
+- 铃铛在移动端顶栏、侧边栏抽屉与桌面侧栏都可打开通知面板；面板提供“全部已读”、单条“标为已读”、跳转运行与失败一键重试；
+- 保留策略：`Inbox:NotificationRetentionDays`（默认 90，`0` 关闭）由 Worker 在清理周期执行；数据库历史清理也会删除 `RunId` 指向被清理运行的通知。
+
 ## 5. 领域模型
 
 ```csharp
@@ -328,9 +350,13 @@ InboxTodo           // 人工介入待办
 
 InboxAuditEvent     // 安全审计
   Id, OccurredAt, EventType, RunId?, TodoId?, WorkflowName?, Actor?, Detail?
+
+InboxNotification   // 通知中心（无外键，运行删除后仍可保留到保留期结束）
+  Id, CreatedAt, Type(TodoPending/RunFailed), Level(Warning/Error),
+  Title, Message, RunId?, TodoId?, WorkflowName?, IsRead, ReadAt?
 ```
 
-`InputsJson` / `OutputsJson` / `InputValue` 中的敏感值以 `enc:v1:` 密文存储（见 4.4），序列化边界之外统一为明文；`InboxAuditEvent` 不保存任何密码或待办输入值。
+`InputsJson` / `OutputsJson` / `InputValue` 中的敏感值以 `enc:v1:` 密文存储（见 4.4），序列化边界之外统一为明文；`InboxAuditEvent` 与 `InboxNotification` 不保存任何密码或待办输入值。
 
 「待办驱动」的关键点：`human/input` 不在内存里阻塞等待。它创建 `InboxTodo` 后直接返回 `WaitingInput`，Worker 结束本轮。用户提交待办后只改数据库；Worker 下一次轮询发现待办已完成，就把步骤重置为 `Pending`、运行重置为 `Queued`，重新执行该步骤（Action 检测到待办已完成，直接读取值并返回输出），随后继续后续步骤。
 
@@ -417,8 +443,11 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 | POST | `/api/inbox/todos/{id}/complete` | 提交待办输入；敏感值加密后落盘 |
 | GET | `/api/inbox/security` | 安全状态：加密可用性、密钥数量、Secret 加密统计、敏感待办、历史保留与审计数量 |
 | GET | `/api/inbox/audit?take=&eventType=` | 最近审计事件（`take` 1–200，默认 50） |
-| POST | `/api/inbox/history/cleanup?dryRun=` | 按 `HistoryRetentionDays` 清理已完成/失败/取消的运行、步骤、待办与审计事件；`dryRun=true` 仅预览 |
-| GET | `/api/inbox/health` | 引擎自检（工作流目录、邮箱账号数量、保留策略、待处理数、活动运行数） |
+| POST | `/api/inbox/history/cleanup?dryRun=` | 按 `HistoryRetentionDays` 清理已完成/失败/取消的运行、步骤、待办、相关通知与过期审计事件；`dryRun=true` 仅预览 |
+| GET | `/api/inbox/notifications?unreadOnly=&take=` | 通知列表（默认 50，按时间倒序）与未读数；`unreadOnly=true` 仅返回未读 |
+| POST | `/api/inbox/notifications/{id}/read` | 标记单条通知已读，返回剩余未读数；不存在返回 404 |
+| POST | `/api/inbox/notifications/read-all` | 全部标记已读，返回更新条数与未读数 0 |
+| GET | `/api/inbox/health` | 引擎自检（工作流目录、邮箱账号数量、保留策略、待处理数、活动运行数、未读通知数） |
 
 敏感值处理：`input_type=password` 的待办在 API 返回中掩码为 `******`，步骤输出中的密码同样掩码；数据库以 Data Protection 密文保存（`enc:v1:`），仅在工作流执行时于内存中解密。历史明文由启动回填自动加密。
 
@@ -430,7 +459,8 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 - **安全与审计**：展示加密是否可用、Secret 总数与已加密数、待加密的敏感待办、数据库历史保留天数、密钥目录与审计事件数；提供“预览清理历史”与“立即清理历史”（二次确认，说明只清理已完成/失败/取消的运行及其步骤、待办和审计事件），并列出最近 20 条审计事件。
 - **工作流**：卡片列表，展示描述、触发方式（手动 / `on.schedule` cron）、步骤链；点击“运行”弹出确认框，可附加一个种子文件（Phase 1 演示用）。
 - **运行记录**：表格 + 分页；状态徽标；展开显示每个步骤的状态、耗时、错误与日志；失败运行提供“重试”（二次确认，说明从失败步骤继续）；定时触发的运行在详情标题中显示 `Schedule`。
-- 通知：服务端在运行状态变化、待办创建时通过 SignalR 广播（`InboxRunUpdated` / `InboxTodoCreated`）；`/inbox` 订阅这两个事件并立即刷新待办、运行列表与展开中的详情，同时弹出简短提示。断线时自动重连，并以 10 秒轮询兜底；SignalR 连接失败不影响页面其他功能。
+- **全局通知中心**：移动端顶栏、侧栏抽屉与桌面侧栏均有通知铃铛；未读数以红色角标展示，并同步到标签页标题与系统应用角标（浏览器支持时）。面板列出待办提醒与运行失败告警，显示级别、相对时间、工作流与运行编号，提供“查看运行”“重试”（仅失败告警）、“标为已读”与“全部已读”；浏览器通知权限为 `default` 时面板内可一键申请，`denied` 时提示到站点设置重新允许。面板状态由 `NotificationStore` 统一维护，跨页面保留。
+- **实时事件**：服务端在运行状态变化、待办创建、通知创建与已读时通过 SignalR 广播（`InboxRunUpdated` / `InboxTodoCreated` / `InboxNotificationCreated` / `InboxNotificationsRead`）；`/inbox` 订阅运行与待办事件并立即刷新列表与展开中的详情，通知铃铛全局刷新未读数；断线时自动重连，通知以 30 秒轮询兜底，SignalR 连接失败不影响页面其他功能。
 
 ## 9. 工作目录
 
@@ -454,6 +484,7 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
     "CleanupIntervalHours": 6,      // 0 表示关闭自动清理
     "ScheduleSyncSeconds": 30,      // 定时任务目录扫描间隔，最小 5 秒
     "HistoryRetentionDays": 180,    // 数据库历史保留天数，0 表示不清理
+    "NotificationRetentionDays": 90, // 通知保留天数，0 表示不清理
     "DataProtectionKeysPath": "data/keys"  // 加密密钥环目录，需与数据库一起备份
   }
 }
@@ -468,9 +499,10 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
 
 ### 9.2 数据库历史保留
 
-- `Inbox:HistoryRetentionDays`（默认 180）：Worker 每个清理周期删除 `Completed` / `Failed` / `Cancelled` 且 `CompletedAt ?? CreatedAt` 早于截止时间的运行，及其步骤、待办和超过截止时间的审计事件；`0` 表示关闭；
+- `Inbox:HistoryRetentionDays`（默认 180）：Worker 每个清理周期删除 `Completed` / `Failed` / `Cancelled` 且 `CompletedAt ?? CreatedAt` 早于截止时间的运行，及其步骤、待办、通知和超过截止时间的审计事件；`0` 表示关闭；
 - 活动运行（`Queued` / `Running` / `WaitingInput`）与其待办永不删除；
-- 清理按待办 → 步骤 → 运行 → 审计事件逐表 `ExecuteDeleteAsync`，避免外键残留；批量删除失败只记录日志，下个周期重试；
+- 清理按待办 → 步骤 → 通知 → 运行 → 审计事件逐表 `ExecuteDeleteAsync`，避免外键残留；批量删除失败只记录日志，下个周期重试；
+- `Inbox:NotificationRetentionDays`（默认 90）：Worker 每周期删除超过保留期的通知；`0` 表示关闭。该策略独立于历史保留，只影响通知中心本身；
 - 手动入口：`POST /api/inbox/history/cleanup?dryRun=true` 预览数量，真实执行会写入 `HistoryCleanup` 审计事件；
 - 与 9.1 的区别：9.1 清理的是**磁盘运行目录**，历史保留清理的是**数据库记录**；二者互不影响，可分别配置。
 
@@ -483,6 +515,7 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
 | Phase 3 | `archive/extract`（加密 ZIP）、`file/detect`（glob）、工作目录保留策略与清理 API/UI | ✅ |
 | Phase 4 | Quartz `schedule` 触发、SignalR 前端实时订阅、失败重试策略 | ✅ |
 | Phase 5 | 安全增强：Secret 与敏感待办/步骤数据落盘加密、启动回填、审计事件、数据库历史保留与安全状态 UI | ✅ |
+| Phase 6 | 通知与告警中心：通知持久化、待办/失败告警、未读角标、SignalR 推送、浏览器通知、跳转与一键重试、通知保留 | ✅ |
 
 Secret 加密（Phase 2 原计划项）已在 Phase 5 完成：`PasswordSecret` 仍作为配置间接引用，但 `Inbox:Secrets` 中的值可用 CLI 生成 `enc:v1:` 密文；账号只读展示与 API 掩码保持不变，明文配置继续兼容。
 
@@ -533,3 +566,13 @@ Phase 5：
 29. 运行创建/完成/失败/取消/重试、待办提交、工作目录清理与历史清理都会产生审计事件，事件中不含密码或待办输入值；
 30. `Inbox:HistoryRetentionDays` 到期后自动删除终态运行及其步骤/待办/审计事件，活动运行不受影响；`POST /api/inbox/history/cleanup?dryRun=true` 只预览，真实清理写入 `HistoryCleanup` 审计；`/inbox` 可预览并二次确认；
 31. `GET /api/inbox/security` 返回加密状态、密钥环路径、Secret 加密统计、敏感待办统计、历史保留与审计数量；`dotnet build` 与 `dotnet test` 通过（当前 120 个测试）。
+
+Phase 6：
+
+32. `human/input` 创建待办时同时写入 `TodoPending` 通知；运行最终失败（含待办过期与重试耗尽）写入 `RunFailed` 通知，标题/消息只含工作流、步骤与错误摘要，不含密码、Secret 或待办输入值；
+33. 通知铃铛的未读数与 `GET /api/inbox/notifications` 一致；新通知与已读操作通过 SignalR 在 1 秒级反映到未读数、标题角标与面板，断线时 30 秒轮询兜底；
+34. 通知面板支持单条已读与全部已读，操作后未读数、`(N)` 标题角标与铃铛图标同步更新；重复标记已读不产生额外变化；
+35. 通知中的“查看运行”跳转 `/inbox?run={id}` 并自动展开该运行详情；失败告警的“重试”会调用重试接口、关闭面板并从失败步骤恢复；
+36. 浏览器通知权限为 `default` 时可从面板申请；已授权且页面隐藏时新通知触发桌面通知，标签页标题与应用角标更新；`denied` 时显示可操作提示，环境不支持时不报错；
+37. `Inbox:NotificationRetentionDays` 到期后通知被自动清理；数据库历史清理会删除指向被清理运行的通知，活动运行的通知不受影响；
+38. `dotnet build` 与 `dotnet test` 通过（当前 123 个测试，新增通知模型/渲染单测）。

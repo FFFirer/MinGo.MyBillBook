@@ -1,0 +1,30 @@
+@inject NotificationStore Notifications
+@implements IDisposable
+
+<button type="button"
+        class="md-icon-btn relative"
+        aria-label="@(Notifications.UnreadCount > 0 ? $"通知（{Notifications.UnreadCount} 条未读）" : "通知")"
+        title="通知中心"
+        @onclick="Notifications.TogglePanelAsync">
+    <span class="material-symbols-outlined">
+        @(Notifications.UnreadCount > 0 ? "notifications_active" : "notifications")
+    </span>
+    @if (Notifications.UnreadCount > 0)
+    {
+        <span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-error text-on-error text-[11px] leading-[18px] text-center font-semibold"
+              aria-hidden="true">
+            @(Notifications.UnreadCount > 99 ? "99+" : Notifications.UnreadCount.ToString())
+        </span>
+    }
+</button>
+
+@code {
+    protected override void OnInitialized()
+        => Notifications.Changed += OnChanged;
+
+    private void OnChanged()
+        => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+        => Notifications.Changed -= OnChanged;
+}

@@ -13,6 +13,7 @@ using MinGo.MyBillBook.Services;
 using MinGo.MyBillBook.Services.Inbox;
 using MinGo.MyBillBook.Services.Inbox.Actions;
 using MinGo.MyBillBook.Services.Inbox.Email;
+using MinGo.MyBillBook.Services.Inbox.Notifications;
 using MinGo.MyBillBook.Services.Inbox.Scheduling;
 using MinGo.MyBillBook.Services.Inbox.Security;
 using MinGo.MyBillBook.Services.Pipeline;
@@ -128,6 +129,7 @@ builder.Services.AddSingleton<IInboxSensitiveDataProtector, InboxDataProtection>
 builder.Services.AddSingleton<InboxSecrets>();
 builder.Services.AddSingleton<InboxEmailAccounts>();
 builder.Services.AddScoped<InboxAuditLog>();
+builder.Services.AddScoped<InboxNotificationService>();
 builder.Services.AddScoped<InboxHistoryCleaner>();
 builder.Services.AddScoped<InboxSensitiveDataBackfill>();
 builder.Services.AddScoped<InboxSecurityStatusProvider>();

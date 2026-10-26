@@ -104,3 +104,20 @@ public record PipelineStepRunDto(
     int ErrorCount,
     int WarningCount,
     DateTime? CompletedAt);
+
+/// <summary>Inbox 通知中心消息。</summary>
+public record InboxNotificationDto(
+    int Id,
+    string Type,
+    string Level,
+    string Title,
+    string Message,
+    int? RunId,
+    int? TodoId,
+    string? WorkflowName,
+    bool IsRead,
+    DateTime CreatedAt,
+    DateTime? ReadAt);
+
+/// <summary>通知列表与未读数。</summary>
+public record InboxNotificationListDto(List<InboxNotificationDto> Items, int UnreadCount);

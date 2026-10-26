@@ -6,6 +6,7 @@ using MinGo.MyBillBook.Core.Inbox;
 using MinGo.MyBillBook.Core.Models;
 using MinGo.MyBillBook.Data;
 using MinGo.MyBillBook.Hubs;
+using MinGo.MyBillBook.Services.Inbox.Notifications;
 using MinGo.MyBillBook.Services.Inbox.Security;
 
 namespace MinGo.MyBillBook.Services.Inbox;
@@ -32,6 +33,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
     private readonly IInboxSensitiveDataProtector _protector;
     private readonly InboxSecrets _secrets;
     private readonly InboxAuditLog _audit;
+    private readonly InboxNotificationService _notifications;
     private readonly ILogger<InboxWorkflowRunner> _logger;
 
     public InboxWorkflowRunner(
@@ -43,6 +45,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         IInboxSensitiveDataProtector protector,
         InboxSecrets secrets,
         InboxAuditLog audit,
+        InboxNotificationService notifications,
         ILogger<InboxWorkflowRunner> logger)
     {
         _db = db;
@@ -53,6 +56,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         _protector = protector;
         _secrets = secrets;
         _audit = audit;
+        _notifications = notifications;
         _logger = logger;
     }
 
@@ -348,7 +352,9 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
             {
                 _logger.LogError(ex, "恢复运行 #{RunId} 失败", run.Id);
                 FailRun(run, null, $"恢复运行失败: {ex.Message}");
+                failures.Add((run, "恢复运行失败"));
                 changed = true;
+                await NotifyRunAsync(run, ct);
             }
         }
 
@@ -364,6 +370,7 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
                 actor: "system",
                 detail: reason,
                 ct: ct);
+            await _notifications.NotifyRunFailedAsync(failedRun, null, ct);
         }
 
         return changed;
@@ -601,18 +608,22 @@ public sealed class InboxWorkflowRunner : IInboxWorkflowRunner
         return sensitive ? InboxSensitiveData.ProtectJson(json, _protector) : json;
     }
 
-    private Task RecordRunFailedAsync(
+    private async Task RecordRunFailedAsync(
         InboxRun run,
         InboxStepRun? step,
         string reason,
         CancellationToken ct)
-        => _audit.RecordAsync(
+    {
+        await _audit.RecordAsync(
             "RunFailed",
             run.Id,
             workflowName: run.WorkflowName,
             actor: run.TriggeredBy,
             detail: step is null ? reason : $"{reason}（步骤 {step.StepId}）",
             ct: ct);
+
+        await _notifications.NotifyRunFailedAsync(run, step?.StepId, ct);
+    }
 
     private async Task NotifyRunAsync(InboxRun run, CancellationToken ct)
     {
