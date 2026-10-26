@@ -350,10 +350,17 @@
 
     @* ==================== 工作流 ==================== *@
     <div class="md-card-elevated p-4 sm:p-6">
-        <h2 class="text-title-large text-on-surface mb-1">工作流</h2>
-        <p class="text-body-small text-on-surface-variant mb-4">
-            定义文件位于 <code class="font-mono break-all">data/inboxes/*.yaml</code>。新增接入源只需新增 YAML。
-        </p>
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div class="min-w-0">
+                <h2 class="text-title-large text-on-surface mb-1">工作流</h2>
+                <p class="text-body-small text-on-surface-variant">
+                    定义文件位于 <code class="font-mono break-all">data/inboxes/*.yaml</code>。可直接在线新建与编辑，保存后定时任务最多 30 秒内同步。
+                </p>
+            </div>
+            <button @onclick="OpenCreateWorkflowAsync" class="md-btn-outlined shrink-0">
+                <span class="material-symbols-outlined mr-1">add</span>新建工作流
+            </button>
+        </div>
 
         @if (loading && workflows.Count == 0)
         {
@@ -366,10 +373,15 @@
             <div class="p-4 rounded-md bg-surface-container text-center">
                 <span class="material-symbols-outlined text-on-surface-variant block mb-2" style="font-size:2rem;">inbox</span>
                 <p class="text-body-medium text-on-surface-variant mb-3">还没有工作流定义。</p>
-                <button @onclick="CreateSampleAsync" disabled="@creatingSample" class="md-btn-filled w-full sm:w-auto">
-                    <span class="material-symbols-outlined mr-1">auto_awesome</span>
-                    <span>@(creatingSample ? "创建中…" : "创建示例工作流")</span>
-                </button>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
+                    <button @onclick="OpenCreateWorkflowAsync" class="md-btn-filled">
+                        <span class="material-symbols-outlined mr-1">add</span>新建工作流
+                    </button>
+                    <button @onclick="CreateSampleAsync" disabled="@creatingSample" class="md-btn-outlined">
+                        <span class="material-symbols-outlined mr-1">auto_awesome</span>
+                        <span>@(creatingSample ? "创建中…" : "创建示例工作流")</span>
+                    </button>
+                </div>
             </div>
         }
         else
@@ -410,9 +422,15 @@
                                 <p class="text-body-small text-on-surface-variant mt-1 font-mono break-all">@wf.FileName</p>
                             </div>
 
-                            <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
                                 <button @onclick="() => ToggleWorkflowDetailAsync(wf)" class="md-btn-text flex-1 sm:flex-none">
                                     @(expandedWorkflowName == wf.Name ? "收起步骤" : "查看步骤")
+                                </button>
+                                <button @onclick="() => OpenEditWorkflowAsync(wf)" class="md-btn-text" aria-label="编辑工作流" title="编辑 YAML">
+                                    <span class="material-symbols-outlined" style="font-size:1.15rem;">edit</span>
+                                </button>
+                                <button @onclick="() => OpenDeleteWorkflow(wf)" class="md-btn-text text-error" aria-label="删除工作流" title="删除工作流">
+                                    <span class="material-symbols-outlined" style="font-size:1.15rem;">delete</span>
                                 </button>
                                 <button @onclick="() => OpenTriggerDialog(wf)"
                                         disabled="@(!wf.Manual || wf.Error is not null)"
@@ -664,6 +682,136 @@
     </div>
 </ModalDialog>
 
+@* ==================== 工作流编辑器 ==================== *@
+<ModalDialog Visible="showWorkflowEditor" OnClose="CloseWorkflowEditor" AriaLabel="编辑工作流" Size="lg">
+    <div class="flex items-start justify-between gap-3 mb-4">
+        <div class="min-w-0">
+            <h3 class="text-title-medium text-on-surface">@(editorOriginalName is null ? "新建工作流" : "编辑工作流")</h3>
+            <p class="text-body-small text-on-surface-variant mt-1 break-words">
+                @if (editorOriginalName is null)
+                {
+                    <span>保存后立即写入工作流目录；定时任务最多 30 秒内同步。</span>
+                }
+                else
+                {
+                    <span>文件 <code class="font-mono">@editorFileName</code> · 旧版本会备份到 <code class="font-mono">.history/</code>；正在运行的运行使用创建时的 YAML 快照，不受影响。</span>
+                }
+            </p>
+        </div>
+        <button @onclick="CloseWorkflowEditor" disabled="@savingWorkflow" class="md-icon-btn shrink-0" aria-label="关闭">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+
+    @if (editorLoading)
+    {
+        <p class="text-body-medium text-on-surface-variant flex items-center gap-2 py-8 justify-center">
+            <span class="md-circular-progress"></span>加载工作流…
+        </p>
+    }
+    else
+    {
+        @if (editorOriginalName is null)
+        {
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label for="workflowTemplate" class="block text-label-large text-on-surface-variant mb-1">模板</label>
+                    <div class="flex gap-2">
+                        <select id="workflowTemplate" @bind="editorTemplateId" class="md-text-field-outlined flex-1 min-w-0" disabled="@loadingTemplates">
+                            @foreach (var template in workflowTemplates)
+                            {
+                                <option value="@template.Id">@template.Name</option>
+                            }
+                        </select>
+                        <button @onclick="ApplyWorkflowTemplate" disabled="@loadingTemplates" class="md-btn-text shrink-0">套用</button>
+                    </div>
+                </div>
+                <div>
+                    <label for="workflowFileName" class="block text-label-large text-on-surface-variant mb-1">文件名（可选）</label>
+                    <input id="workflowFileName" @bind="editorFileName" placeholder="留空自动生成"
+                           class="md-text-field-outlined w-full font-mono" />
+                    <p class="text-body-small text-on-surface-variant mt-1">仅支持字母、数字、点、下划线、连字符；扩展名自动为 .yaml。</p>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(editorWarning))
+        {
+            <div class="p-3 rounded-md bg-surface-container text-body-small text-on-surface-variant mb-3 break-words" role="status">
+                @editorWarning
+            </div>
+        }
+
+        <label for="workflowYaml" class="block text-label-large text-on-surface-variant mb-1">YAML</label>
+        <textarea id="workflowYaml" @bind="editorYaml" @bind:event="oninput" @bind:after="OnEditorYamlChanged"
+                  rows="18" spellcheck="false" autocomplete="off"
+                  class="md-text-field-outlined w-full font-mono text-body-small"
+                  style="min-height:20rem; line-height:1.5; resize:vertical;"></textarea>
+
+        <div class="flex flex-wrap items-center gap-2 mt-2 min-h-[2rem]">
+            <button @onclick="ValidateEditorAsync" disabled="@validatingEditor" class="md-btn-outlined">
+                <span class="material-symbols-outlined mr-1" style="font-size:1.1rem;">rule</span>
+                @(validatingEditor ? "校验中…" : "校验 YAML")
+            </button>
+
+            @if (editorValidation is { Valid: true } valid)
+            {
+                <span class="md-chip-assist md-chip-assist-info">@valid.Name</span>
+                @if (valid.Manual)
+                {
+                    <span class="md-chip-assist">手动</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(valid.Schedule))
+                {
+                    <span class="md-chip-assist">定时 @valid.Schedule</span>
+                }
+                <span class="text-body-small text-on-surface-variant">@valid.StepCount 个步骤</span>
+            }
+            else if (editorValidation is { Valid: false })
+            {
+                <span class="text-body-small text-error break-words">@editorValidation.Error</span>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(editorError))
+        {
+            <div class="p-3 rounded-md bg-error-container text-body-medium text-on-error-container break-words mt-2" role="alert">@editorError</div>
+        }
+
+        <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
+            <button @onclick="CloseWorkflowEditor" disabled="@savingWorkflow" class="md-btn-outlined w-full sm:w-auto">取消</button>
+            <button @onclick="SaveWorkflowAsync" disabled="@(savingWorkflow || validatingEditor)" class="md-btn-filled w-full sm:w-auto">
+                @if (savingWorkflow)
+                {
+                    <span class="loading-spinner mr-1" style="width:16px;height:16px;border-width:2px;"></span>
+                }
+                <span>@(savingWorkflow ? "保存中…" : "保存")</span>
+            </button>
+        </div>
+    }
+</ModalDialog>
+
+@* ==================== 删除工作流确认 ==================== *@
+<ModalDialog Visible="pendingDeleteWorkflow is not null" OnClose="CloseDeleteWorkflow" AriaLabel="删除工作流" Role="alertdialog" Size="sm">
+    <h3 class="text-title-medium text-error mb-2">删除工作流</h3>
+    <p class="text-body-medium text-on-surface-variant mb-4 break-words">
+        将删除 <strong>@pendingDeleteWorkflow?.Name</strong>（<code class="font-mono">@pendingDeleteWorkflow?.FileName</code>）。
+        旧版本会备份到 <code class="font-mono">data/inboxes/.history/</code>；正在运行的运行使用 YAML 快照，不受影响，但之后无法再手动触发或定时执行。
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(deleteWorkflowError))
+    {
+        <div class="p-3 rounded-md bg-error-container text-body-medium text-on-error-container break-words mb-3" role="alert">@deleteWorkflowError</div>
+    }
+
+    <div class="flex justify-end gap-2">
+        <button @onclick="CloseDeleteWorkflow" disabled="@deletingWorkflow" class="md-btn-outlined">返回</button>
+        <button @onclick="ConfirmDeleteWorkflowAsync" disabled="@deletingWorkflow" class="md-btn-danger">
+            @(deletingWorkflow ? "删除中…" : "确认删除")
+        </button>
+    </div>
+</ModalDialog>
+
 @* ==================== 取消运行确认 ==================== *@
 <ModalDialog Visible="cancelRun is not null" OnClose="CloseCancelDialog" AriaLabel="取消运行" Role="alertdialog" Size="sm">
     <h3 class="text-title-medium text-error mb-2">确认取消运行</h3>
@@ -781,6 +929,25 @@
     private string? expandedWorkflowName;
     private WorkflowDetailDto? workflowDetail;
 
+    private List<WorkflowTemplateDto> workflowTemplates = [];
+    private bool showWorkflowEditor;
+    private bool editorLoading;
+    private bool loadingTemplates;
+    private bool savingWorkflow;
+    private bool validatingEditor;
+    private string editorTemplateId = "manual";
+    private string editorYaml = string.Empty;
+    private string editorFileName = string.Empty;
+    private string? editorOriginalName;
+    private string? editorRevision;
+    private string? editorError;
+    private string? editorWarning;
+    private WorkflowValidationDto? editorValidation;
+
+    private WorkflowDto? pendingDeleteWorkflow;
+    private bool deletingWorkflow;
+    private string? deleteWorkflowError;
+
     private readonly HashSet<int> busyTodoIds = [];
     private readonly Dictionary<int, string?> todoValueCache = [];
 
@@ -797,6 +964,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadWorkflowsAsync();
+        await LoadWorkflowTemplatesAsync();
         await LoadEmailAccountsAsync();
         await LoadWorkspaceAsync();
         await LoadSecurityAsync();
@@ -924,6 +1092,250 @@
         catch (Exception ex)
         {
             ShowToast($"加载工作流失败：{ex.Message}", true);
+        }
+    }
+
+    private async Task LoadWorkflowTemplatesAsync()
+    {
+        loadingTemplates = true;
+        try
+        {
+            workflowTemplates = await Http.GetFromJsonAsync<List<WorkflowTemplateDto>>("api/inbox/workflows/templates") ?? [];
+            if (workflowTemplates.Count > 0
+                && workflowTemplates.All(t => !string.Equals(t.Id, editorTemplateId, StringComparison.Ordinal)))
+            {
+                editorTemplateId = workflowTemplates[0].Id;
+            }
+        }
+        catch
+        {
+            // 模板只是辅助；接口失败时仍可用内置骨架新建。
+            workflowTemplates = [];
+        }
+        finally
+        {
+            loadingTemplates = false;
+        }
+    }
+
+    private Task OpenCreateWorkflowAsync()
+    {
+        editorOriginalName = null;
+        editorRevision = null;
+        editorFileName = string.Empty;
+        editorError = null;
+        editorWarning = null;
+        editorValidation = null;
+        editorLoading = false;
+
+        var template = workflowTemplates.FirstOrDefault(t => t.Id == editorTemplateId)
+            ?? workflowTemplates.FirstOrDefault();
+        editorYaml = template?.Yaml ?? NewWorkflowSkeleton;
+        editorTemplateId = template?.Id ?? "manual";
+        showWorkflowEditor = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task OpenEditWorkflowAsync(WorkflowDto workflow)
+    {
+        showWorkflowEditor = true;
+        editorLoading = true;
+        editorOriginalName = workflow.Name;
+        editorFileName = workflow.FileName;
+        editorRevision = null;
+        editorYaml = string.Empty;
+        editorError = null;
+        editorWarning = null;
+        editorValidation = null;
+
+        try
+        {
+            var detail = await Http.GetFromJsonAsync<WorkflowDetailDto>(
+                $"api/inbox/workflows/{Uri.EscapeDataString(workflow.Name)}");
+            if (detail is null)
+                throw new InvalidOperationException("工作流详情为空");
+
+            editorOriginalName = detail.Name;
+            editorFileName = detail.FileName;
+            editorRevision = detail.Revision;
+            editorYaml = detail.Yaml;
+            editorWarning = detail.Error is null
+                ? null
+                : $"当前文件解析失败，修复后即可保存：{detail.Error}";
+        }
+        catch (Exception ex)
+        {
+            editorError = $"加载工作流失败：{ex.Message}";
+        }
+        finally
+        {
+            editorLoading = false;
+        }
+    }
+
+    private void ApplyWorkflowTemplate()
+    {
+        var template = workflowTemplates.FirstOrDefault(t => t.Id == editorTemplateId);
+        if (template is null)
+            return;
+
+        editorYaml = template.Yaml;
+        editorValidation = null;
+        editorError = null;
+    }
+
+    private void OnEditorYamlChanged()
+    {
+        editorValidation = null;
+        editorError = null;
+    }
+
+    private void CloseWorkflowEditor()
+    {
+        if (savingWorkflow)
+            return;
+        showWorkflowEditor = false;
+    }
+
+    private async Task ValidateEditorAsync()
+    {
+        if (validatingEditor)
+            return;
+
+        validatingEditor = true;
+        editorError = null;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync(
+                "api/inbox/workflows/validate", new WorkflowSaveRequest(editorYaml));
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                editorValidation = null;
+                editorError = await ReadErrorAsync(resp);
+                return;
+            }
+
+            editorValidation = await resp.Content.ReadFromJsonAsync<WorkflowValidationDto>();
+        }
+        catch (Exception ex)
+        {
+            editorError = $"校验异常：{ex.Message}";
+        }
+        finally
+        {
+            validatingEditor = false;
+        }
+    }
+
+    private async Task SaveWorkflowAsync()
+    {
+        if (savingWorkflow)
+            return;
+
+        savingWorkflow = true;
+        editorError = null;
+        try
+        {
+            HttpResponseMessage resp;
+            var created = editorOriginalName is null;
+            if (created)
+            {
+                resp = await Http.PostAsJsonAsync(
+                    "api/inbox/workflows",
+                    new WorkflowSaveRequest(
+                        editorYaml,
+                        string.IsNullOrWhiteSpace(editorFileName) ? null : editorFileName.Trim(),
+                        null));
+            }
+            else
+            {
+                resp = await Http.PutAsJsonAsync(
+                    $"api/inbox/workflows/{Uri.EscapeDataString(editorOriginalName!)}",
+                    new WorkflowSaveRequest(editorYaml, null, editorRevision));
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                editorError = await ReadErrorAsync(resp);
+                return;
+            }
+
+            var saved = await resp.Content.ReadFromJsonAsync<WorkflowDetailDto>();
+            showWorkflowEditor = false;
+            ShowToast(created
+                ? "工作流已创建，定时任务将在 30 秒内同步"
+                : "工作流已保存，定时任务将在 30 秒内同步");
+
+            await LoadWorkflowsAsync();
+            if (saved is not null)
+            {
+                expandedWorkflowName = saved.Name;
+                workflowDetail = saved;
+            }
+        }
+        catch (Exception ex)
+        {
+            editorError = $"保存异常：{ex.Message}";
+        }
+        finally
+        {
+            savingWorkflow = false;
+        }
+    }
+
+    private void OpenDeleteWorkflow(WorkflowDto workflow)
+    {
+        pendingDeleteWorkflow = workflow;
+        deleteWorkflowError = null;
+    }
+
+    private void CloseDeleteWorkflow()
+    {
+        if (deletingWorkflow)
+            return;
+        pendingDeleteWorkflow = null;
+        deleteWorkflowError = null;
+    }
+
+    private async Task ConfirmDeleteWorkflowAsync()
+    {
+        if (pendingDeleteWorkflow is null || deletingWorkflow)
+            return;
+
+        var target = pendingDeleteWorkflow;
+        deletingWorkflow = true;
+        deleteWorkflowError = null;
+        try
+        {
+            var resp = await Http.DeleteAsync(
+                $"api/inbox/workflows/{Uri.EscapeDataString(target.Name)}");
+            if (!resp.IsSuccessStatusCode)
+            {
+                deleteWorkflowError = await ReadErrorAsync(resp);
+                return;
+            }
+
+            var result = await resp.Content.ReadFromJsonAsync<WorkflowDeleteResultDto>();
+            pendingDeleteWorkflow = null;
+            if (string.Equals(expandedWorkflowName, target.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                expandedWorkflowName = null;
+                workflowDetail = null;
+            }
+
+            ShowToast(!string.IsNullOrWhiteSpace(result?.BackupFile)
+                ? $"已删除工作流，旧版本备份在 {result.BackupFile}"
+                : "已删除工作流");
+            await LoadWorkflowsAsync();
+        }
+        catch (Exception ex)
+        {
+            deleteWorkflowError = $"删除异常：{ex.Message}";
+        }
+        finally
+        {
+            deletingWorkflow = false;
         }
     }
 
@@ -1547,6 +1959,9 @@
         "TodoCompleted" => "待办提交",
         "WorkspaceCleanup" => "目录清理",
         "HistoryCleanup" => "历史清理",
+        "WorkflowCreated" => "工作流创建",
+        "WorkflowUpdated" => "工作流更新",
+        "WorkflowDeleted" => "工作流删除",
         _ => eventType
     };
 
@@ -1645,7 +2060,37 @@
 
     private record WorkflowDetailDto(
         string Name, string FileName, string? Description, bool Manual,
-        string? Schedule, string Yaml, List<WorkflowStepDto> Steps, string? Error);
+        string? Schedule, string Revision, string Yaml, List<WorkflowStepDto> Steps, string? Error);
+
+    private record WorkflowTemplateDto(string Id, string Name, string Yaml);
+
+    private record WorkflowSaveRequest(string Yaml, string? FileName = null, string? ExpectedRevision = null);
+
+    private record WorkflowValidationDto(
+        bool Valid, string? Error, string? Name, string? Description,
+        bool Manual, string? Schedule, int StepCount);
+
+    private record WorkflowDeleteResultDto(string Name, string FileName, string? BackupFile);
+
+    private const string NewWorkflowSkeleton = """
+        name: 新工作流
+        description: 描述这个工作流做什么。
+
+        on:
+          manual: true
+
+        jobs:
+          - name: main
+            steps:
+              - id: confirm
+                name: 确认执行
+                uses: human/input
+                with:
+                  title: 确认执行
+                  prompt: 确认后继续执行后续步骤。
+                  input_type: text
+                  expires_hours: 72
+        """;
 
     private record WorkflowStepDto(
         string JobName, string Id, string Name, string Uses, Dictionary<string, string> With);

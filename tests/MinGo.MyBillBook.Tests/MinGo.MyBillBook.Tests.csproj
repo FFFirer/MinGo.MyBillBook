@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MinGo.MyBillBook.Core\MinGo.MyBillBook.Core.csproj" />
     <ProjectReference Include="..\..\src\MinGo.MyBillBook.Data\MinGo.MyBillBook.Data.csproj" />
+    <ProjectReference Include="..\..\src\MinGo.MyBillBook\MinGo.MyBillBook.csproj" />
   </ItemGroup>
 
 </Project>

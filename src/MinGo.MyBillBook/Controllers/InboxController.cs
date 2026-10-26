@@ -59,22 +59,106 @@ public class InboxController(
         if (file is null)
             return NotFound(new { message = $"工作流不存在: {name}" });
 
-        var steps = file.Definition is null
-            ? []
-            : file.Definition.Jobs
-                .SelectMany(j => j.Steps.Select(s => new InboxWorkflowStepDto(
-                    j.Name, s.Id, s.Name ?? s.Id, s.Uses, s.With)))
-                .ToList();
+        return Ok(ToWorkflowDetail(file));
+    }
 
-        return Ok(new InboxWorkflowDetailDto(
-            file.Name,
-            file.FileName,
-            file.Definition?.Description,
-            file.Definition?.On.Manual ?? false,
-            file.Definition?.On.Schedule,
-            file.Yaml,
-            steps,
-            file.Error));
+    /// <summary>在线新建工作流的内置模板。</summary>
+    [HttpGet("workflows/templates")]
+    public ActionResult<List<InboxWorkflowTemplateDto>> GetWorkflowTemplates()
+        => Ok(catalog.GetTemplates()
+            .Select(t => new InboxWorkflowTemplateDto(t.Id, t.Name, t.Yaml))
+            .ToList());
+
+    /// <summary>校验 YAML（语法、语义、cron），不写入磁盘。</summary>
+    [HttpPost("workflows/validate")]
+    public ActionResult<InboxWorkflowValidationDto> ValidateWorkflow([FromBody] InboxWorkflowSaveRequest request)
+    {
+        var validation = catalog.Validate(request.Yaml);
+        var definition = validation.Definition;
+        return Ok(new InboxWorkflowValidationDto(
+            validation.Valid,
+            validation.Error,
+            definition?.Name,
+            definition?.Description,
+            definition?.On.Manual ?? false,
+            definition?.On.Schedule,
+            definition is null ? 0 : WorkflowYamlParser.FlattenSteps(definition).Count));
+    }
+
+    /// <summary>新建工作流文件。</summary>
+    [HttpPost("workflows")]
+    public async Task<ActionResult<InboxWorkflowDetailDto>> CreateWorkflow(
+        [FromBody] InboxWorkflowSaveRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var file = catalog.Create(request.Yaml, request.FileName);
+            await audit.RecordAsync(
+                "WorkflowCreated",
+                workflowName: file.Name,
+                actor: "manual",
+                detail: $"创建文件 {file.FileName}",
+                ct: ct);
+            return CreatedAtAction(
+                nameof(GetWorkflow),
+                new { name = file.Name },
+                ToWorkflowDetail(file));
+        }
+        catch (Exception ex) when (ex is WorkflowParseException or InboxWorkflowWriteException)
+        {
+            return WorkflowError(ex);
+        }
+    }
+
+    /// <summary>更新工作流 YAML；expectedRevision 用于避免覆盖外部修改。</summary>
+    [HttpPut("workflows/{name}")]
+    public async Task<ActionResult<InboxWorkflowDetailDto>> UpdateWorkflow(
+        string name,
+        [FromBody] InboxWorkflowSaveRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var file = catalog.Update(name, request.Yaml, request.ExpectedRevision);
+            await audit.RecordAsync(
+                "WorkflowUpdated",
+                workflowName: file.Name,
+                actor: "manual",
+                detail: $"更新文件 {file.FileName}",
+                ct: ct);
+            return Ok(ToWorkflowDetail(file));
+        }
+        catch (Exception ex) when (ex is WorkflowParseException or InboxWorkflowWriteException)
+        {
+            return WorkflowError(ex);
+        }
+    }
+
+    /// <summary>删除工作流文件；旧版本备份到 .history/。</summary>
+    [HttpDelete("workflows/{name}")]
+    public async Task<ActionResult> DeleteWorkflow(string name, CancellationToken ct)
+    {
+        try
+        {
+            var result = catalog.Delete(name);
+            await audit.RecordAsync(
+                "WorkflowDeleted",
+                workflowName: result.Name,
+                actor: "manual",
+                detail: $"删除文件 {result.FileName}，备份 {result.BackupFile}",
+                ct: ct);
+            return Ok(new
+            {
+                name = result.Name,
+                fileName = result.FileName,
+                backupFile = result.BackupFile
+            });
+        }
+        catch (InboxWorkflowWriteException ex)
+        {
+            return WorkflowError(ex);
+        }
     }
 
     /// <summary>创建演示工作流文件（已存在则不覆盖）。</summary>
@@ -446,6 +530,40 @@ public class InboxController(
 
     // ---------- 映射与脱敏 ----------
 
+    private static InboxWorkflowDetailDto ToWorkflowDetail(InboxWorkflowFile file)
+    {
+        var steps = file.Definition is null
+            ? []
+            : file.Definition.Jobs
+                .SelectMany(j => j.Steps.Select(s => new InboxWorkflowStepDto(
+                    j.Name, s.Id, s.Name ?? s.Id, s.Uses, s.With)))
+                .ToList();
+
+        return new InboxWorkflowDetailDto(
+            file.Name,
+            file.FileName,
+            file.Definition?.Description,
+            file.Definition?.On.Manual ?? false,
+            file.Definition?.On.Schedule,
+            file.Revision,
+            file.Yaml,
+            steps,
+            file.Error);
+    }
+
+    private ActionResult WorkflowError(Exception ex) => ex switch
+    {
+        InboxWorkflowWriteException { Error: InboxWorkflowWriteError.NotFound }
+            => NotFound(new { message = ex.Message }),
+        InboxWorkflowWriteException { Error: InboxWorkflowWriteError.InvalidFileName }
+            => BadRequest(new { message = ex.Message }),
+        InboxWorkflowWriteException
+            => Conflict(new { message = ex.Message }),
+        WorkflowParseException
+            => BadRequest(new { message = ex.Message }),
+        _ => throw ex
+    };
+
     private static InboxTodoDto ToTodoDto(InboxTodo todo, InboxRun run)
     {
         var value = todo.IsSensitive && todo.Status == InboxTodoStatus.Completed
@@ -546,6 +664,7 @@ public record InboxWorkflowDetailDto(
     string? Description,
     bool Manual,
     string? Schedule,
+    string Revision,
     string Yaml,
     List<InboxWorkflowStepDto> Steps,
     string? Error);
@@ -556,6 +675,19 @@ public record InboxWorkflowStepDto(
     string Name,
     string Uses,
     Dictionary<string, string> With);
+
+public record InboxWorkflowTemplateDto(string Id, string Name, string Yaml);
+
+public record InboxWorkflowSaveRequest(string Yaml, string? FileName = null, string? ExpectedRevision = null);
+
+public record InboxWorkflowValidationDto(
+    bool Valid,
+    string? Error,
+    string? Name,
+    string? Description,
+    bool Manual,
+    string? Schedule,
+    int StepCount);
 
 public record InboxRunSummaryDto(
     int Id,

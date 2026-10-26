@@ -1,6 +1,6 @@
 # Inbox：邮件驱动的账单数据接入工作流
 
-> 状态：Phase 1–6 已实现（手动触发 + 待办介入 + 标准导入、IMAP 取附件、加密解压与工作目录清理、Quartz 定时与失败重试、SignalR 实时刷新、敏感数据加密与审计/历史保留、持久化通知中心与浏览器告警）。
+> 状态：Phase 1–7 已实现（手动触发 + 待办介入 + 标准导入、IMAP 取附件、加密解压与工作目录清理、Quartz 定时与失败重试、SignalR 实时刷新、敏感数据加密与审计/历史保留、持久化通知中心与浏览器告警、在线工作流创建/编辑/删除与版本备份）。
 > 本文档描述整体设计。
 
 ## 1. 背景与目标
@@ -36,6 +36,7 @@ Phase 3 补齐账单 ZIP 常见的加密场景：`archive/extract` 解压、`fil
 Phase 4 加入 `on.schedule`（Quartz cron，服务器本地时区）、步骤级失败重试与“从失败步骤恢复”的手动重试，并把页面刷新切换为 SignalR 实时事件（轮询仅作断线兜底）。
 Phase 5 做安全收口：Secret 与密码类待办/步骤数据落盘加密、启动时自动回填历史明文、审计事件与数据库历史保留策略，并在 `/inbox` 提供安全状态与审计视图。
 Phase 6 加入通知与告警中心：待办创建与运行失败持久化为站内通知，全局铃铛展示未读数，SignalR 实时推送，可跳转运行、一键重试，并支持浏览器通知与标签页角标。
+Phase 7 把工作流文件本身搬到线上：`/inbox` 内新建、编辑、删除 YAML，保存前校验、套用模板、乐观并发检测与自动备份；不改变“YAML 即工作流”的目录模型，手工放文件仍然有效。
 
 ## 3. 总体架构
 
@@ -50,7 +51,7 @@ Phase 6 加入通知与告警中心：待办创建与运行失败持久化为站
 │ Server                                                    │
 │                                                           │
 │  InboxController                                          │
-│    ├─ InboxWorkflowCatalog   (读取/解析 data/inboxes/*.yaml)│
+│    ├─ InboxWorkflowCatalog   (读取/校验/在线增删改 data/inboxes/*.yaml + 备份)│
 │    ├─ InboxEmailAccounts     (Inbox:EmailAccounts 只读配置)  │
 │    ├─ InboxNotificationService (通知落库/已读/清理 + 广播)    │
 │    └─ IInboxWorkflowRunner   (创建运行、推进步骤)            │
@@ -308,6 +309,7 @@ dotnet run --project src/MinGo.MyBillBook -- --protect-secret "<应用专用密�
 | `RunCreated` | 手动/定时创建运行（Detail 含触发方式与步骤数） |
 | `RunCompleted` / `RunFailed` / `RunCancelled` / `RunRetried` | 运行终态、取消与手动重试 |
 | `TodoCompleted` | 提交待办（Detail 含输入类型与是否加密存储） |
+| `WorkflowCreated` / `WorkflowUpdated` / `WorkflowDeleted` | 在线新建、保存、删除工作流（Detail 含文件名与备份相对路径，不含 YAML 内容） |
 | `WorkspaceCleanup` / `HistoryCleanup` | 运行目录清理与数据库历史清理 |
 
 审计写入失败不会影响工作流执行（仅记录日志）；`GET /api/inbox/audit` 按时间倒序返回最近事件，`/inbox` 的“安全与审计”卡片展示最近 20 条。
@@ -327,6 +329,18 @@ dotnet run --project src/MinGo.MyBillBook -- --protect-secret "<应用专用密�
 - 前端 `NotificationStore`（WASM Scoped）在 `MainLayout` 初始化一次：加载列表与未读数、订阅 SignalR、30 秒轮询兜底；页面隐藏且已授权时调用 `window.mbbNotifications.show` 弹出浏览器通知，并更新标签页标题角标 `(N)` 与 `navigator.setAppBadge`；
 - 铃铛在移动端顶栏、侧边栏抽屉与桌面侧栏都可打开通知面板；面板提供“全部已读”、单条“标为已读”、跳转运行与失败一键重试；
 - 保留策略：`Inbox:NotificationRetentionDays`（默认 90，`0` 关闭）由 Worker 在清理周期执行；数据库历史清理也会删除 `RunId` 指向被清理运行的通知。
+
+### 4.7 在线工作流管理
+
+工作流目录仍是唯一事实来源，在线管理只是给 `data/inboxes/*.yaml` 提供受控的读写入口：
+
+- **创建**：选择内置模板（手动导入 / 邮件导入 / 加密 ZIP）后套用，可指定文件名；留空时生成 `workflow-{yyyyMMddHHmmssfff}.yaml`。文件名只允许字母、数字、点、下划线与连字符（首个字符必须是字母或数字，最长 64），扩展名自动补 `.yaml`；拒绝路径分隔符与 `..`；
+- **保存**：服务端重新解析 YAML 并校验 Quartz cron，名称必须唯一（大小写不敏感，更新时排除自身）；先写同目录 `.tmp` 再原子替换，避免半写文件被目录同步器读到；
+- **乐观并发**：每个文件的内容 SHA-256 前 16 位作为 `revision`，详情接口返回；保存时携带 `expectedRevision`，与磁盘当前内容不一致返回 `409` 并提示“已被外部修改”。直接编辑文件、手工替换或其他页面保存都会触发该保护；
+- **备份与恢复**：每次更新与删除前把旧内容写入 `data/inboxes/.history/{文件名}/`，文件名含时间戳与旧 revision，每个工作流最多保留 20 份；删除只移除工作流文件，不级联运行记录；
+- **解析失败可修复**：非法 YAML 仍显示原始内容与 `revision`，编辑器给出解析错误提示，修复后可直接保存；解析失败的卡片保留编辑入口，但运行按钮不可用；
+- **生效时机**：目录同步器每 `ScheduleSyncSeconds` 秒重扫，新增/修改/删除最迟 30 秒内反映到 Quartz；已创建的运行使用创建时的 YAML 快照，不受保存/删除影响；
+- **审计**：创建、更新、删除都会写入 `WorkflowCreated` / `WorkflowUpdated` / `WorkflowDeleted`，Detail 只记录文件名、备份路径与操作结果。
 
 ## 5. 领域模型
 
@@ -429,7 +443,12 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/inbox/workflows` | 工作流列表（含解析错误） |
-| GET | `/api/inbox/workflows/{name}` | 工作流详情 + 原始 YAML |
+| GET | `/api/inbox/workflows/{name}` | 工作流详情 + 原始 YAML + `revision`（解析失败时仍返回原始内容） |
+| GET | `/api/inbox/workflows/templates` | 在线新建可用的内置模板（保存时可编辑的 YAML） |
+| POST | `/api/inbox/workflows/validate` | 只校验 YAML：返回名称、描述、触发方式、步骤数与错误，不落盘 |
+| POST | `/api/inbox/workflows` | 在线新建；可指定文件名；名称重复返回 409，非法文件名/解析失败返回 400 |
+| PUT | `/api/inbox/workflows/{name}` | 在线保存；要求 `expectedRevision`，内容被外部修改返回 409；旧版本自动备份 |
+| DELETE | `/api/inbox/workflows/{name}` | 删除工作流文件并备份，返回备份相对路径；不影响已有运行的快照 |
 | POST | `/api/inbox/workflows/{name}/runs` | 手动触发；可 multipart 上传种子文件到 `input/`；202 返回 runId |
 | POST | `/api/inbox/workflows/sample` | 创建演示工作流文件（手动导入 + 邮件导入 + 加密 ZIP 导入，已存在则不覆盖） |
 | GET | `/api/inbox/email-accounts` | 邮箱账号只读列表（含配置状态与错误，密码不返回） |
@@ -457,7 +476,7 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 - **邮箱连接**：只读卡片展示 `Inbox:EmailAccounts` 中的账号（可用 / 配置不完整、主机端口、文件夹、密码来源）；未配置时给出 JSON 示例。
 - **工作目录**：展示运行目录数量、占用空间、活动运行与保留策略；提供“预览清理”（dry run）与“立即清理”（二次确认）。清理活动运行目录会被跳过。
 - **安全与审计**：展示加密是否可用、Secret 总数与已加密数、待加密的敏感待办、数据库历史保留天数、密钥目录与审计事件数；提供“预览清理历史”与“立即清理历史”（二次确认，说明只清理已完成/失败/取消的运行及其步骤、待办和审计事件），并列出最近 20 条审计事件。
-- **工作流**：卡片列表，展示描述、触发方式（手动 / `on.schedule` cron）、步骤链；点击“运行”弹出确认框，可附加一个种子文件（Phase 1 演示用）。
+- **工作流**：卡片列表，展示描述、触发方式（手动 / `on.schedule` cron）、步骤链；顶部提供“新建工作流”，每张卡片提供编辑与删除；点击“运行”弹出确认框，可附加一个种子文件（Phase 1 演示用）。新建/编辑共用大号 YAML 编辑器：模板选择与套用、可选文件名、实时“校验 YAML”结果（名称、触发方式、步骤数或错误）、保存前自动并发校验；删除为二次确认并说明备份位置。解析失败的卡片显示错误，仍可打开编辑器修复。
 - **运行记录**：表格 + 分页；状态徽标；展开显示每个步骤的状态、耗时、错误与日志；失败运行提供“重试”（二次确认，说明从失败步骤继续）；定时触发的运行在详情标题中显示 `Schedule`。
 - **全局通知中心**：移动端顶栏、侧栏抽屉与桌面侧栏均有通知铃铛；未读数以红色角标展示，并同步到标签页标题与系统应用角标（浏览器支持时）。面板列出待办提醒与运行失败告警，显示级别、相对时间、工作流与运行编号，提供“查看运行”“重试”（仅失败告警）、“标为已读”与“全部已读”；浏览器通知权限为 `default` 时面板内可一键申请，`denied` 时提示到站点设置重新允许。面板状态由 `NotificationStore` 统一维护，跨页面保留。
 - **实时事件**：服务端在运行状态变化、待办创建、通知创建与已读时通过 SignalR 广播（`InboxRunUpdated` / `InboxTodoCreated` / `InboxNotificationCreated` / `InboxNotificationsRead`）；`/inbox` 订阅运行与待办事件并立即刷新列表与展开中的详情，通知铃铛全局刷新未读数；断线时自动重连，通知以 30 秒轮询兜底，SignalR 连接失败不影响页面其他功能。
@@ -466,6 +485,7 @@ public enum InboxActionOutcome { Completed, WaitingInput, Failed }
 
 ```
 data/inboxes/                     # YAML 定义（运行时可编辑）
+    .history/{文件名}/            # 在线保存/删除前的旧版本备份（每个工作流最多 20 份）
 data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
     input/                        # 触发时上传的种子文件（Phase 1）
     attachments/                  # 邮件附件（可由 download_dir 改名）
@@ -516,6 +536,7 @@ data/inbox-workspace/runs/{id}/   # 每次运行的隔离目录
 | Phase 4 | Quartz `schedule` 触发、SignalR 前端实时订阅、失败重试策略 | ✅ |
 | Phase 5 | 安全增强：Secret 与敏感待办/步骤数据落盘加密、启动回填、审计事件、数据库历史保留与安全状态 UI | ✅ |
 | Phase 6 | 通知与告警中心：通知持久化、待办/失败告警、未读角标、SignalR 推送、浏览器通知、跳转与一键重试、通知保留 | ✅ |
+| Phase 7 | 在线工作流管理：新建/编辑/删除 YAML、模板、服务端校验、revision 乐观并发、原子写入与 `.history` 备份、审计事件 | ✅ |
 
 Secret 加密（Phase 2 原计划项）已在 Phase 5 完成：`PasswordSecret` 仍作为配置间接引用，但 `Inbox:Secrets` 中的值可用 CLI 生成 `enc:v1:` 密文；账号只读展示与 API 掩码保持不变，明文配置继续兼容。
 
@@ -576,3 +597,11 @@ Phase 6：
 36. 浏览器通知权限为 `default` 时可从面板申请；已授权且页面隐藏时新通知触发桌面通知，标签页标题与应用角标更新；`denied` 时显示可操作提示，环境不支持时不报错；
 37. `Inbox:NotificationRetentionDays` 到期后通知被自动清理；数据库历史清理会删除指向被清理运行的通知，活动运行的通知不受影响；
 38. `dotnet build` 与 `dotnet test` 通过（当前 123 个测试，新增通知模型/渲染单测）。
+
+Phase 7：
+
+39. `/inbox` 可从三个内置模板新建工作流并指定文件名；保存后文件立即出现在 `data/inboxes/`，列表刷新且定时任务最多 30 秒内同步；非法文件名返回 400、名称重复返回 409，界面展示可读错误；
+40. 编辑保存携带 `revision`：文件被手工修改或其他入口保存后再提交返回 409 并提示重新加载；正常保存与删除前旧版本写入 `.history/{文件名}/`，最多保留 20 份，删除不级联运行记录；
+41. 删除需二次确认并展示文件名与备份说明；删除后文件消失、备份存在，已有运行仍按其 YAML 快照可查看/重试；
+42. 解析失败的工作流在列表中显示错误，编辑器返回原始 YAML 与 `revision`，修复后可直接保存；创建/更新/删除写入 `WorkflowCreated` / `WorkflowUpdated` / `WorkflowDeleted` 审计，详情不含 YAML 内容或敏感值；
+43. `dotnet build` 与 `dotnet test` 通过（当前 132 个测试，新增工作流目录在线写操作与备份/并发单测）。

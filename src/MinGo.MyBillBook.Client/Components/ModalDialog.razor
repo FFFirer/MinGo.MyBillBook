@@ -20,13 +20,18 @@
     /// <summary>ARIA role: "dialog" for normal dialogs, "alertdialog" for confirmations.</summary>
     [Parameter] public string Role { get; set; } = "dialog";
 
-    /// <summary>Size variant: "sm" for compact confirmations, "" (default) for normal.</summary>
+    /// <summary>Size variant: "sm" for compact confirmations, "lg" for wide content, "" for normal.</summary>
     [Parameter] public string Size { get; set; } = "";
 
     /// <summary>Dialog body content.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    private string SizeClass => Size == "sm" ? "modal-sm" : "";
+    private string SizeClass => Size switch
+    {
+        "sm" => "modal-sm",
+        "lg" => "modal-lg",
+        _ => ""
+    };
 
     private async Task HandleBackdropClick()
     {
