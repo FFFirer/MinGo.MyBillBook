@@ -406,64 +406,67 @@
             --color-on-info-container: #D1E4FF;
         }
 
-        /* Explicit light overrides (when user picks light while system is dark) */
-        @@media (prefers-color-scheme: dark) {
-            .light {
-                --color-primary: #6750A4;
-                --color-on-primary: #FFFFFF;
-                --color-primary-container: #EADDFF;
-                --color-on-primary-container: #21005D;
+        /* ============================================================
+           Light theme override (manual selection via .light class)
+           This applies regardless of system preference, ensuring that
+           when user explicitly chooses 'light' mode, the page displays
+           with light colors even if system prefers dark.
+           ============================================================ */
+        .light {
+            --color-primary: #6750A4;
+            --color-on-primary: #FFFFFF;
+            --color-primary-container: #EADDFF;
+            --color-on-primary-container: #21005D;
 
-                --color-secondary: #625B71;
-                --color-on-secondary: #FFFFFF;
-                --color-secondary-container: #E8DEF8;
-                --color-on-secondary-container: #1D192B;
+            --color-secondary: #625B71;
+            --color-on-secondary: #FFFFFF;
+            --color-secondary-container: #E8DEF8;
+            --color-on-secondary-container: #1D192B;
 
-                --color-tertiary: #7D5260;
-                --color-on-tertiary: #FFFFFF;
-                --color-tertiary-container: #FFD8E4;
-                --color-on-tertiary-container: #31111D;
+            --color-tertiary: #7D5260;
+            --color-on-tertiary: #FFFFFF;
+            --color-tertiary-container: #FFD8E4;
+            --color-on-tertiary-container: #31111D;
 
-                --color-error: #B3261E;
-                --color-on-error: #FFFFFF;
-                --color-error-container: #F9DEDC;
-                --color-on-error-container: #410E0B;
+            --color-error: #B3261E;
+            --color-on-error: #FFFFFF;
+            --color-error-container: #F9DEDC;
+            --color-on-error-container: #410E0B;
 
-                --color-background: #FEF7FF;
-                --color-on-background: #1D1B20;
-                --color-surface: #FEF7FF;
-                --color-on-surface: #1D1B20;
-                --color-surface-variant: #E7E0EC;
-                --color-on-surface-variant: #49454F;
-                --color-surface-dim: #DED8E1;
-                --color-surface-bright: #FFFBFE;
-                --color-surface-container-lowest: #FFFFFF;
-                --color-surface-container-low: #F7F2FA;
-                --color-surface-container: #F3EDF7;
-                --color-surface-container-high: #ECE6F0;
-                --color-surface-container-highest: #E6E0E9;
+            --color-background: #FEF7FF;
+            --color-on-background: #1D1B20;
+            --color-surface: #FEF7FF;
+            --color-on-surface: #1D1B20;
+            --color-surface-variant: #E7E0EC;
+            --color-on-surface-variant: #49454F;
+            --color-surface-dim: #DED8E1;
+            --color-surface-bright: #FFFBFE;
+            --color-surface-container-lowest: #FFFFFF;
+            --color-surface-container-low: #F7F2FA;
+            --color-surface-container: #F3EDF7;
+            --color-surface-container-high: #ECE6F0;
+            --color-surface-container-highest: #E6E0E9;
 
-                --color-outline: #79747E;
-                --color-outline-variant: #CAC4D0;
-                --color-inverse-surface: #322F35;
-                --color-inverse-on-surface: #F5EFF7;
-                --color-inverse-primary: #D0BCFF;
+            --color-outline: #79747E;
+            --color-outline-variant: #CAC4D0;
+            --color-inverse-surface: #322F35;
+            --color-inverse-on-surface: #F5EFF7;
+            --color-inverse-primary: #D0BCFF;
 
-                --color-success: #146C2E;
-                --color-on-success: #FFFFFF;
-                --color-success-container: #C4EED3;
-                --color-on-success-container: #072711;
+            --color-success: #146C2E;
+            --color-on-success: #FFFFFF;
+            --color-success-container: #C4EED3;
+            --color-on-success-container: #072711;
 
-                --color-warning: #8B5000;
-                --color-on-warning: #FFFFFF;
-                --color-warning-container: #FFDDB3;
-                --color-on-warning-container: #2C1600;
+            --color-warning: #8B5000;
+            --color-on-warning: #FFFFFF;
+            --color-warning-container: #FFDDB3;
+            --color-on-warning-container: #2C1600;
 
-                --color-info: #0061A4;
-                --color-on-info: #FFFFFF;
-                --color-info-container: #D1E4FF;
-                --color-on-info-container: #001D36;
-            }
+            --color-info: #0061A4;
+            --color-on-info: #FFFFFF;
+            --color-info-container: #D1E4FF;
+            --color-on-info-container: #001D36;
         }
 
         /* ============================================================
